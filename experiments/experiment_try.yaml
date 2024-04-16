@@ -13,7 +13,11 @@ Control:
     executed_policy_msg: std_msgs.msg.String
 LTM:
     Nodes:
-        Perception:
+        Node:
+            -
+                name: GRIPPER_AND_LOW_FRICTION
+                class_name: cognitive_nodes.world_model.WorldModel
+        Node:
             -
                 name: cylinders
                 class_name: cognitive_nodes.perception.Perception
@@ -52,7 +56,7 @@ LTM:
                 parameters:
                     default_msg: std_msgs.msg.Bool
                     default_topic: /mdb/baxter/sensor/ball_in_right_hand
-        Goal:
+        Node:
             -
                 name: object_in_box_standalone
                 class_name: cognitive_nodes.goal.GoalObjectInBoxStandalone
@@ -74,11 +78,7 @@ LTM:
                         start: 0
                         end: 3000
                         period: 3000
-        WorldModel:
-            -
-                name: GRIPPER_AND_LOW_FRICTION
-                class_name: cognitive_nodes.world_model.WorldModel
-        Policy:
+        Node:
             -
                 name: grasp_object
                 class_name: cognitive_nodes.policy.Policy
@@ -140,11 +140,8 @@ SimulatedBaxter:
         -
             name: ball_in_left_hand
             perception_topic: /mdb/baxter/sensor/ball_in_left_hand
+            perception_msg: std_msg.msg.Bool
         -
             name: ball_in_right_hand
             perception_topic: /mdb/baxter/sensor/ball_in_right_hand
-            perception_msg: std_msgs.msg.Bool
-        -
-            name: ball_in_box
-            perception_topic: /mdb/reward
             perception_msg: std_msgs.msg.Bool
