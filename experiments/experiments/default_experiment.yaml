@@ -1,8 +1,10 @@
 Experiment:
     name: main_loop
     class_name: cognitive_processes.main_loop.MainLoop
+    new_executor: False
+    threads: 2
     parameters: 
-        iterations: 10000
+        iterations: 6000
         trials: 50
         subgoals: False
 Control:
