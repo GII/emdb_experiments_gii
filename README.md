@@ -72,6 +72,12 @@ In the first one, it is possible to observe important information, such as the p
 ```
 tail -f goodness.txt
 ```
+| Iteration | Goal                     | World                     | Reward | Policy                | Sensorial changes | C-nodes |
+|-----------|--------------------------|---------------------------|--------|-----------------------|-------------------|---------|
+| 1416      | object_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 0.3    | sweep_object          | True              | 7       |
+| 1417      | object_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 0.6    | grasp_with_two_hands  | True              | 7       |
+| 1418      | object_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 1.0    | put_object_in_box     | True              | 7       |
+
 In the second file, it's possible to see the activation of the PNodes and if it was a point (True) or an anti-point (False).
 
 When the execution is finished, it's possible to obtain statistics about reward and PNodes activations per 100 iterations by using the scripts available in the scripts directory of the core package (emdb_core/core/scripts):
@@ -83,4 +89,3 @@ python3 $ROS_WORKSPACE/src/emdb_core/core/scripts/generate_grouped_success_stati
 To use these scripts it's necessary to have installed python-magic 0.4.27 dependency.
 
 By plotting the data of these final files, it is possible to obtain a visual interpretation of the learning of the cognitive architecture.
-
