@@ -100,7 +100,7 @@ LTM:
         Perception:
             -
                 name: cylinders
-                class_name: cognitive_nodes.perception.Perception
+                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
                 parameters:
                     default_msg: simulators_interfaces.msg.ObjectListMsg
                     default_topic: /mdb/baxter/sensor/cylinders
@@ -113,7 +113,7 @@ LTM:
                         diameter_max: 0.15
             -
                 name: boxes
-                class_name: cognitive_nodes.perception.Perception
+                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
                 parameters:
                     default_msg: simulators_interfaces.msg.ObjectListMsg
                     default_topic: /mdb/baxter/sensor/boxes
@@ -126,13 +126,13 @@ LTM:
                         diameter_max: 0.15
             -
                 name: ball_in_left_hand
-                class_name: cognitive_nodes.perception.Perception
+                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
                 parameters:
                     default_msg: std_msgs.msg.Bool
                     default_topic: /mdb/baxter/sensor/ball_in_left_hand
             -
                 name: ball_in_right_hand
-                class_name: cognitive_nodes.perception.Perception
+                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
                 parameters:
                     default_msg: std_msgs.msg.Bool
                     default_topic: /mdb/baxter/sensor/ball_in_right_hand
