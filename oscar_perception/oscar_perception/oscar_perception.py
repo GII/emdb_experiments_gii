@@ -1,7 +1,5 @@
-import time
 import threading
-import copy
-import traceback
+import numpy as np
 
 # ros libraries
 import rclpy
@@ -11,7 +9,6 @@ from rclpy.action import ActionClient
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from ros2_numpy import numpify
-import numpy as np
 
 # Interfaces
 from geometry_msgs.msg import PoseStamped, Point
