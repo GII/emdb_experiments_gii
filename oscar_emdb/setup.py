@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'oscar_emdb_server = oscar_emdb.oscar_emdb_server:main'
         ],
     },
 )

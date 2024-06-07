@@ -132,10 +132,15 @@ LTM:
             -
                 name: object_in_box_standalone
                 class_name: cognitive_nodes.goal.GoalReadPublishedReward
+                new_executor: False
+                threads: 2
                 parameters:
                         start: 0
                         end: 6000
                         period: 6000
+                        default_topic: mdb/reward
+                        default_msg: std_msgs.msg.Float32
+
                         
 
 OSCAR:
