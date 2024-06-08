@@ -305,42 +305,42 @@ class OscarMDB(Node):
     async def change_hands_policy(self):
         if self.perception.obj_in_left_hand:
             #Move left hand to give position
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15, named_pose="switch_give")
+            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1, named_pose="switch_give")
 
             #Move right hand to pre-receive position and open gripper
-            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="pre_switch_collect")
+            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="pre_switch_collect")
             await self.cli_right_gripper.send_request_async(close=False)
 
             #Move right hand to receive position and close gripper
-            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="switch_collect")
+            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="switch_collect")
             await self.cli_right_gripper.send_request_async(close=True)
 
             #Open left gripper and retract arm 
             await self.cli_left_gripper.send_request_async(close=False)
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="post_switch_give")
+            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="post_switch_give")
             #Go home
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="home")
-            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="home")
+            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="home")
+            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="home")
 
         if self.perception.obj_in_right_hand:
             #Move right hand to give position
-            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="switch_give")
+            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="switch_give")
 
             #Move left hand to pre-receive position and open gripper
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="pre_switch_collect")
+            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="pre_switch_collect")
             await self.cli_left_gripper.send_request_async(close=False)
 
             #Move left hand to receive position and close gripper
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="switch_collect")
+            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="switch_collect")
             await self.cli_left_gripper.send_request_async(close=True)
 
             #Open right gripper and retract arm 
             await self.cli_right_gripper.send_request_async(close=False)
-            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="post_switch_give")
+            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="post_switch_give")
 
             #Go home
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="home")
-            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="home")
+            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="home")
+            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="home")
 
     async def update_perceptions(self):
         self.get_logger().info('Updating Perceptions...')
