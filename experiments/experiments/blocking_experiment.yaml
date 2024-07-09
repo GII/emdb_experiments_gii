@@ -1,0 +1,191 @@
+Experiment:
+    name: main_loop
+    class_name: cognitive_processes.main_loop.MainLoop
+    new_executor: False
+    threads: 2
+    parameters: 
+        iterations: 6000
+        trials: 50
+        subgoals: False
+Control:
+    id: ltm_simulator
+    control_topic: /main_loop/control
+    control_msg: core_interfaces.msg.ControlMsg
+    executed_policy_service: /mdb/baxter/executed_policy
+    executed_policy_msg: cognitive_node_interfaces.srv.Policy
+LTM:
+    Files:
+        -
+            id: goodness
+            class: core.file.FileGoodness
+            file: goodness.txt
+        -
+            id: pnodes_success
+            class: core.file.FilePNodesSuccess
+            file: pnodes_success.txt
+    Connectors:
+        -
+            data: Space
+            default_class: cognitive_nodes.space.SVMSpace
+        -
+            data: Perception
+            default_class: cognitive_nodes.perception.Perception
+        -
+            data: PNode
+            default_class: cognitive_nodes.pnode.PNode
+        -
+            data: CNode
+            default_class: cognitive_nodes.cnode.CNode
+        -
+            data: Goal
+            default_class: cognitive_nodes.goal.Goal
+        -
+            data: WorldModel
+            default_class: cognitive_nodes.world_model.WorldModel
+        -
+            data: Policy
+            default_class: cognitive_nodes.policy.PolicyBlocking
+
+    Nodes:
+
+        Policy:
+            -
+                name: grasp_object
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy 
+            -
+                name: grasp_with_two_hands
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy 
+            -
+                name: change_hands
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy 
+            -
+                name: sweep_object
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy  
+            -
+                name: put_object_in_box
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy   
+            -
+                name: put_object_with_robot
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy  
+            -
+                name: throw
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy  
+            -
+                name: ask_nicely
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy  
+        Perception:
+            -
+                name: ball_in_left_hand
+                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /mdb/baxter/sensor/ball_in_left_hand
+            -
+                name: ball_in_right_hand
+                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /mdb/baxter/sensor/ball_in_right_hand
+            -
+                name: boxes
+                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.ObjectListMsg
+                    default_topic: /mdb/baxter/sensor/boxes
+                    normalize_data:
+                        distance_min: 0.2
+                        distance_max: 1.9
+                        angle_min: -1.4
+                        angle_max: 1.4
+                        diameter_min: 0.0
+                        diameter_max: 0.15
+            -
+                name: cylinders
+                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.ObjectListMsg
+                    default_topic: /mdb/baxter/sensor/cylinders
+                    normalize_data:
+                        distance_min: 0.2
+                        distance_max: 1.9
+                        angle_min: -1.4
+                        angle_max: 1.4
+                        diameter_min: 0.0
+                        diameter_max: 0.15
+        WorldModel:
+            -
+                name: GRIPPER_AND_LOW_FRICTION
+                class_name: cognitive_nodes.world_model.WorldModel
+        Goal:
+            -
+                name: object_in_box_standalone
+                class_name: cognitive_nodes.goal.GoalObjectInBoxStandalone
+                parameters:
+                    normalize_data:
+                        distance_min: 0.2
+                        distance_max: 1.9
+                        angle_min: -1.4
+                        angle_max: 1.4
+                        diameter_min: 0.0
+                        diameter_max: 0.15
+                    data:
+                        space: cognitive_nodes.space.NormalCentroidPointBasedSpace
+                        points:
+                            -
+                                cylinders:
+                                    dist: 0.575
+                                    angle: 0.0
+                                boxes:
+                                    dist: 0.575
+                                    angle: 0.0
+                                ball_in_left_hand:
+                                    data: False
+                                ball_in_right_hand:
+                                    data: False
+                        start: 0
+                        end: 3000
+                        period: 3000
+                        
+
+SimulatedBaxter:
+    Perceptions:
+        -
+            name: cylinders
+            perception_topic: /mdb/baxter/sensor/cylinders
+            perception_msg: simulators_interfaces.msg.ObjectListMsg
+        -
+            name: boxes
+            perception_topic: /mdb/baxter/sensor/boxes
+            perception_msg: simulators_interfaces.msg.ObjectListMsg
+        -
+            name: ball_in_left_hand
+            perception_topic: /mdb/baxter/sensor/ball_in_left_hand
+            perception_msg: std_msgs.msg.Bool
+        -
+            name: ball_in_right_hand
+            perception_topic: /mdb/baxter/sensor/ball_in_right_hand
+            perception_msg: std_msgs.msg.Bool
