@@ -19,6 +19,7 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 
 # Image packages
 import skimage as ski
+import cv2
 from skimage.measure import regionprops, label
 import cameratransform as ct
 
@@ -133,6 +134,12 @@ class OscarPerception(Node):
         self.obj_r = (200, 255)
         self.bskt_b = (200, 255)
 
+        #Color Limits HSV
+        self.v = np.array([30, 100])
+        self.s = np.array([80, 100])
+        self.obj_h = np.array([340, 20])
+        self.bskt_h = np.array([235, 245])
+
         # Object height measured from the table (z=0)
         self.object_z = 0.025  # Works for both object and basket
 
@@ -150,9 +157,10 @@ class OscarPerception(Node):
             data.shape[0], data.shape[1], -1
         )
 
+        im_hsv=cv2.cvtColor(im, cv2.COLOR_RGB2HSV)
         # Segment object and basket
-        obj_bin = self.color_segment_rgb(im, self.obj_r, self.g, self.b)
-        bskt_bin = self.color_segment_rgb(im, self.r, self.g, self.bskt_b)
+        obj_bin = self.color_segment_hsv(im_hsv, self.obj_h, self.s, self.v)
+        bskt_bin = self.color_segment_hsv(im_hsv, self.bskt_h, self.s, self.v)
 
         # Find object in image
         obj_find = self.find_centroid(obj_bin, "red_box")
@@ -238,6 +246,29 @@ class OscarPerception(Node):
         img_bin = r_img_bin & g_img_bin & b_img_bin
 
         return img_bin
+    
+    def color_segment_hsv(self, hsv_img, h_limits, s_limits, v_limits):
+        h_limits=((h_limits/2).astype(int)).tolist()
+        s_limits=((255*s_limits/100).astype(int)).tolist()
+        v_limits=((255*v_limits/100).astype(int)).tolist()
+
+        if h_limits[0]<=h_limits[1]:
+            mask_low=(h_limits[0], s_limits[0], v_limits[0])
+            mask_high=(h_limits[1], s_limits[1], v_limits[1])
+            img_bin = cv2.inRange(hsv_img, mask_low, mask_high)
+
+        else:
+            mask1_low=(h_limits[0], s_limits[0], v_limits[0])
+            mask1_high=(255, s_limits[1], v_limits[1])
+            
+            mask2_low=(0, s_limits[0], v_limits[0])
+            mask2_high=(h_limits[1], s_limits[1], v_limits[1])
+
+            mask1 = cv2.inRange(hsv_img, mask1_low, mask1_high)
+            mask2 = cv2.inRange(hsv_img, mask2_low, mask2_high)
+            img_bin = mask1+mask2
+
+        return img_bin
 
     def find_centroid(self, img_bin, info_string):
         label_image = label(img_bin)
@@ -259,12 +290,22 @@ class OscarPerception(Node):
         # Show warnings if object not found
         if num_region == 0:
             self.get_logger().warn(f"Object {info_string} not found.")
+            try:
+                ski.io.imsave(f'test_images/not_found_{info_string}_{self.get_clock().now().nanoseconds}.jpg', self.image)
+            except Exception as e: print(e)
+                
 
         elif small_region:
             self.get_logger().error(f"Object {info_string}: Small region found.")
+            try:
+                ski.io.imsave(f'test_images/small_{info_string}_{self.get_clock().now().nanoseconds}.jpg', self.image)
+            except Exception as e: print(e)
 
         else:
             self.get_logger().error(f"Object {info_string}: Multiple regions found.")
+            try:
+                ski.io.imsave(f'test_images/multiple_{info_string}_{self.get_clock().now().nanoseconds}.jpg', self.image)
+            except Exception as e: print(e)
 
 
         return False, (0, 0)

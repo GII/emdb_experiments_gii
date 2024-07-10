@@ -4,8 +4,8 @@ Experiment:
     new_executor: False
     threads: 2
     parameters: 
-        iterations: 6000
-        trials: 50
+        iterations: 2000
+        trials: 15
         subgoals: False
 Control:
     id: mdb_oscar
