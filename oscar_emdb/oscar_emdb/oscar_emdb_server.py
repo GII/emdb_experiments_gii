@@ -16,7 +16,9 @@ from rclpy.task import Future
 # Interfaces
 from rcl_interfaces.msg import ParameterDescriptor
 from trajectory_msgs.msg import JointTrajectoryPoint
-from oscar_interfaces.srv import ArmControl, GripperControl, Perception
+from oscar_interfaces.srv import ArmControl, GripperControl
+from oscar_emdb_interfaces.srv import Perception as PerceptionSrv
+from oscar_emdb_interfaces.msg import Perception as PerceptionMsg
 from gazebo_msgs.srv import GetEntityState, SetEntityState
 from geometry_msgs.msg import Pose, Quaternion, Point
 from core_interfaces.srv import LoadConfig
@@ -42,8 +44,8 @@ class OscarMDB(Node):
         self.perceptions={}
 
         #Local variables init
-        self.perception=Perception.Response()
-        self.old_perception=Perception.Response()
+        self.perception=PerceptionSrv.Response()
+        self.old_perception=PerceptionSrv.Response()
         self.aprox_object=False
         self.base_messages={}
 
@@ -54,7 +56,7 @@ class OscarMDB(Node):
         self.mdb_commands_cbg=MutuallyExclusiveCallbackGroup()
         
         #Service client for Oscar Perceptions
-        self.cli_oscar_perception = ServiceClientAsync(self, Perception, 'oscar/request_perceptions', self.perception_cbg)
+        self.cli_oscar_perception = ServiceClientAsync(self, PerceptionSrv, 'oscar/request_perceptions', self.perception_cbg)
 
         #Service clients for Oscar Commander
         self.cli_right_arm = ServiceClientAsync(self, ArmControl, "oscar/right_arm_command", self.oscar_cbg)
@@ -76,6 +78,7 @@ class OscarMDB(Node):
 
         #Reward Publisher
         self.reward_pub = self.create_publisher(Float32, 'mdb/reward', 1) #TODO: Implement dedicated interface
+
         
 
 
@@ -139,11 +142,19 @@ class OscarMDB(Node):
         message = class_from_classname(classname)
         self.get_logger().info("Subscribing to... " + str(topic))
         self.create_subscription(message, topic, self.new_command_callback, 0)
-        topic = simulation["executed_policy_topic"]
+        topic = simulation.get("executed_policy_topic")
+        service = simulation.get("executed_policy_service")
         classname = simulation["executed_policy_msg"]
         message = class_from_classname(classname)
-        self.get_logger().info("Subscribing to... " + str(topic))
-        self.create_subscription(message, topic, self.policy_callback, 0)
+        if topic:
+            self.get_logger().info("Subscribing to... " + str(topic))
+            self.create_subscription(message, topic, self.policy_callback, 0)
+        if service:
+            self.get_logger().info("Creating server... " + str(service))
+            self.create_service(message, service, self.policy_service, callback_group=self.mdb_commands_cbg)
+            self.get_logger().info("Creating perception publisher timer... ")
+            #Subscriber for the redescribed perceptions
+            self.sensors_subs = self.create_subscription(PerceptionMsg, '/oscar/redescribed_sensors', self.publish_perceptions_callback, 0, )
 
 
     def load_experiment_file_in_commander(self):
@@ -172,6 +183,16 @@ class OscarMDB(Node):
         await self.update_reward()
         self.publish_perception_reward()
 
+    async def policy_service(self, request, response):
+        self.get_logger().info(f"Executing {request.policy} policy...")
+        await self.update_perceptions()
+        await getattr(self, request.policy + "_policy")()
+        await self.update_perceptions()
+        await self.update_reward()
+        self.publish_reward()
+        response.success = True
+        return response
+
     async def reset_world(self):
         self.get_logger().info("Reseting World...")
 
@@ -180,7 +201,6 @@ class OscarMDB(Node):
         await self.init_oscar()
         await self.update_perceptions()
         await self.update_reward()
-        self.publish_perception_reward()
 
     async def init_oscar(self):
         self.get_logger().info('Initializing OSCAR Robot')
@@ -345,23 +365,14 @@ class OscarMDB(Node):
     async def update_perceptions(self):
         self.get_logger().info('Updating Perceptions...')
         self.old_perception=self.perception
-        self.perception= await self.cli_oscar_perception.send_request_async()
-
-        #Convert perceptions to distance, angle
-        obj=OscarMDB.cartesian_to_polar(self.perception.red_object)
-        bskt=OscarMDB.cartesian_to_polar(self.perception.basket)
-        
-        #Assign perceptions to MDB messages
-        self.perceptions['cylinders'].data[0].distance=obj[0]
-        self.perceptions['cylinders'].data[0].angle=obj[1]
-        self.perceptions['cylinders'].data[0].diameter=0.025
-
-        self.perceptions['boxes'].data[0].distance=bskt[0]
-        self.perceptions['boxes'].data[0].angle=bskt[1]
-        self.perceptions['boxes'].data[0].diameter=0.1
-
-        self.perceptions['object_in_left_hand'].data=self.perception.obj_in_left_hand
-        self.perceptions['object_in_right_hand'].data=self.perception.obj_in_right_hand
+        valid_perception=False
+        trials=0
+        while not valid_perception:
+            self.perception= await self.cli_oscar_perception.send_request_async()
+            valid_perception = self.perception.success
+            trials += 1
+            if trials == 20:
+                return None
 
     async def update_reward(self):
         self.get_logger().info("Reading Reward....")
@@ -433,11 +444,35 @@ class OscarMDB(Node):
 
     def publish_perception_reward(self):
         self.get_logger().info("Publishing Perceptions....")
+        self.publish_perceptions(self.perceptions)
+        self.publish_reward()
 
+    def publish_perceptions_callback(self, msg:PerceptionMsg):
+        self.get_logger().debug('DEBUG - Publishing perceptions')
+        #Convert perceptions to distance, angle
+        obj=OscarMDB.cartesian_to_polar(self.perception.red_object)
+        bskt=OscarMDB.cartesian_to_polar(self.perception.basket)
+        
+        #Assign perceptions to MDB messages
+        self.perceptions['cylinders'].data[0].distance=obj[0]
+        self.perceptions['cylinders'].data[0].angle=obj[1]
+        self.perceptions['cylinders'].data[0].diameter=0.025
+
+        self.perceptions['boxes'].data[0].distance=bskt[0]
+        self.perceptions['boxes'].data[0].angle=bskt[1]
+        self.perceptions['boxes'].data[0].diameter=0.1
+
+        self.perceptions['object_in_left_hand'].data=self.perception.obj_in_left_hand
+        self.perceptions['object_in_right_hand'].data=self.perception.obj_in_right_hand
+
+        self.publish_perceptions(self.perceptions)
+        
+    def publish_perceptions(self, perceptions):
         for ident, publisher in self.sim_publishers.items():
-            self.get_logger().debug("Publishing " + ident + " = " + str(self.perceptions[ident].data))
-            publisher.publish(self.perceptions[ident])
+            self.get_logger().debug("Publishing " + ident + " = " + str(perceptions[ident].data))
+            publisher.publish(perceptions[ident])
 
+    def publish_reward(self):
         self.reward_pub.publish(Float32(data=float(self.reward)))
 
     async def bring_object_near(self):

@@ -4,15 +4,15 @@ Experiment:
     new_executor: False
     threads: 2
     parameters: 
-        iterations: 2000
+        iterations: 3000
         trials: 15
         subgoals: False
 Control:
     id: mdb_oscar
     control_topic: /main_loop/control
     control_msg: core_interfaces.msg.ControlMsg
-    executed_policy_topic: /mdb/oscar/executed_policy
-    executed_policy_msg: std_msgs.msg.String
+    executed_policy_service: /mdb/oscar/executed_policy
+    executed_policy_msg: cognitive_node_interfaces.srv.Policy
 LTM:
     Files:
         -
@@ -44,54 +44,54 @@ LTM:
             default_class: cognitive_nodes.world_model.WorldModel
         -
             data: Policy
-            default_class: cognitive_nodes.policy.Policy
+            default_class: cognitive_nodes.policy.PolicyBlocking
 
     Nodes:
 
         Policy:
             -
                 name: grasp_right
-                class_name: cognitive_nodes.policy.Policy
+                class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
-                    publisher_msg: std_msgs.msg.String
-                    publisher_topic: /mdb/oscar/executed_policy 
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/oscar/executed_policy 
             -
                 name: grasp_left
-                class_name: cognitive_nodes.policy.Policy
+                class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
-                    publisher_msg: std_msgs.msg.String
-                    publisher_topic: /mdb/oscar/executed_policy  
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/oscar/executed_policy  
             -
                 name: change_hands
-                class_name: cognitive_nodes.policy.Policy
+                class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
-                    publisher_msg: std_msgs.msg.String
-                    publisher_topic: /mdb/oscar/executed_policy 
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/oscar/executed_policy 
             -
                 name: press_button
-                class_name: cognitive_nodes.policy.Policy
+                class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
-                    publisher_msg: std_msgs.msg.String
-                    publisher_topic: /mdb/oscar/executed_policy 
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/oscar/executed_policy 
             -
                 name: place_object_right
-                class_name: cognitive_nodes.policy.Policy
+                class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
-                    publisher_msg: std_msgs.msg.String
-                    publisher_topic: /mdb/oscar/executed_policy  
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/oscar/executed_policy  
             -
                 name: place_object_left
-                class_name: cognitive_nodes.policy.Policy
+                class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
-                    publisher_msg: std_msgs.msg.String
-                    publisher_topic: /mdb/oscar/executed_policy  
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/oscar/executed_policy  
         Perception:
             -
-                name: cylinders
+                name: boxes
                 class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
                 parameters:
                     default_msg: simulators_interfaces.msg.ObjectListMsg
-                    default_topic: /mdb/oscar/sensor/cylinders
+                    default_topic: /mdb/oscar/sensor/boxes
                     normalize_data:
                         distance_min: 0.1
                         distance_max: 1.25
@@ -100,11 +100,11 @@ LTM:
                         diameter_min: 0.0
                         diameter_max: 0.15
             -
-                name: boxes
+                name: cylinders
                 class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
                 parameters:
                     default_msg: simulators_interfaces.msg.ObjectListMsg
-                    default_topic: /mdb/oscar/sensor/boxes
+                    default_topic: /mdb/oscar/sensor/cylinders
                     normalize_data:
                         distance_min: 0.1
                         distance_max: 1.25

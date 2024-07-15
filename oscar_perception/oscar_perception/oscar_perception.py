@@ -12,7 +12,8 @@ from ros2_numpy import numpify
 
 # Interfaces
 from geometry_msgs.msg import PoseStamped, Point
-from oscar_interfaces.srv import Perception
+from oscar_emdb_interfaces.srv import Perception as PerceptionSrv
+from oscar_emdb_interfaces.msg import Perception as PerceptionMsg
 from sensor_msgs.msg import Image
 from control_msgs.msg import JointTrajectoryControllerState
 from trajectory_msgs.msg import JointTrajectoryPoint
@@ -20,6 +21,7 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 # Image packages
 import skimage as ski
 import cv2
+from cv_bridge import CvBridge
 from skimage.measure import regionprops, label
 import cameratransform as ct
 
@@ -30,21 +32,22 @@ class OscarPerception(Node):
 
         # Callback groups
         self.perception_cbg = MutuallyExclusiveCallbackGroup()
+        self.timer_cbg = MutuallyExclusiveCallbackGroup()
         self.image_cbg = MutuallyExclusiveCallbackGroup()
         self.gripper_cbg = MutuallyExclusiveCallbackGroup()
 
         # Service server and topic subscription
         self.srv_perception = self.create_service(
-            Perception,
+            PerceptionSrv,
             "oscar/request_perceptions",
-            self.perception_callback,
+            self.perception_service_callback,
             callback_group=self.perception_cbg,
         )
         self.sub_image = self.create_subscription(
             Image,
             "/oscar/camera/rgb/image_raw",
             self.image_process_callback,
-            1,
+            0,
             callback_group=self.image_cbg,
         )
         self.sub_right_gripper = self.create_subscription(
@@ -61,6 +64,10 @@ class OscarPerception(Node):
             1,
             callback_group=self.gripper_cbg,
         )
+
+        self.sensor_publisher = self.create_publisher(PerceptionMsg, "/oscar/redescribed_sensors", 0)
+        self.pub_timer = self.create_timer(0.01, self.perception_publication, callback_group=self.timer_cbg)
+        self.pub_trials = 0
 
         # Threading
         self.image_flag = threading.Event()
@@ -89,8 +96,41 @@ class OscarPerception(Node):
         self.gripper_flags[arm].set()
         self.gripper_semaphore.release()
 
-    def perception_callback(self, _, response: Perception.Response):
+    def perception_service_callback(self, _, response: PerceptionSrv.Response):
         self.get_logger().info("Processing perception...")
+        found, obj, bskt, left, right = self.process_perception()
+        self.get_logger().info('Perception processing completed')
+        response.success = found
+        response.red_object = obj
+        response.basket = bskt
+        response.obj_in_left_hand = left
+        response.obj_in_right_hand = right
+
+        return response
+    
+    def perception_publication(self):
+        self.get_logger().debug('DEBUG - Publishing redescribed sensors')
+        msg=PerceptionMsg()
+        found, obj, bskt, left, right = self.process_perception()
+
+        if found:
+            self.pub_trials = 0
+        
+        else:
+            self.pub_trials += 1
+
+        if found or self.pub_trials >= 20:
+            msg.red_object = obj
+            msg.basket = bskt
+            msg.obj_in_left_hand = left
+            msg.obj_in_right_hand = right
+
+            self.sensor_publisher.publish(msg)
+        
+        
+
+    def process_perception(self):
+        
 
         # Wait for data flags and acquire semaphores to avoid overwriting of data during processing
         self.image_flag.wait()
@@ -99,15 +139,10 @@ class OscarPerception(Node):
         self.image_semaphore.acquire()
         self.gripper_semaphore.acquire()
 
-        obj, bskt = self.visual_processing(self.image)
+        found, obj, bskt = self.visual_processing(self.image)
         left, right = self.tactile_processing(
             self.gripper_error["left"], self.gripper_error["right"]
         )
-
-        response.red_object = obj
-        response.basket = bskt
-        response.obj_in_left_hand = left
-        response.obj_in_right_hand = right
 
         # Release semaphores and clear flags
         self.image_semaphore.release()
@@ -115,8 +150,8 @@ class OscarPerception(Node):
         self.image_flag.clear()
         for arm in self.gripper_flags.values():
             arm.clear()
-        self.get_logger().info('Perception processing completed')
-        return response
+
+        return found, obj, bskt, left, right
 
     def configure_camera(self):
         # intrinsic camera parameters
@@ -156,6 +191,9 @@ class OscarPerception(Node):
         im = np.frombuffer(data.data, dtype=np.uint8).reshape(
             data.shape[0], data.shape[1], -1
         )
+        found=True
+        obj = Point()
+        bskt = Point()
 
         im_hsv=cv2.cvtColor(im, cv2.COLOR_RGB2HSV)
         # Segment object and basket
@@ -174,6 +212,7 @@ class OscarPerception(Node):
                 [obj_find[1][0], obj_find[1][1]], Z=self.object_z
             )
         else:
+            found=False
             obj_pose_img = [
                 1.0,
                 0.325,
@@ -186,6 +225,7 @@ class OscarPerception(Node):
                 [bskt_find[1][0], bskt_find[1][1]], Z=self.object_z
             )
         else:
+            found=False
             bskt_pose_img = [
                 -1.0,
                 0.325,
@@ -195,18 +235,16 @@ class OscarPerception(Node):
         # MANUALLY Transforming from image frame to World frame
 
         # Object
-        obj = Point()
         obj.x = obj_pose_img[1] + 0.425  # Translate 425mm
         obj.y = obj_pose_img[0] * -1  # Invert direction
         obj.z = 0.8  # Pick Height
 
         # Basket
-        bskt = Point()
         bskt.x = bskt_pose_img[1] + 0.425  # Translate 425mm
         bskt.y = bskt_pose_img[0] * -1  # Invert direction
         bskt.z = 0.8  # Pick Height
 
-        return obj, bskt
+        return found, obj, bskt
 
     def tactile_processing(self, left_hand, right_hand):
         # Error over 5mm in the gripper's PID means an object is gripped
@@ -290,22 +328,16 @@ class OscarPerception(Node):
         # Show warnings if object not found
         if num_region == 0:
             self.get_logger().warn(f"Object {info_string} not found.")
-            try:
-                ski.io.imsave(f'test_images/not_found_{info_string}_{self.get_clock().now().nanoseconds}.jpg', self.image)
-            except Exception as e: print(e)
+
                 
 
         elif small_region:
             self.get_logger().error(f"Object {info_string}: Small region found.")
-            try:
-                ski.io.imsave(f'test_images/small_{info_string}_{self.get_clock().now().nanoseconds}.jpg', self.image)
-            except Exception as e: print(e)
+
 
         else:
             self.get_logger().error(f"Object {info_string}: Multiple regions found.")
-            try:
-                ski.io.imsave(f'test_images/multiple_{info_string}_{self.get_clock().now().nanoseconds}.jpg', self.image)
-            except Exception as e: print(e)
+
 
 
         return False, (0, 0)
