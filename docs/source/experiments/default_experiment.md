@@ -49,6 +49,9 @@ git clone --recursive https://github.com/pillar-robots/wp5_gii.git
 The next step is to compile the ROS workspace:
 
 ```bash
+
+cd ~/eMDB_ws
+
 colcon build --symlink-install
 ```
 

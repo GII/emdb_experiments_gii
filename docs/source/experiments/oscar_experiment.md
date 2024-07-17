@@ -44,6 +44,8 @@ git clone --recursive https://github.com/pillar-robots/wp5_gii.git
 The next step is to compile the ROS workspace:
 
 ```bash
+cd ~/eMDB_ws
+
 colcon build --symlink-install
 ```
 
@@ -93,9 +95,7 @@ In the first one, it is possible to observe important information, such as the p
 tail -f goodness.txt
 ```
 
-| Iteration | Goal                     | World                     | Reward | Policy                | Sensorial changes | C-nodes |
-|-----------|--------------------------|---------------------------|--------|-----------------------|-------------------|---------|
-| 1415      | object_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 0.2    | press_button          | True              | 6       |
+| Iteration | Goal More documentation addedt_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 0.2    | press_button          | True              | 6       |
 | 1416      | object_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 0.5    | grasp_right           | True              | 6       |
 | 1417      | object_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 1.0    | place_object_right    | True              | 6       |
 
