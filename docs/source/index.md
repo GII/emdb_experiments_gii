@@ -1,7 +1,7 @@
 This is part of the e-MDB architecture documentation. Main page [here.](https://docs.pillar-robots.eu/en/latest/)
 
 
-# e-MDB Experiments implemented by the GII
+# e-MDB experiments implemented by the GII
 
 In this [repository](https://github.com/pillar-robots/emdb_experiments_gii), you can find experiments developed by the GII that use the e-MDB cognitive architecture. At this moment, two experiments are implemented:
 
