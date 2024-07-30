@@ -432,7 +432,7 @@ class OscarMDB(Node):
         # Check if basket is reachable
         place_point = self.perception.basket
         plan = await self.cli_right_arm.send_request_async(
-            x=place_point.x, y=place_point.y, z=place_point.z, vel=0.0, named_pose=""
+            x=place_point.x, y=place_point.y, z=0.9, vel=0.0, named_pose=""
         )
 
         if self.perception.obj_in_right_hand and plan.success:
@@ -464,7 +464,7 @@ class OscarMDB(Node):
         # Check if basket is reachable
         place_point = self.perception.basket
         plan = await self.cli_left_arm.send_request_async(
-            x=place_point.x, y=place_point.y, z=place_point.z, vel=0.0, named_pose=""
+            x=place_point.x, y=place_point.y, z=0.9, vel=0.0, named_pose=""
         )
 
         if self.perception.obj_in_left_hand and plan.success:
@@ -646,10 +646,10 @@ class OscarMDB(Node):
         """
         place_point = self.perception.basket
         plan_right = await self.cli_right_arm.send_request_async(
-            x=place_point.x, y=place_point.y, z=place_point.z, vel=0.0, named_pose=""
+            x=place_point.x, y=place_point.y, z=0.9, vel=0.0, named_pose=""
         )
         plan_left = await self.cli_left_arm.send_request_async(
-            x=place_point.x, y=place_point.y, z=place_point.z, vel=0.0, named_pose=""
+            x=place_point.x, y=place_point.y, z=0.9, vel=0.0, named_pose=""
         )
         # Check if a hand switch was made
         if (
