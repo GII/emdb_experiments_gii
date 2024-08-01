@@ -10,7 +10,7 @@ Experiment:
 Control:
     id: ltm_simulator
     control_topic: /main_loop/control
-    control_msg: core_interfaces.msg.ControlMsg
+    control_msg: cognitive_processes_interfaces.msg.ControlMsg
     executed_policy_service: /mdb/baxter/executed_policy
     executed_policy_msg: cognitive_node_interfaces.srv.Policy
 LTM:
@@ -140,6 +140,38 @@ LTM:
             -
                 name: GRIPPER_AND_LOW_FRICTION
                 class_name: cognitive_nodes.world_model.WorldModel
+        # Need: 
+        #     -
+        #         name: test_need1
+        #         class_name: cognitive_nodes.need.Need
+        #         parameters:
+        #             weight: 0.5
+        #             drive_id: 'test_drive'
+        #             need_type: 'Operational'
+        #     -
+        #         name: test_need2
+        #         class_name: cognitive_nodes.need.Need
+        #         parameters:
+        #             weight: 0.8
+        #             drive_id: 'test_drive'
+        #             need_type: 'Operational'
+        # Drive:
+        #     -
+        #         name: test_drive1
+        #         class_name: cognitive_nodes.drive.DriveExponential
+        #         parameters:
+        #             input: drive/test_input1
+        #             input_msg: std_msgs.msg.Float32
+        #             min_eval: 0.1 
+        #             neighbors: [{"name": "test_need1", "node_type": "Need"}]
+        #     -
+        #         name: test_drive2
+        #         class_name: cognitive_nodes.drive.DriveExponential
+        #         parameters:
+        #             input: drive/test_input2
+        #             input_msg: std_msgs.msg.Float32
+        #             min_eval: 0.1 
+        #             neighbors: [{"name": "test_need2", "node_type": "Need"}]
         Goal:
             -
                 name: object_in_box_standalone
@@ -169,6 +201,12 @@ LTM:
                         start: 0
                         end: 3000
                         period: 3000
+            # -
+            #     name: test_goal1
+            #     class_name: cognitive_nodes.goal.GoalMotiven
+            #     parameters:
+            #         neighbors: [{"name": "test_drive1", "node_type": "Drive"}, {"name": "test_drive2", "node_type": "Drive"}]
+
                         
 
 SimulatedBaxter:

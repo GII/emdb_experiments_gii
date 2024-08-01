@@ -10,7 +10,7 @@ Experiment:
 Control:
     id: mdb_oscar
     control_topic: /main_loop/control
-    control_msg: core_interfaces.msg.ControlMsg
+    control_msg: cognitive_processes_interfaces.msg.ControlMsg
     executed_policy_service: /mdb/oscar/executed_policy
     executed_policy_msg: cognitive_node_interfaces.srv.Policy
 LTM:

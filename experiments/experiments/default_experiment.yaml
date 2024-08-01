@@ -10,7 +10,7 @@ Experiment:
 Control:
     id: ltm_simulator
     control_topic: /main_loop/control
-    control_msg: core_interfaces.msg.ControlMsg
+    control_msg: cognitive_processes_interfaces.msg.ControlMsg
     executed_policy_topic: /mdb/baxter/executed_policy
     executed_policy_msg: std_msgs.msg.String
 LTM:
