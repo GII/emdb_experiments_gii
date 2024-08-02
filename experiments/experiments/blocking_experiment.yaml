@@ -231,3 +231,7 @@ SimulatedBaxter:
             name: ball_in_right_hand
             perception_topic: /mdb/baxter/sensor/ball_in_right_hand
             perception_msg: std_msgs.msg.Bool
+        -
+            name: progress_ball_in_box
+            perception_topic: /mdb/baxter/sensor/progress
+            perception_msg: std_msgs.msg.Float32
