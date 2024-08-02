@@ -23,6 +23,10 @@ LTM:
             id: pnodes_success
             class: core.file.FilePNodesSuccess
             file: pnodes_success.txt
+        -
+            id: node_activations
+            class: core.file.FileNodeActivations
+            file: node_activations.txt
     Connectors:
         -
             data: Space
