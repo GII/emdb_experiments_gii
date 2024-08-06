@@ -144,72 +144,57 @@ LTM:
             -
                 name: GRIPPER_AND_LOW_FRICTION
                 class_name: cognitive_nodes.world_model.WorldModel
-        # Need: 
-        #     -
-        #         name: test_need1
-        #         class_name: cognitive_nodes.need.Need
-        #         parameters:
-        #             weight: 0.5
-        #             drive_id: 'test_drive'
-        #             need_type: 'Operational'
-        #     -
-        #         name: test_need2
-        #         class_name: cognitive_nodes.need.Need
-        #         parameters:
-        #             weight: 0.8
-        #             drive_id: 'test_drive'
-        #             need_type: 'Operational'
-        # Drive:
-        #     -
-        #         name: test_drive1
-        #         class_name: cognitive_nodes.drive.DriveExponential
-        #         parameters:
-        #             input: drive/test_input1
-        #             input_msg: std_msgs.msg.Float32
-        #             min_eval: 0.1 
-        #             neighbors: [{"name": "test_need1", "node_type": "Need"}]
-        #     -
-        #         name: test_drive2
-        #         class_name: cognitive_nodes.drive.DriveExponential
-        #         parameters:
-        #             input: drive/test_input2
-        #             input_msg: std_msgs.msg.Float32
-        #             min_eval: 0.1 
-        #             neighbors: [{"name": "test_need2", "node_type": "Need"}]
-        Goal:
+        Need: 
             -
-                name: object_in_box_standalone
-                class_name: cognitive_nodes.goal.GoalObjectInBoxStandalone
+                name: object_in_box_need
+                class_name: cognitive_nodes.need.Need
                 parameters:
-                    normalize_data:
-                        distance_min: 0.2
-                        distance_max: 1.9
-                        angle_min: -1.4
-                        angle_max: 1.4
-                        diameter_min: 0.0
-                        diameter_max: 0.15
-                    data:
-                        space: cognitive_nodes.space.NormalCentroidPointBasedSpace
-                        points:
-                            -
-                                cylinders:
-                                    dist: 0.575
-                                    angle: 0.0
-                                boxes:
-                                    dist: 0.575
-                                    angle: 0.0
-                                ball_in_left_hand:
-                                    data: False
-                                ball_in_right_hand:
-                                    data: False
-                        start: 0
-                        end: 3000
-                        period: 3000
+                    weight: 1.0
+                    drive_id: 'object_in_box_drive'
+                    need_type: 'Operational'
+        Drive:
+            -
+                name: object_in_box_drive
+                class_name: cognitive_nodes.drive.DriveExponential
+                parameters:
+                    input: /mdb/baxter/sensor/progress
+                    input_msg: std_msgs.msg.Float32
+                    min_eval: 0.2 
+                    neighbors: [{"name": "object_in_box_need", "node_type": "Need"}]
+        Goal:
             # -
-            #     name: test_goal1
-            #     class_name: cognitive_nodes.goal.GoalMotiven
+            #     name: object_in_box_standalone
+            #     class_name: cognitive_nodes.goal.GoalObjectInBoxStandalone
             #     parameters:
-            #         neighbors: [{"name": "test_drive1", "node_type": "Drive"}, {"name": "test_drive2", "node_type": "Drive"}]
+            #         normalize_data:
+            #             distance_min: 0.2
+            #             distance_max: 1.9
+            #             angle_min: -1.4
+            #             angle_max: 1.4
+            #             diameter_min: 0.0
+            #             diameter_max: 0.15
+            #         data:
+            #             space: cognitive_nodes.space.NormalCentroidPointBasedSpace
+            #             points:
+            #                 -
+            #                     cylinders:
+            #                         dist: 0.575
+            #                         angle: 0.0
+            #                     boxes:
+            #                         dist: 0.575
+            #                         angle: 0.0
+            #                     ball_in_left_hand:
+            #                         data: False
+            #                     ball_in_right_hand:
+            #                         data: False
+            #             start: 0
+            #             end: 3000
+            #             period: 3000
+            -
+                name: object_in_box_goal
+                class_name: cognitive_nodes.goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "object_in_box_drive", "node_type": "Drive"}]
 
                         
 
