@@ -100,7 +100,14 @@ LTM:
                 class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
                     service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy  
+                    service_name: /mdb/baxter/executed_policy
+            -
+                name: novelty_policy
+                class_name: cognitive_nodes.novelty.PolicyNovelty
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy
+
         Perception:
             -
                 name: ball_in_left_hand
@@ -152,6 +159,13 @@ LTM:
                     weight: 1.0
                     drive_id: 'object_in_box_drive'
                     need_type: 'Operational'
+            - 
+                name: novelty_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 0.05
+                    drive_id: 'object_in_box_drive'
+                    need_type: 'Cognitive'
         Drive:
             -
                 name: object_in_box_drive
@@ -159,8 +173,14 @@ LTM:
                 parameters:
                     input: /mdb/baxter/sensor/progress
                     input_msg: std_msgs.msg.Float32
-                    min_eval: 0.2 
+                    min_eval: 0.8 
                     neighbors: [{"name": "object_in_box_need", "node_type": "Need"}]
+
+            -
+                name: novelty_drive
+                class_name: cognitive_nodes.novelty.DriveNovelty
+                parameters:
+                    neighbors: [{"name": "novelty_need", "node_type": "Need"}]
         Goal:
             # -
             #     name: object_in_box_standalone
@@ -195,6 +215,25 @@ LTM:
                 class_name: cognitive_nodes.goal.GoalMotiven
                 parameters:
                     neighbors: [{"name": "object_in_box_drive", "node_type": "Drive"}]
+            -
+                name: novelty_goal
+                class_name: cognitive_nodes.goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "novelty_drive", "node_type": "Drive"}]
+        PNode:
+            -
+                name: novelty_pnode
+                class_name: dummy_nodes.activated_dummy_pnode.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+        CNode:
+            -
+                name: novelty_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}, {"name": "novelty_policy", "node_type": "Policy"}]
+
+        
 
                         
 
