@@ -4,7 +4,7 @@ Experiment:
     new_executor: False
     threads: 2
     parameters: 
-        iterations: 12000
+        iterations: 6000
         trials: 50
         subgoals: False
 Control:
@@ -23,6 +23,10 @@ LTM:
             id: pnodes_success
             class: core.file.FilePNodesSuccess
             file: pnodes_success.txt
+        -
+            id: pnodes_content
+            class: core.file.FilePNodesContent
+            file: pnodes_content.txt
     Connectors:
         -
             data: Space
