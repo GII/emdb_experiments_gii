@@ -4,7 +4,7 @@ Experiment:
     new_executor: False
     threads: 2
     parameters: 
-        iterations: 6000
+        iterations: 60000
         trials: 50
         subgoals: False
 Control:
@@ -107,6 +107,17 @@ LTM:
                 parameters:
                     exclude_list: ["effectance_policy"]
                     ltm_id: ltm_0
+                #     service_msg: cognitive_node_interfaces.srv.Policy
+                #     service_name: /mdb/baxter/executed_policy
+            -
+                name: effectance_policy
+                class_name: cognitive_nodes.effectance.PolicyEffectance
+                parameters:
+                    goal_class: cognitive_nodes.effectance.GoalActivatePNode
+                    confidence: 0.5
+                    activation_low: 0.2 
+                    activation_high: 0.8 
+                    ltm_id: ltm_0
 
         Perception:
             -
@@ -166,6 +177,13 @@ LTM:
                     weight: 0.2
                     drive_id: 'novelty_drive'
                     need_type: 'Cognitive'
+            - 
+                name: effectance_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 0.25
+                    drive_id: 'effectance_drive'
+                    need_type: 'Cognitive'
         Drive:
             -
                 name: object_in_box_drive
@@ -181,6 +199,13 @@ LTM:
                 class_name: cognitive_nodes.novelty.DriveNovelty
                 parameters:
                     neighbors: [{"name": "novelty_need", "node_type": "Need"}]
+            -
+                name: effectance_drive
+                class_name: cognitive_nodes.effectance.DriveEffectance
+                parameters:
+                    ltm_id: ltm_0
+                    min_confidence: 0.95
+                    neighbors: [{"name": "effectance_need", "node_type": "Need"}]
         Goal:
             -
                 name: object_in_box_goal
@@ -192,9 +217,19 @@ LTM:
                 class_name: cognitive_nodes.goal.GoalMotiven
                 parameters:
                     neighbors: [{"name": "novelty_drive", "node_type": "Drive"}]
+            -
+                name: effectance_goal
+                class_name: cognitive_nodes.effectance.GoalEffectance
+                parameters:
+                    neighbors: [{"name": "effectance_drive", "node_type": "Drive"}]
         PNode:
             -
                 name: novelty_pnode
+                class_name: dummy_nodes.activated_dummy_pnode.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: effectance_pnode
                 class_name: dummy_nodes.activated_dummy_pnode.ActivatedDummyPNode
                 parameters:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
@@ -204,6 +239,12 @@ LTM:
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}, {"name": "novelty_policy", "node_type": "Policy"}]
+
+            -
+                name: effectance_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "effectance_pnode", "node_type": "PNode"}, {"name": "effectance_policy", "node_type": "Policy"}]
 
         
 
@@ -228,6 +269,6 @@ SimulatedBaxter:
             perception_topic: /mdb/baxter/sensor/ball_in_right_hand
             perception_msg: std_msgs.msg.Bool
         -
-            name: progress_ball_in_box
+            name: ball_in_box_goal
             perception_topic: /mdb/baxter/sensor/progress
             perception_msg: std_msgs.msg.Float32
