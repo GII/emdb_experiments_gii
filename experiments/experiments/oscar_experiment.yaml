@@ -1,7 +1,7 @@
 Experiment:
     name: main_loop
     class_name: cognitive_processes.main_loop.MainLoop
-    new_executor: False
+    new_executor: True
     threads: 2
     parameters: 
         iterations: 3000

@@ -1,7 +1,7 @@
 Experiment:
     name: main_loop
     class_name: cognitive_processes.main_loop.MainLoop
-    new_executor: False
+    new_executor: True
     threads: 2
     parameters: 
         iterations: 60000
@@ -204,7 +204,7 @@ LTM:
                 class_name: cognitive_nodes.effectance.DriveEffectance
                 parameters:
                     ltm_id: ltm_0
-                    min_confidence: 0.95
+                    min_confidence: 0.84
                     neighbors: [{"name": "effectance_need", "node_type": "Need"}]
         Goal:
             -
