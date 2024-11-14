@@ -115,8 +115,7 @@ LTM:
                 parameters:
                     goal_class: cognitive_nodes.effectance.GoalActivatePNode
                     confidence: 0.5
-                    activation_low: 0.2 
-                    activation_high: 0.8 
+                    threshold_delta: 0.5
                     ltm_id: ltm_0
 
         Perception:
