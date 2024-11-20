@@ -4,15 +4,19 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 60000
+        iterations: 35000
         trials: 50
         subgoals: False
 Control:
     id: ltm_simulator
     control_topic: /main_loop/control
     control_msg: cognitive_processes_interfaces.msg.ControlMsg
+    episodes_topic: /main_loop/episodes
+    episodes_msg: cognitive_processes_interfaces.msg.Episode
     executed_policy_service: /mdb/baxter/executed_policy
     executed_policy_msg: cognitive_node_interfaces.srv.Policy
+    world_reset_service: /mdb/baxter/world_reset
+    world_reset_msg: cognitive_processes_interfaces.srv.WorldReset
 LTM:
     Files:
         -
@@ -27,6 +31,10 @@ LTM:
             id: pnodes_content
             class: core.file.FilePNodesContent
             file: pnodes_content.txt
+        -
+            id: trials
+            class: core.file.FileTrialsSuccess
+            file: trials.txt
     Connectors:
         -
             data: Space
