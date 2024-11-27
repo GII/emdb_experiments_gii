@@ -36,7 +36,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
 
     simulator_node = Node(
         package="simulators",
-        executable="simulator",
+        executable="simulator_discrete",
         output="screen",
         parameters=[
             {
