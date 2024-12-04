@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'sim_2D_emdb'
+package_name = 'sim_2d_emdb'
 
 setup(
     name=package_name,
@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'simple_sim = sim_2D_emdb.simple_sim:main'
+            'simple_sim = sim_2d_emdb.simple_sim:main'
         ],
     },
 )
