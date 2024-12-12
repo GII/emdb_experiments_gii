@@ -60,7 +60,9 @@ class Sim2DSimple(Node):
 
     def get_perceptions(self):
         left_arm=self.sim.baxter_left.get_pos()
+        left_angle=self.sim.baxter_left.get_angle()
         right_arm=self.sim.baxter_right.get_pos()
+        right_angle=self.sim.baxter_right.get_angle()
         ball=self.sim.objects[0].get_pos()
         box=self.sim.box1.get_pos()
         left_gripper= bool(self.sim.baxter_left.catched_object)
@@ -68,10 +70,12 @@ class Sim2DSimple(Node):
 
         self.perceptions["left_arm"].data[0].x = float(left_arm[0])
         self.perceptions["left_arm"].data[0].y = float(left_arm[1])
+        self.perceptions["left_arm"].data[0].angle = float(left_angle)
         self.perceptions["ball_in_left_hand"].data = left_gripper
 
         self.perceptions["right_arm"].data[0].x = float(right_arm[0])
         self.perceptions["right_arm"].data[0].y = float(right_arm[1])
+        self.perceptions["right_arm"].data[0].angle = float(right_angle)
         self.perceptions["ball_in_right_hand"].data = right_gripper
 
         self.perceptions["box"].data[0].x = float(box[0])
