@@ -149,9 +149,12 @@ LTM:
         Goal:
             -
                 name: object_in_box_goal
-                class_name: cognitive_nodes.goal.GoalMotiven
+                class_name: cognitive_nodes.goal.GoalLearnedSpace
                 parameters:
                     neighbors: [{"name": "object_in_box_drive", "node_type": "Drive"}]
+                    ltm_id: ltm_0
+                    min_confidence: 0.84
+                    space_class: cognitive_nodes.space.ANNSpace
             -
                 name: novelty_goal
                 class_name: cognitive_nodes.goal.GoalMotiven
