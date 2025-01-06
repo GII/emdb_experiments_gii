@@ -50,7 +50,7 @@ LTM:
             default_class: cognitive_nodes.cnode.CNode
         -
             data: Goal
-            default_class: cognitive_nodes.goal.Goal
+            default_class: cognitive_nodes.goal.GoalLearnedSpace
         -
             data: WorldModel
             default_class: cognitive_nodes.world_model.WorldModel
@@ -59,63 +59,6 @@ LTM:
             default_class: cognitive_nodes.policy.PolicyBlocking
 
     Nodes:
-
-        Policy:
-            -
-                name: grasp_object
-                class_name: cognitive_nodes.policy.PolicyBlocking
-                parameters:
-                    service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy 
-            -
-                name: grasp_with_two_hands
-                class_name: cognitive_nodes.policy.PolicyBlocking
-                parameters:
-                    service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy 
-            -
-                name: change_hands
-                class_name: cognitive_nodes.policy.PolicyBlocking
-                parameters:
-                    service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy 
-            -
-                name: sweep_object
-                class_name: cognitive_nodes.policy.PolicyBlocking
-                parameters:
-                    service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy  
-            -
-                name: put_object_in_box
-                class_name: cognitive_nodes.policy.PolicyBlocking
-                parameters:
-                    service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy   
-            -
-                name: put_object_with_robot
-                class_name: cognitive_nodes.policy.PolicyBlocking
-                parameters:
-                    service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy  
-            -
-                name: throw
-                class_name: cognitive_nodes.policy.PolicyBlocking
-                parameters:
-                    service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy  
-            -
-                name: ask_nicely
-                class_name: cognitive_nodes.policy.PolicyBlocking
-                parameters:
-                    service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy
-            -
-                name: novelty_policy
-                class_name: cognitive_nodes.novelty.PolicyNovelty
-                parameters:
-                    exclude_list: ["effectance_policy"]
-                    ltm_id: ltm_0
-
         Perception:
             -
                 name: ball_in_left_hand
@@ -191,11 +134,6 @@ LTM:
                     neighbors: [{"name": "novelty_need", "node_type": "Need"}]
         Goal:
             -
-                name: object_in_box_goal
-                class_name: cognitive_nodes.goal.GoalMotiven
-                parameters:
-                    neighbors: [{"name": "object_in_box_drive", "node_type": "Drive"}]
-            -
                 name: novelty_goal
                 class_name: cognitive_nodes.goal.GoalMotiven
                 parameters:
@@ -211,7 +149,64 @@ LTM:
                 name: novelty_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}, {"name": "novelty_policy", "node_type": "Policy"}]
+                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
+
+        Policy:
+            -
+                name: grasp_object
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy 
+            -
+                name: grasp_with_two_hands
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy 
+            -
+                name: change_hands
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy 
+            -
+                name: sweep_object
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy  
+            -
+                name: put_object_in_box
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy   
+            -
+                name: put_object_with_robot
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy  
+            -
+                name: throw
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy  
+            -
+                name: ask_nicely
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy
+            -
+                name: novelty_policy
+                class_name: cognitive_nodes.novelty.PolicyNovelty
+                parameters:
+                    exclude_list: ["effectance_policy"]
+                    neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
+                    ltm_id: ltm_0
 
         
 

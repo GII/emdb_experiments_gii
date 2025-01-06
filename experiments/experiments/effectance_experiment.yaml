@@ -50,7 +50,7 @@ LTM:
             default_class: cognitive_nodes.cnode.CNode
         -
             data: Goal
-            default_class: cognitive_nodes.goal.Goal
+            default_class: cognitive_nodes.goal.GoalLearnedSpace
         -
             data: WorldModel
             default_class: cognitive_nodes.world_model.WorldModel
@@ -147,14 +147,6 @@ LTM:
                     min_confidence: 0.84
                     neighbors: [{"name": "effectance_need", "node_type": "Need"}]
         Goal:
-            -
-                name: object_in_box_goal
-                class_name: cognitive_nodes.goal.GoalLearnedSpace
-                parameters:
-                    neighbors: [{"name": "object_in_box_drive", "node_type": "Drive"}]
-                    ltm_id: ltm_0
-                    min_confidence: 0.84
-                    space_class: cognitive_nodes.space.ANNSpace
             -
                 name: novelty_goal
                 class_name: cognitive_nodes.goal.GoalMotiven
