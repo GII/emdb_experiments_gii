@@ -165,7 +165,7 @@ LTM:
                     neighbors: [{"name": "novelty_need", "node_type": "Need"}]
             -
                 name: effectance_drive
-                class_name: cognitive_nodes.effectance.DriveEffectance
+                class_name: cognitive_nodes.effectance.DriveEffectanceInternal
                 parameters:
                     ltm_id: ltm_0
                     min_confidence: 0.84
@@ -178,7 +178,7 @@ LTM:
                     neighbors: [{"name": "novelty_drive", "node_type": "Drive"}]
             -
                 name: effectance_goal
-                class_name: cognitive_nodes.effectance.GoalEffectance
+                class_name: dummy_nodes.dummy_goal.GoalDummy
                 parameters:
                     neighbors: [{"name": "effectance_drive", "node_type": "Drive"}]
         PNode:
@@ -263,7 +263,7 @@ LTM:
                     ltm_id: ltm_0
             -
                 name: effectance_policy
-                class_name: cognitive_nodes.effectance.PolicyEffectance
+                class_name: cognitive_nodes.effectance.PolicyEffectanceInternal
                 parameters:
                     goal_class: cognitive_nodes.effectance.GoalActivatePNode
                     neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
@@ -302,5 +302,5 @@ DiscreteEventSimulator:
             perception_topic: /emdb/simulator/sensor/classify_fruit
             perception_msg: std_msgs.msg.Float32
     Stages:
-        stage1: -1
+        stage1: 10000
         stage2: 35500
