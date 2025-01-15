@@ -113,11 +113,18 @@ LTM:
                 class_name: cognitive_nodes.world_model.WorldModel
         Need: 
             -
-                name: iteration_dependent_need
+                name: test_fruit_need
                 class_name: cognitive_nodes.need.Need
                 parameters:
                     weight: 1.0
-                    drive_id: 'iteration_dependent_drive'
+                    drive_id: 'test_fruit_drive'
+                    need_type: 'Operational'
+            -
+                name: classify_fruit_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 1.0
+                    drive_id: 'classify_fruit_drive'
                     need_type: 'Operational'
             - 
                 name: novelty_need
@@ -135,13 +142,21 @@ LTM:
                     need_type: 'Cognitive'
         Drive:
             -
-                name: iteration_dependent_drive
+                name: test_fruit_drive
                 class_name: cognitive_nodes.drive.DriveExponential
                 parameters:
-                    input_topic: /emdb/simulator/sensor/progress
+                    input_topic: /emdb/simulator/sensor/test_fruit
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
-                    neighbors: [{"name": "iteration_dependent_need", "node_type": "Need"}]
+                    neighbors: [{"name": "test_fruit_need", "node_type": "Need"}]
+            -
+                name: classify_fruit_drive
+                class_name: cognitive_nodes.drive.DriveExponential
+                parameters:
+                    input_topic: /emdb/simulator/sensor/classify_fruit
+                    input_msg: std_msgs.msg.Float32
+                    min_eval: 0.8 
+                    neighbors: [{"name": "classify_fruit_need", "node_type": "Need"}]
 
             -
                 name: novelty_drive
@@ -246,8 +261,6 @@ LTM:
                     exclude_list: ["effectance_policy"]
                     neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
                     ltm_id: ltm_0
-                #     service_msg: cognitive_node_interfaces.srv.Policy
-                #     service_name: /mdb/baxter/executed_policy
             -
                 name: effectance_policy
                 class_name: cognitive_nodes.effectance.PolicyEffectance
@@ -281,8 +294,12 @@ DiscreteEventSimulator:
             perception_topic: /emdb/simulator/sensor/button_light
             perception_msg: std_msgs.msg.Bool
         -
-            name: iteration_dependent_goal
-            perception_topic: /emdb/simulator/sensor/progress
+            name: test_fruit_goal
+            perception_topic: /emdb/simulator/sensor/test_fruit
+            perception_msg: std_msgs.msg.Float32
+        -
+            name: classify_fruit_goal
+            perception_topic: /emdb/simulator/sensor/classify_fruit
             perception_msg: std_msgs.msg.Float32
     Stages:
         stage1: -1
