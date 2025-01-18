@@ -4,7 +4,7 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 6000
+        iterations: 3000
         trials: 50
         subgoals: False
 Control:
@@ -98,12 +98,11 @@ LTM:
                         diameter_max: 0.15
                         dim_min: 0.03
                         dim_max: 0.1
-                        n_states: 3
             -
                 name: scales
                 class_name: cognitive_nodes.perception.IJCNNExperimentPerception
                 parameters:
-                    default_msg: simulators_interfaces.msg.ObjectListMsg
+                    default_msg: simulators_interfaces.msg.ScaleListMsg
                     default_topic: /emdb/simulator/sensor/scales
                     normalize_data:
                         distance_min: 0.2
@@ -112,6 +111,7 @@ LTM:
                         angle_max: 1.4
                         diameter_min: 0.0
                         diameter_max: 0.15
+                        n_states: 3
         WorldModel:
             -
                 name: FRUIT_SHOP
@@ -231,7 +231,7 @@ DiscreteEventSimulator:
         -
             name: scales
             perception_topic: /emdb/simulator/sensor/scales
-            perception_msg: simulators_interfaces.msg.ObjectListMsg
+            perception_msg: simulators_interfaces.msg.ScaleListMsg
         -
             name: fruit_in_left_hand
             perception_topic: /emdb/simulator/sensor/fruit_in_left_hand

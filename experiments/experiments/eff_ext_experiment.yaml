@@ -4,7 +4,7 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 1500
+        iterations: 10000
         trials: 50
         subgoals: False
 Control:
@@ -121,7 +121,7 @@ LTM:
                 name: external_effects_need
                 class_name: cognitive_nodes.need.Need
                 parameters:
-                    weight: 1.0
+                    weight: 0.3
                     drive_id: 'external_effects_drive'
                     need_type: 'Cognitive'
         Drive:
