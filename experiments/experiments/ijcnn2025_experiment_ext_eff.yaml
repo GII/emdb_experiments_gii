@@ -1,0 +1,340 @@
+Experiment:
+    name: main_loop
+    class_name: cognitive_processes.main_loop.MainLoop
+    new_executor: True
+    threads: 2
+    parameters: 
+        iterations: 6000
+        trials: 50
+        subgoals: False
+Control:
+    id: ltm_simulator
+    control_topic: /main_loop/control
+    control_msg: cognitive_processes_interfaces.msg.ControlMsg
+    episodes_topic: /main_loop/episodes
+    episodes_msg: cognitive_processes_interfaces.msg.Episode
+    executed_policy_service: /emdb/simulator/executed_policy
+    executed_policy_msg: cognitive_node_interfaces.srv.Policy
+    world_reset_service: /emdb/simulator/world_reset
+    world_reset_msg: cognitive_processes_interfaces.srv.WorldReset
+LTM:
+    Files:
+        -
+            id: goodness
+            class: core.file.FileGoodness
+            file: goodness.txt
+        -
+            id: pnodes_success
+            class: core.file.FilePNodesSuccess
+            file: pnodes_success.txt
+        -
+            id: pnodes_content
+            class: core.file.FilePNodesContent
+            file: pnodes_content.txt
+        -
+            id: pnodes_content_last_iteration
+            class: core.file.FileLastIterationPNodesContent
+            file: pnodes_content_last_ite.txt
+        -
+            id: goals_content
+            class: core.file.FileGoalsContent
+            file: goals_content.txt
+        -
+            id: goals_content_last_iteration
+            class: core.file.FileLastIterationGoalsContent
+            file: goals_content_last_ite.txt
+        -
+            id: trials
+            class: core.file.FileTrialsSuccess
+            file: trials.txt
+        -
+            id: neighbors
+            class: core.file.FileNeighbors
+            file: neighbors.txt
+    Connectors:
+        -
+            data: Space
+            default_class: cognitive_nodes.space.ANNSpace
+        -
+            data: Perception
+            default_class: cognitive_nodes.perception.Perception
+        -
+            data: PNode
+            default_class: cognitive_nodes.pnode.PNode
+        -
+            data: CNode
+            default_class: cognitive_nodes.cnode.CNode
+        -
+            data: Goal
+            default_class: cognitive_nodes.goal.GoalLearnedSpace
+        -
+            data: WorldModel
+            default_class: cognitive_nodes.world_model.WorldModel
+        -
+            data: Policy
+            default_class: cognitive_nodes.policy.PolicyBlocking
+
+    Nodes:
+        Perception:
+            -
+                name: button_light
+                class_name: cognitive_nodes.perception.IJCNNExperimentPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /emdb/simulator/sensor/button_light
+            -
+                name: fruit_in_left_hand
+                class_name: cognitive_nodes.perception.IJCNNExperimentPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /emdb/simulator/sensor/fruit_in_left_hand
+            -
+                name: fruit_in_right_hand
+                class_name: cognitive_nodes.perception.IJCNNExperimentPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /emdb/simulator/sensor/fruit_in_right_hand
+            -
+                name: fruits
+                class_name: cognitive_nodes.perception.IJCNNExperimentPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.FruitListMsg
+                    default_topic: /emdb/simulator/sensor/fruits
+                    normalize_data:
+                        distance_min: 0.2
+                        distance_max: 1.9
+                        angle_min: -1.4
+                        angle_max: 1.4
+                        diameter_min: 0.0
+                        diameter_max: 0.15
+                        dim_min: 0.03
+                        dim_max: 0.1
+            -
+                name: scales
+                class_name: cognitive_nodes.perception.IJCNNExperimentPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.ScaleListMsg
+                    default_topic: /emdb/simulator/sensor/scales
+                    normalize_data:
+                        distance_min: 0.2
+                        distance_max: 1.9
+                        angle_min: -1.4
+                        angle_max: 1.4
+                        diameter_min: 0.0
+                        diameter_max: 0.15
+                        n_states: 3
+        WorldModel:
+            -
+                name: FRUIT_SHOP
+                class_name: cognitive_nodes.world_model.WorldModel
+        Need: 
+            -
+                name: classify_fruit_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 0.0
+                    drive_id: 'classify_fruit_drive'
+                    need_type: 'Operational'
+            - 
+                name: novelty_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 0.2
+                    drive_id: 'novelty_drive'
+                    need_type: 'Cognitive'
+            - 
+                name: effectance_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 0.25
+                    drive_id: 'effectance_drive'
+                    need_type: 'Cognitive'
+            - 
+                name: external_effects_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 0.3
+                    drive_id: 'external_effects_drive'
+                    need_type: 'Cognitive'
+        Drive:
+            -
+                name: classify_fruit_drive
+                class_name: cognitive_nodes.drive.DriveExponential
+                parameters:
+                    input_topic: /emdb/simulator/sensor/classify_fruit
+                    input_msg: std_msgs.msg.Float32
+                    min_eval: 0.8 
+                    neighbors: [{"name": "classify_fruit_need", "node_type": "Need"}]
+
+            -
+                name: novelty_drive
+                class_name: cognitive_nodes.novelty.DriveNovelty
+                parameters:
+                    neighbors: [{"name": "novelty_need", "node_type": "Need"}]
+            -
+                name: effectance_drive
+                class_name: cognitive_nodes.effectance.DriveEffectanceInternal
+                parameters:
+                    ltm_id: ltm_0
+                    min_confidence: 0.84
+                    neighbors: [{"name": "effectance_need", "node_type": "Need"}]
+            -
+                name: external_effects_drive
+                class_name: cognitive_nodes.effectance.DriveEffectanceExternal
+                parameters:
+                    episodes_topic: /main_loop/episodes
+                    episodes_msg: cognitive_processes_interfaces.msg.Episode
+                    neighbors: [{"name": "external_effects_need", "node_type": "Need"}]
+        Goal:
+            -
+                name: novelty_goal
+                class_name: cognitive_nodes.goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "novelty_drive", "node_type": "Drive"}]
+            -
+                name: effectance_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "effectance_drive", "node_type": "Drive"}]
+            -
+                name: external_effects_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "external_effects_drive", "node_type": "Drive"}]
+        PNode:
+            -
+                name: novelty_pnode
+                class_name: dummy_nodes.activated_dummy_pnode.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: effectance_pnode
+                class_name: dummy_nodes.activated_dummy_pnode.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: external_effects_pnode
+                class_name: dummy_nodes.activated_dummy_pnode.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+        CNode:
+            -
+                name: novelty_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
+            -
+                name: effectance_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "effectance_pnode", "node_type": "PNode"}]
+            -
+                name: external_effects_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "external_effects_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "external_effects_pnode", "node_type": "PNode"}]
+
+        Policy:
+            -
+                name: pick_fruit
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: place_fruit
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: change_hands
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: test_fruit
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy  
+            -
+                name: accept_fruit
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy   
+            -
+                name: discard_fruit
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy  
+            -
+                name: press_button
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy  
+            -
+                name: ask_nicely
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: novelty_policy
+                class_name: cognitive_nodes.novelty.PolicyNovelty
+                parameters:
+                    exclude_list: ["effectance_policy"]
+                    neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
+                    ltm_id: ltm_0
+            -
+                name: effectance_policy
+                class_name: cognitive_nodes.effectance.PolicyEffectanceInternal
+                parameters:
+                    goal_class: cognitive_nodes.effectance.GoalActivatePNode
+                    neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
+                    confidence: 0.5
+                    threshold_delta: 0.5
+                    ltm_id: ltm_0
+            -
+                name: external_effect_policy
+                class_name: cognitive_nodes.effectance.PolicyEffectanceExternal
+                parameters:
+                    drive_name: external_effects_drive
+                    goal_class: cognitive_nodes.effectance.GoalRecreateEffect
+                    space_class: cognitive_nodes.space.ANNSpace
+                    neighbors: [{"name": "external_effects_cnode", "node_type": "CNode"}]
+                    ltm_id: ltm_0
+
+DiscreteEventSimulator:
+    Perceptions:
+        -
+            name: fruits
+            perception_topic: /emdb/simulator/sensor/fruits
+            perception_msg: simulators_interfaces.msg.FruitListMsg
+        -
+            name: scales
+            perception_topic: /emdb/simulator/sensor/scales
+            perception_msg: simulators_interfaces.msg.ScaleListMsg
+        -
+            name: fruit_in_left_hand
+            perception_topic: /emdb/simulator/sensor/fruit_in_left_hand
+            perception_msg: std_msgs.msg.Bool
+        -
+            name: fruit_in_right_hand
+            perception_topic: /emdb/simulator/sensor/fruit_in_right_hand
+            perception_msg: std_msgs.msg.Bool
+        -
+            name: button_light
+            perception_topic: /emdb/simulator/sensor/button_light
+            perception_msg: std_msgs.msg.Bool
+        -
+            name: classify_fruit_goal
+            perception_topic: /emdb/simulator/sensor/classify_fruit
+            perception_msg: std_msgs.msg.Float32
+    Stages:
+        stage1: -1
+        stage2: 35500
