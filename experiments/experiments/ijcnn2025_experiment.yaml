@@ -4,7 +4,7 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 3000
+        iterations: 30000
         trials: 20
         subgoals: False
         softmax_selection: True
@@ -134,14 +134,21 @@ LTM:
                 name: classify_fruit_need
                 class_name: cognitive_nodes.need.Need
                 parameters:
-                    weight: 0.0
+                    weight: 1.0
                     drive_id: 'classify_fruit_drive'
                     need_type: 'Operational'
+            -
+                name: place_fruit_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 1.0
+                    drive_id: 'place_fruit_drive'
+                    need_type: 'Other'
             - 
                 name: novelty_need
                 class_name: cognitive_nodes.need.Need
                 parameters:
-                    weight: 0.2
+                    weight: 0.1
                     drive_id: 'novelty_drive'
                     need_type: 'Cognitive'
             - 
@@ -167,6 +174,14 @@ LTM:
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
                     neighbors: [{"name": "classify_fruit_need", "node_type": "Need"}]
+            -
+                name: place_fruit_drive
+                class_name: cognitive_nodes.drive.DriveExponential
+                parameters:
+                    input_topic: /emdb/simulator/sensor/place_fruit
+                    input_msg: std_msgs.msg.Float32
+                    min_eval: 0.8 
+                    neighbors: [{"name": "place_fruit_need", "node_type": "Need"}]
 
             -
                 name: novelty_drive
@@ -337,6 +352,11 @@ DiscreteEventSimulator:
             name: classify_fruit_goal
             perception_topic: /emdb/simulator/sensor/classify_fruit
             perception_msg: std_msgs.msg.Float32
+        -
+            name: place_fruit_goal
+            perception_topic: /emdb/simulator/sensor/place_fruit
+            perception_msg: std_msgs.msg.Float32
+
     Stages:
-        stage1: -1
-        stage2: 35500
+        stage1: 2000
+        stage2: 6000

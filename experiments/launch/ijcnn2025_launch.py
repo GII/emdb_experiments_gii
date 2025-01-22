@@ -98,7 +98,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "experiment_file",
-            default_value="ijcnn2025_experiment_v2.yaml",
+            default_value="ijcnn2025_experiment.yaml",
             description="The file that loads the experiment config",
         )
     )
