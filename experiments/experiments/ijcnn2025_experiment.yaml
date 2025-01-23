@@ -53,6 +53,10 @@ LTM:
             id: neighbors
             class: core.file.FileNeighbors
             file: neighbors.txt
+        -
+            id: neighbors_full
+            class: core.file.FileNeighborsFull
+            file: neighbors_full.txt
     Connectors:
         -
             data: Space
@@ -165,6 +169,13 @@ LTM:
                     weight: 0.3
                     drive_id: 'external_effects_drive'
                     need_type: 'Cognitive'
+            - 
+                name: prospection_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 1.0
+                    drive_id: 'prospection_drive'
+                    need_type: 'Cognitive'
         Drive:
             -
                 name: classify_fruit_drive
@@ -202,6 +213,14 @@ LTM:
                     episodes_topic: /main_loop/episodes
                     episodes_msg: cognitive_processes_interfaces.msg.Episode
                     neighbors: [{"name": "external_effects_need", "node_type": "Need"}]
+            -
+                name: prospection_drive
+                class_name: cognitive_nodes.prospection.ProspectionDrive
+                parameters:
+                    ltm_id: ltm_0
+                    min_pnode_rate: 0.85
+                    min_goal_rate: 0.94
+                    neighbors: [{"name": "prospection_need", "node_type": "Need"}]
         Goal:
             -
                 name: novelty_goal
@@ -218,6 +237,11 @@ LTM:
                 class_name: dummy_nodes.dummy_goal.GoalDummy
                 parameters:
                     neighbors: [{"name": "external_effects_drive", "node_type": "Drive"}]
+            -
+                name: prospection_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "prospection_drive", "node_type": "Drive"}]
         PNode:
             -
                 name: novelty_pnode
@@ -231,6 +255,11 @@ LTM:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
             -
                 name: external_effects_pnode
+                class_name: dummy_nodes.activated_dummy_pnode.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: prospection_pnode
                 class_name: dummy_nodes.activated_dummy_pnode.ActivatedDummyPNode
                 parameters:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
@@ -250,6 +279,11 @@ LTM:
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "external_effects_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "external_effects_pnode", "node_type": "PNode"}]
+            -
+                name: prospection_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "prospection_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "prospection_pnode", "node_type": "PNode"}]
 
         Policy:
             -
@@ -304,7 +338,7 @@ LTM:
                 name: novelty_policy
                 class_name: cognitive_nodes.novelty.PolicyNovelty
                 parameters:
-                    exclude_list: ["effectance_policy", "external_effect_policy"]
+                    exclude_list: ["effectance_policy", "external_effect_policy", "prospection_policy"]
                     neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
                     ltm_id: ltm_0
             -
@@ -324,6 +358,13 @@ LTM:
                     goal_class: cognitive_nodes.effectance.GoalRecreateEffect
                     space_class: cognitive_nodes.space.ANNSpace
                     neighbors: [{"name": "external_effects_cnode", "node_type": "CNode"}]
+                    ltm_id: ltm_0
+            -
+                name: prospection_policy
+                class_name: cognitive_nodes.prospection.PolicyProspection
+                parameters:
+                    drive_name: prospection_drive
+                    neighbors: [{"name": "prospection_cnode", "node_type": "CNode"}]
                     ltm_id: ltm_0
 
 DiscreteEventSimulator:
