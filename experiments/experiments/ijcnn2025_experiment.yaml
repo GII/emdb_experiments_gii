@@ -4,7 +4,7 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 30000
+        iterations: 25000
         trials: 20
         subgoals: False
         softmax_selection: True
@@ -399,5 +399,6 @@ DiscreteEventSimulator:
             perception_msg: std_msgs.msg.Float32
 
     Stages:
-        stage1: 2000
-        stage2: 6000
+        stage0: 2000
+        stage1: 4000
+        stage2: 7000
