@@ -9,6 +9,7 @@ Experiment:
         subgoals: False
         softmax_selection: True
         softmax_temperature: 0.3
+        kill_on_finish: True
 Control:
     id: ltm_simulator
     control_topic: /main_loop/control

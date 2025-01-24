@@ -7,6 +7,9 @@ Experiment:
         iterations: 20000
         trials: 50
         subgoals: False
+        softmax_selection: True
+        softmax_temperature: 0.3
+        kill_on_finish: True
 Control:
     id: ltm_simulator
     control_topic: /main_loop/control
@@ -51,6 +54,10 @@ LTM:
             id: neighbors
             class: core.file.FileNeighbors
             file: neighbors.txt
+        -
+            id: neighbors_full
+            class: core.file.FileNeighborsFull
+            file: neighbors_full.txt
     Connectors:
         -
             data: Space
@@ -135,11 +142,18 @@ LTM:
                     weight: 1.0
                     drive_id: 'classify_fruit_drive'
                     need_type: 'Operational'
+            -
+                name: place_fruit_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 1.0
+                    drive_id: 'place_fruit_drive'
+                    need_type: 'Other'
             - 
                 name: novelty_need
                 class_name: cognitive_nodes.need.Need
                 parameters:
-                    weight: 0.2
+                    weight: 0.1
                     drive_id: 'novelty_drive'
                     need_type: 'Cognitive'
             - 
@@ -158,6 +172,14 @@ LTM:
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
                     neighbors: [{"name": "classify_fruit_need", "node_type": "Need"}]
+            -
+                name: place_fruit_drive
+                class_name: cognitive_nodes.drive.DriveExponential
+                parameters:
+                    input_topic: /emdb/simulator/sensor/place_fruit
+                    input_msg: std_msgs.msg.Float32
+                    min_eval: 0.8 
+                    neighbors: [{"name": "place_fruit_need", "node_type": "Need"}]
 
             -
                 name: novelty_drive
@@ -170,6 +192,7 @@ LTM:
                 parameters:
                     ltm_id: ltm_0
                     min_confidence: 0.84
+                    limit_depth: False
                     neighbors: [{"name": "effectance_need", "node_type": "Need"}]
         Goal:
             -
@@ -199,13 +222,11 @@ LTM:
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
-
             -
                 name: effectance_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "effectance_pnode", "node_type": "PNode"}]
-
         Policy:
             -
                 name: pick_fruit
@@ -259,7 +280,7 @@ LTM:
                 name: novelty_policy
                 class_name: cognitive_nodes.novelty.PolicyNovelty
                 parameters:
-                    exclude_list: ["effectance_policy"]
+                    exclude_list: ["effectance_policy", "external_effect_policy", "prospection_policy"]
                     neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
                     ltm_id: ltm_0
             -
@@ -270,8 +291,8 @@ LTM:
                     neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
                     confidence: 0.5
                     threshold_delta: 0.5
+                    limit_depth: False
                     ltm_id: ltm_0
-
 DiscreteEventSimulator:
     Perceptions:
         -
@@ -298,6 +319,12 @@ DiscreteEventSimulator:
             name: classify_fruit_goal
             perception_topic: /emdb/simulator/sensor/classify_fruit
             perception_msg: std_msgs.msg.Float32
+        -
+            name: place_fruit_goal
+            perception_topic: /emdb/simulator/sensor/place_fruit
+            perception_msg: std_msgs.msg.Float32
+
     Stages:
+        stage0: -1
         stage1: -1
-        stage2: 35500
+        stage2: 100000

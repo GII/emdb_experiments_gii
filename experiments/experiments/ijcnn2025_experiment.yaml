@@ -4,7 +4,7 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 25000
+        iterations: 15000
         trials: 20
         subgoals: False
         softmax_selection: True
@@ -205,6 +205,7 @@ LTM:
                 parameters:
                     ltm_id: ltm_0
                     min_confidence: 0.84
+                    limit_depth: True
                     neighbors: [{"name": "effectance_need", "node_type": "Need"}]
             -
                 name: external_effects_drive
@@ -349,6 +350,7 @@ LTM:
                     neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
                     confidence: 0.5
                     threshold_delta: 0.5
+                    limit_depth: True
                     ltm_id: ltm_0
             -
                 name: external_effect_policy
@@ -399,6 +401,6 @@ DiscreteEventSimulator:
             perception_msg: std_msgs.msg.Float32
 
     Stages:
-        stage0: 2000
+        stage0: -1
         stage1: 4000
-        stage2: 7000
+        stage2: 5000
