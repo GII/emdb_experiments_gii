@@ -4,11 +4,12 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 15000
+        iterations: 10000
         trials: 20
         subgoals: False
         softmax_selection: True
         softmax_temperature: 0.3
+        kill_on_finish: True
 Control:
     id: ltm_simulator
     control_topic: /main_loop/control
@@ -220,7 +221,7 @@ LTM:
                 parameters:
                     ltm_id: ltm_0
                     min_pnode_rate: 0.85
-                    min_goal_rate: 0.94
+                    min_goal_rate: 0.95
                     neighbors: [{"name": "prospection_need", "node_type": "Need"}]
         Goal:
             -
@@ -401,6 +402,6 @@ DiscreteEventSimulator:
             perception_msg: std_msgs.msg.Float32
 
     Stages:
-        stage0: -1
-        stage1: 4000
-        stage2: 5000
+        stage0: 500
+        stage1: 2500
+        stage2: 3000
