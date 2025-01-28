@@ -4,8 +4,8 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 3000
-        trials: 50
+        iterations: 6000
+        trials: 20
         subgoals: False
         softmax_selection: True
         softmax_temperature: 0.3
@@ -252,5 +252,6 @@ DiscreteEventSimulator:
             perception_topic: /emdb/simulator/sensor/progress
             perception_msg: std_msgs.msg.Float32
     Stages:
-        stage1: 35500
-        stage2: 35500
+        stage0: 500
+        stage1: 2500
+        stage2: 3000
