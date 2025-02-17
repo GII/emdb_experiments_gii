@@ -85,25 +85,25 @@ LTM:
         Perception:
             -
                 name: button_light
-                class_name: cognitive_nodes.perception.IJCNNExperimentPerception
+                class_name: cognitive_nodes.perception.FruitShopPerception
                 parameters:
                     default_msg: std_msgs.msg.Bool
                     default_topic: /emdb/simulator/sensor/button_light
             -
                 name: fruit_in_left_hand
-                class_name: cognitive_nodes.perception.IJCNNExperimentPerception
+                class_name: cognitive_nodes.perception.FruitShopPerception
                 parameters:
                     default_msg: std_msgs.msg.Bool
                     default_topic: /emdb/simulator/sensor/fruit_in_left_hand
             -
                 name: fruit_in_right_hand
-                class_name: cognitive_nodes.perception.IJCNNExperimentPerception
+                class_name: cognitive_nodes.perception.FruitShopPerception
                 parameters:
                     default_msg: std_msgs.msg.Bool
                     default_topic: /emdb/simulator/sensor/fruit_in_right_hand
             -
                 name: fruits
-                class_name: cognitive_nodes.perception.IJCNNExperimentPerception
+                class_name: cognitive_nodes.perception.FruitShopPerception
                 parameters:
                     default_msg: simulators_interfaces.msg.FruitListMsg
                     default_topic: /emdb/simulator/sensor/fruits
@@ -118,7 +118,7 @@ LTM:
                         dim_max: 0.1
             -
                 name: scales
-                class_name: cognitive_nodes.perception.IJCNNExperimentPerception
+                class_name: cognitive_nodes.perception.FruitShopPerception
                 parameters:
                     default_msg: simulators_interfaces.msg.ScaleListMsg
                     default_topic: /emdb/simulator/sensor/scales

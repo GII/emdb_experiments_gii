@@ -37,7 +37,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
 
     simulator_node = Node(
         package="simulators",
-        executable="ijcnn_simulator",
+        executable="fruit_shop_simulator",
         output="screen",
         parameters=[
             {
@@ -106,7 +106,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "experiment_file",
-            default_value="ijcnn2025_experiment.yaml",
+            default_value="fruit_shop_experiment.yaml",
             description="The file that loads the experiment config",
         )
     )
