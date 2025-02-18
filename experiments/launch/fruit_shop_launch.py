@@ -1,7 +1,8 @@
 from launch import LaunchDescription, LaunchContext
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction
+from launch.event_handlers import OnProcessExit
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction, RegisterEventHandler, Shutdown
 from launch.substitutions import (
     LaunchConfiguration,
     FindExecutable,
@@ -36,7 +37,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
 
     simulator_node = Node(
         package="simulators",
-        executable="simulator_discrete",
+        executable="fruit_shop_simulator",
         output="screen",
         parameters=[
             {
@@ -70,7 +71,14 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
         shell=True,
     )
 
-    nodes_to_start = [config_service_call, core_node, ltm_node, simulator_node]
+    shutdown_on_exit = RegisterEventHandler(
+        OnProcessExit(
+            target_action=core_node,  # Nodo que supervisar
+            on_exit=[Shutdown()],  # Acción: Cerrar todos los nodos
+        )
+    )
+
+    nodes_to_start = [config_service_call, core_node, ltm_node, simulator_node, shutdown_on_exit]
 
     return nodes_to_start
 
@@ -98,7 +106,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "experiment_file",
-            default_value="default_experiment.yaml",
+            default_value="fruit_shop_experiment.yaml",
             description="The file that loads the experiment config",
         )
     )

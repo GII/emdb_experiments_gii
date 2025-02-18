@@ -1,0 +1,277 @@
+Experiment:
+    name: main_loop
+    class_name: cognitive_processes.main_loop.MainLoop
+    new_executor: True
+    threads: 2
+    parameters: 
+        iterations: 10000
+        trials: 50
+        subgoals: False
+Control:
+    id: ltm_simulator
+    control_topic: /main_loop/control
+    control_msg: cognitive_processes_interfaces.msg.ControlMsg
+    episodes_topic: /main_loop/episodes
+    episodes_msg: cognitive_processes_interfaces.msg.Episode
+    executed_policy_service: /mdb/baxter/executed_policy
+    executed_policy_msg: cognitive_node_interfaces.srv.Policy
+    world_reset_service: /mdb/baxter/world_reset
+    world_reset_msg: cognitive_processes_interfaces.srv.WorldReset
+LTM:
+    Files:
+        -
+            id: goodness
+            class: core.file.FileGoodness
+            file: goodness.txt
+        -
+            id: pnodes_success
+            class: core.file.FilePNodesSuccess
+            file: pnodes_success.txt
+        -
+            id: pnodes_content
+            class: core.file.FilePNodesContent
+            file: pnodes_content.txt
+        -
+            id: trials
+            class: core.file.FileTrialsSuccess
+            file: trials.txt
+    Connectors:
+        -
+            data: Space
+            default_class: cognitive_nodes.space.ANNSpace
+        -
+            data: Perception
+            default_class: cognitive_nodes.perception.Perception
+        -
+            data: PNode
+            default_class: cognitive_nodes.pnode.PNode
+        -
+            data: CNode
+            default_class: cognitive_nodes.cnode.CNode
+        -
+            data: Goal
+            default_class: cognitive_nodes.goal.GoalLearnedSpace
+        -
+            data: WorldModel
+            default_class: cognitive_nodes.world_model.WorldModel
+        -
+            data: Policy
+            default_class: cognitive_nodes.policy.PolicyBlocking
+
+    Nodes:
+        Perception:
+            -
+                name: ball_in_left_hand
+                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /mdb/baxter/sensor/ball_in_left_hand
+            -
+                name: ball_in_right_hand
+                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /mdb/baxter/sensor/ball_in_right_hand
+            -
+                name: boxes
+                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.ObjectListMsg
+                    default_topic: /mdb/baxter/sensor/boxes
+                    normalize_data:
+                        distance_min: 0.2
+                        distance_max: 1.9
+                        angle_min: -1.4
+                        angle_max: 1.4
+                        diameter_min: 0.0
+                        diameter_max: 0.15
+            -
+                name: cylinders
+                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.ObjectListMsg
+                    default_topic: /mdb/baxter/sensor/cylinders
+                    normalize_data:
+                        distance_min: 0.2
+                        distance_max: 1.9
+                        angle_min: -1.4
+                        angle_max: 1.4
+                        diameter_min: 0.0
+                        diameter_max: 0.15
+        WorldModel:
+            -
+                name: GRIPPER_AND_LOW_FRICTION
+                class_name: cognitive_nodes.world_model.WorldModel
+        Need: 
+            -
+                name: object_in_box_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 1.0
+                    drive_id: 'object_in_box_drive'
+                    need_type: 'Operational'
+            - 
+                name: novelty_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 0.2
+                    drive_id: 'novelty_drive'
+                    need_type: 'Cognitive'
+            - 
+                name: external_effects_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 0.3
+                    drive_id: 'external_effects_drive'
+                    need_type: 'Cognitive'
+        Drive:
+            -
+                name: object_in_box_drive
+                class_name: cognitive_nodes.drive.DriveExponential
+                parameters:
+                    input_topic: /mdb/baxter/sensor/progress
+                    input_msg: std_msgs.msg.Float32
+                    min_eval: 0.8 
+                    neighbors: [{"name": "object_in_box_need", "node_type": "Need"}]
+
+            -
+                name: novelty_drive
+                class_name: cognitive_nodes.novelty.DriveNovelty
+                parameters:
+                    neighbors: [{"name": "novelty_need", "node_type": "Need"}]
+            
+            -
+                name: external_effects_drive
+                class_name: cognitive_nodes.effectance.DriveEffectanceExternal
+                parameters:
+                    episodes_topic: /main_loop/episodes
+                    episodes_msg: cognitive_processes_interfaces.msg.Episode
+                    neighbors: [{"name": "external_effects_need", "node_type": "Need"}]
+
+
+        Goal:
+            -
+                name: novelty_goal
+                class_name: cognitive_nodes.goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "novelty_drive", "node_type": "Drive"}]
+            -
+                name: external_effects_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "external_effects_drive", "node_type": "Drive"}]
+        PNode:
+            -
+                name: novelty_pnode
+                class_name: dummy_nodes.activated_dummy_pnode.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: external_effects_pnode
+                class_name: dummy_nodes.activated_dummy_pnode.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+        CNode:
+            -
+                name: novelty_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
+            -
+                name: external_effects_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "external_effects_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "external_effects_pnode", "node_type": "PNode"}]
+
+        Policy:
+            -
+                name: grasp_object
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy 
+            -
+                name: grasp_with_two_hands
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy 
+            -
+                name: change_hands
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy 
+            -
+                name: sweep_object
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy  
+            -
+                name: put_object_in_box
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy   
+            -
+                name: put_object_with_robot
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy  
+            -
+                name: throw
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy  
+            -
+                name: ask_nicely
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /mdb/baxter/executed_policy
+            -
+                name: novelty_policy
+                class_name: cognitive_nodes.novelty.PolicyNovelty
+                parameters:
+                    exclude_list: ["external_effect_policy"]
+                    neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
+                    ltm_id: ltm_0
+            -
+                name: external_effect_policy
+                class_name: cognitive_nodes.effectance.PolicyEffectanceExternal
+                parameters:
+                    drive_name: external_effects_drive
+                    goal_class: cognitive_nodes.effectance.GoalRecreateEffect
+                    space_class: cognitive_nodes.space.ANNSpace
+                    neighbors: [{"name": "external_effects_cnode", "node_type": "CNode"}]
+                    ltm_id: ltm_0
+
+        
+
+                        
+
+SimulatedBaxter:
+    Perceptions:
+        -
+            name: cylinders
+            perception_topic: /mdb/baxter/sensor/cylinders
+            perception_msg: simulators_interfaces.msg.ObjectListMsg
+        -
+            name: boxes
+            perception_topic: /mdb/baxter/sensor/boxes
+            perception_msg: simulators_interfaces.msg.ObjectListMsg
+        -
+            name: ball_in_left_hand
+            perception_topic: /mdb/baxter/sensor/ball_in_left_hand
+            perception_msg: std_msgs.msg.Bool
+        -
+            name: ball_in_right_hand
+            perception_topic: /mdb/baxter/sensor/ball_in_right_hand
+            perception_msg: std_msgs.msg.Bool
+        -
+            name: ball_in_box_goal
+            perception_topic: /mdb/baxter/sensor/progress
+            perception_msg: std_msgs.msg.Float32

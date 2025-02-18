@@ -98,7 +98,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "experiment_file",
-            default_value="default_experiment.yaml",
+            default_value="blocking_experiment.yaml",
             description="The file that loads the experiment config",
         )
     )

@@ -16,84 +16,114 @@ from rclpy.task import Future
 # Interfaces
 from rcl_interfaces.msg import ParameterDescriptor
 from trajectory_msgs.msg import JointTrajectoryPoint
-from oscar_interfaces.srv import ArmControl, GripperControl, Perception
+from oscar_interfaces.srv import ArmControl, GripperControl
+from oscar_emdb_interfaces.srv import Perception as PerceptionSrv
+from oscar_emdb_interfaces.msg import Perception as PerceptionMsg
 from gazebo_msgs.srv import GetEntityState, SetEntityState
 from geometry_msgs.msg import Pose, Quaternion, Point
 from core_interfaces.srv import LoadConfig
 from std_msgs.msg import Float32
 
-#Utils
+# Utils
 from core.service_client import ServiceClient, ServiceClientAsync
 from core.utils import class_from_classname
 
 
-
-
 class OscarMDB(Node):
+    """
+    This class provides a node that interfaces the OSCAR robot with the eMDB Cognitive Architecture
+    """
+
     def __init__(self):
-        super().__init__('oscar_emdb_server')
+        super().__init__("oscar_emdb_server")
 
-        #Setup parameters
-        self.random_seed = self.declare_parameter('random_seed', value = 0).get_parameter_value().integer_value
-        self.config_file = self.declare_parameter('config_file', descriptor=ParameterDescriptor(dynamic_typing=True)).get_parameter_value().string_value
+        # Setup parameters
+        self.random_seed = (
+            self.declare_parameter("random_seed", value=0)
+            .get_parameter_value()
+            .integer_value
+        )
+        self.config_file = (
+            self.declare_parameter(
+                "config_file", descriptor=ParameterDescriptor(dynamic_typing=True)
+            )
+            .get_parameter_value()
+            .string_value
+        )
 
-        #Publishers and perception messages
-        self.sim_publishers={}
-        self.perceptions={}
+        # Publishers and perception messages
+        self.sim_publishers = {}
+        self.perceptions = {}
 
-        #Local variables init
-        self.perception=Perception.Response()
-        self.old_perception=Perception.Response()
-        self.aprox_object=False
-        self.base_messages={}
+        # Local variables init
+        self.perception = PerceptionSrv.Response()
+        self.old_perception = PerceptionSrv.Response()
+        self.aprox_object = False
+        self.base_messages = {}
 
-        #Callback groups
-        self.gazebo_cbg=MutuallyExclusiveCallbackGroup()
-        self.oscar_cbg=MutuallyExclusiveCallbackGroup()
-        self.perception_cbg=MutuallyExclusiveCallbackGroup()
-        self.mdb_commands_cbg=MutuallyExclusiveCallbackGroup()
-        
-        #Service client for Oscar Perceptions
-        self.cli_oscar_perception = ServiceClientAsync(self, Perception, 'oscar/request_perceptions', self.perception_cbg)
+        # Callback groups
+        self.gazebo_cbg = MutuallyExclusiveCallbackGroup()
+        self.oscar_cbg = MutuallyExclusiveCallbackGroup()
+        self.perception_cbg = MutuallyExclusiveCallbackGroup()
+        self.mdb_commands_cbg = MutuallyExclusiveCallbackGroup()
 
-        #Service clients for Oscar Commander
-        self.cli_right_arm = ServiceClientAsync(self, ArmControl, "oscar/right_arm_command", self.oscar_cbg)
-        self.cli_left_arm = ServiceClientAsync(self, ArmControl, "oscar/left_arm_command", self.oscar_cbg)
+        # Service client for Oscar Perceptions
+        self.cli_oscar_perception = ServiceClientAsync(
+            self, PerceptionSrv, "oscar/request_perceptions", self.perception_cbg
+        )
+
+        # Service clients for Oscar Commander
+        self.cli_right_arm = ServiceClientAsync(
+            self, ArmControl, "oscar/right_arm_command", self.oscar_cbg
+        )
+        self.cli_left_arm = ServiceClientAsync(
+            self, ArmControl, "oscar/left_arm_command", self.oscar_cbg
+        )
         self.cli_left_gripper = ServiceClientAsync(
             self, GripperControl, "oscar/left_gripper_command", self.oscar_cbg
         )
         self.cli_right_gripper = ServiceClientAsync(
             self, GripperControl, "oscar/right_gripper_command", self.oscar_cbg
         )
-        
-        #Service client for Gazebo
-        self.cli_set_state = self.create_client(SetEntityState, "set_entity_state", callback_group=self.gazebo_cbg)
+
+        # Service client for Gazebo
+        self.cli_set_state = self.create_client(
+            SetEntityState, "set_entity_state", callback_group=self.gazebo_cbg
+        )
         while not self.cli_set_state.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("Service not available, waiting again...")
 
-        #Service client for eMBD Commander
+        # Service client for eMBD Commander
         self.cli_mdb_commander = ServiceClient(LoadConfig, "commander/load_experiment")
 
-        #Reward Publisher
-        self.reward_pub = self.create_publisher(Float32, 'mdb/reward', 1) #TODO: Implement dedicated interface
-        
-
-
-        
-        
+        # Reward Publisher
+        self.reward_pub = self.create_publisher(
+            Float32, "mdb/reward", 1
+        )  # TODO: Implement dedicated interface
 
     def load_configuration(self):
-        #Load file
+        """
+        Load configuration from a file.
+
+        :param random_seed: The seed for the random numbers generation
+        :type random_seed: int
+        :param config_file: The file with the params to configurate the simulation
+        :type config_file: yaml file
+        """
 
         if self.config_file is None:
-            self.get_logger().error("No configuration file for the experiment specified!")
+            self.get_logger().error(
+                "No configuration file for the experiment specified!"
+            )
             rclpy.shutdown()
         else:
             if not os.path.isfile(self.config_file):
                 self.get_logger().error(self.config_file + " does not exist!")
                 rclpy.shutdown()
             else:
-                self.get_logger().info(f"Loading configuration from {self.config_file}...")
+                self.get_logger().info(
+                    f"Loading configuration from {self.config_file}..."
+                )
                 config = yaml.load(
                     open(self.config_file, "r", encoding="utf-8"),
                     Loader=yamlloader.ordereddict.CLoader,
@@ -103,14 +133,22 @@ class OscarMDB(Node):
                 self.setup_control_channel(config["Control"])
         if self.random_seed:
             self.rng = np.random.default_rng(self.random_seed)
-            self.get_logger().info(f"Setting random number generator with seed {self.random_seed}")
+            self.get_logger().info(
+                f"Setting random number generator with seed {self.random_seed}"
+            )
         else:
             self.rng = np.random.default_rng()
-        
+
         self.load_experiment_file_in_commander()
 
-
     def setup_perceptions(self, perceptions):
+        """
+        This method creates publishers for each element of the perception list
+        passed.
+
+        :param perceptions: List of perceptions
+        :type perceptions: list
+        """
         for perception in perceptions:
             sid = perception["name"]
             topic = perception["perception_topic"]
@@ -119,12 +157,16 @@ class OscarMDB(Node):
             self.perceptions[sid] = message()
             if "List" in classname:
                 self.perceptions[sid].data = []
-                self.base_messages[sid] = class_from_classname(classname.replace("List", ""))
+                self.base_messages[sid] = class_from_classname(
+                    classname.replace("List", "")
+                )
                 self.perceptions[sid].data.append(self.base_messages[sid]())
             else:
                 self.perceptions[sid].data = False
             self.get_logger().info("I will publish to... " + str(topic))
-            self.sim_publishers[sid] = self.create_publisher(message, topic, 0) #TODO: ¿latch in ROS2?
+            self.sim_publishers[sid] = self.create_publisher(
+                message, topic, 0
+            )  # TODO: ¿latch in ROS2?
 
     def setup_control_channel(self, simulation):
         """
@@ -139,17 +181,37 @@ class OscarMDB(Node):
         message = class_from_classname(classname)
         self.get_logger().info("Subscribing to... " + str(topic))
         self.create_subscription(message, topic, self.new_command_callback, 0)
-        topic = simulation["executed_policy_topic"]
+        topic = simulation.get("executed_policy_topic")
+        service = simulation.get("executed_policy_service")
         classname = simulation["executed_policy_msg"]
         message = class_from_classname(classname)
-        self.get_logger().info("Subscribing to... " + str(topic))
-        self.create_subscription(message, topic, self.policy_callback, 0)
-
+        if topic:
+            self.get_logger().info("Subscribing to... " + str(topic))
+            self.create_subscription(message, topic, self.policy_callback, 0)
+        if service:
+            self.get_logger().info("Creating server... " + str(service))
+            self.create_service(
+                message,
+                service,
+                self.policy_service,
+                callback_group=self.mdb_commands_cbg,
+            )
+            self.get_logger().info("Creating perception publisher timer... ")
+            # Subscriber for the redescribed perceptions
+            self.sensors_subs = self.create_subscription(
+                PerceptionMsg,
+                "/oscar/redescribed_sensors",
+                self.publish_perceptions_callback,
+                0,
+            )
 
     def load_experiment_file_in_commander(self):
-        loaded = self.cli_mdb_commander.send_request(file = self.config_file)
+        """
+        Calls the load config service in the commander node.
+        """
+        loaded = self.cli_mdb_commander.send_request(file=self.config_file)
         return loaded
-    
+
     async def new_command_callback(self, data):
         """
         Process a command received
@@ -162,9 +224,16 @@ class OscarMDB(Node):
             await self.reset_world()
         elif data.command == "end":
             self.get_logger().info("Ending experiment as requested by LTM...")
-            rclpy.shutdown()    
+            rclpy.shutdown()
 
     async def policy_callback(self, data):
+        """
+        Generic method that executes a policy according to the data
+        published in a topic.
+
+        :param data: Message with the name of the policy to be executed.
+        :type data: std_msgs.msg.String
+        """
         self.get_logger().info(f"Executing {data.data} policy...")
         await self.update_perceptions()
         await getattr(self, data.data + "_policy")()
@@ -172,345 +241,590 @@ class OscarMDB(Node):
         await self.update_reward()
         self.publish_perception_reward()
 
+    async def policy_service(self, request, response):
+        """
+        Generic method that executes a policy according to a service request.
+
+        :param request: Message with the name of the policy to be executed
+        :type request: cognitive_node_interfaces.srv.Policy.Request
+        :param response: Message with execution success information
+        :type response: cognitive_node_interfaces.srv.Policy.Response
+        :return: Service Response
+        :rtype: cognitive_node_interfaces.srv.Policy.Response
+        """
+        self.get_logger().info(f"Executing {request.policy} policy...")
+        await self.update_perceptions()
+        await getattr(self, request.policy + "_policy")()
+        await self.update_perceptions()
+        await self.update_reward()
+        self.publish_reward()
+        response.success = True
+        return response
+
     async def reset_world(self):
+        """
+        This method initializes the world. Moves the robot to home position
+        and randomizes the position of the objects.
+        """
         self.get_logger().info("Reseting World...")
 
         await self.random_positions()
-        #Go Home
+        # Go Home
         await self.init_oscar()
         await self.update_perceptions()
         await self.update_reward()
-        self.publish_perception_reward()
 
     async def init_oscar(self):
-        self.get_logger().info('Initializing OSCAR Robot')
-        await self.cli_left_arm.send_request_async(x=0.0, y=0.0, z=0.0,vel=0.15,named_pose="home")        
-        await self.cli_right_arm.send_request_async(x=0.0, y=0.0, z=0.0,vel=0.15,named_pose="home") 
+        """
+        Moves OSCAR to home position with the grippers open.
+        """
+        self.get_logger().info("Initializing OSCAR Robot")
+        await self.cli_left_arm.send_request_async(
+            x=0.0, y=0.0, z=0.0, vel=0.15, named_pose="home"
+        )
+        await self.cli_right_arm.send_request_async(
+            x=0.0, y=0.0, z=0.0, vel=0.15, named_pose="home"
+        )
         await self.cli_right_gripper.send_request_async(close=False)
         await self.cli_left_gripper.send_request_async(close=False)
 
-
     async def grasp_right_policy(self):
-        if not self.perception.obj_in_left_hand and not self.perception.obj_in_left_hand:
-            pick_point=self.perception.red_object
+        """
+        This policy grasps the object with the right arm if it is within reach.
+        """
+        if (
+            not self.perception.obj_in_left_hand
+            and not self.perception.obj_in_left_hand
+        ):
+            pick_point = self.perception.red_object
 
-            #Check if object is reachable
-            plan= await self.cli_right_arm.send_request_async(x=pick_point.x,y=pick_point.y,z=pick_point.z,vel=0.0,named_pose="")
+            # Check if object is reachable
+            plan = await self.cli_right_arm.send_request_async(
+                x=pick_point.x, y=pick_point.y, z=pick_point.z, vel=0.0, named_pose=""
+            )
 
             if plan.success:
 
-                #Go Home and open the gripper
-                await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="home")
+                # Go Home and open the gripper
+                await self.cli_right_arm.send_request_async(
+                    x=0.0, y=0.0, z=0.0, vel=0.15, named_pose="home"
+                )
                 await self.cli_right_gripper.send_request_async(close=False)
 
-                #Go above object
-                await self.cli_right_arm.send_request_async(x=pick_point.x,y=pick_point.y,z=0.9,vel=0.15,named_pose="")
+                # Go above object
+                await self.cli_right_arm.send_request_async(
+                    x=pick_point.x, y=pick_point.y, z=0.9, vel=0.15, named_pose=""
+                )
 
-                #Grasp object
-                await self.cli_right_arm.send_request_async(x=pick_point.x,y=pick_point.y,z=0.8,vel=0.15,named_pose="")
+                # Grasp object
+                await self.cli_right_arm.send_request_async(
+                    x=pick_point.x, y=pick_point.y, z=0.8, vel=0.15, named_pose=""
+                )
                 await self.cli_right_gripper.send_request_async(close=True)
 
-                #Lift Object
-                await self.cli_right_arm.send_request_async(x=pick_point.x,y=pick_point.y,z=0.9,vel=0.15,named_pose="")
+                # Lift Object
+                await self.cli_right_arm.send_request_async(
+                    x=pick_point.x, y=pick_point.y, z=0.9, vel=0.15, named_pose=""
+                )
 
-                #Go Home
-                await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="home")
+                # Go Home
+                await self.cli_right_arm.send_request_async(
+                    x=0.0, y=0.0, z=0.0, vel=0.15, named_pose="home"
+                )
 
     async def grasp_left_policy(self):
-        if not self.perception.obj_in_left_hand and not self.perception.obj_in_left_hand:
-            pick_point=self.perception.red_object
+        """
+        This policy grasps the object with the left arm if it is within reach.
+        """
+        if (
+            not self.perception.obj_in_left_hand
+            and not self.perception.obj_in_left_hand
+        ):
+            pick_point = self.perception.red_object
 
-            #Check if object is reachable
-            plan=await self.cli_left_arm.send_request_async(x=pick_point.x,y=pick_point.y,z=pick_point.z,vel=0.0,named_pose="")
+            # Check if object is reachable
+            plan = await self.cli_left_arm.send_request_async(
+                x=pick_point.x, y=pick_point.y, z=pick_point.z, vel=0.0, named_pose=""
+            )
 
             if plan.success:
-                #Go Home and open the gripper
-                await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="home")
+                # Go Home and open the gripper
+                await self.cli_left_arm.send_request_async(
+                    x=0.0, y=0.0, z=0.0, vel=0.15, named_pose="home"
+                )
                 await self.cli_left_gripper.send_request_async(close=False)
 
-                #Go above object
-                await self.cli_left_arm.send_request_async(x=pick_point.x,y=pick_point.y,z=0.85,vel=0.15,named_pose="")
+                # Go above object
+                await self.cli_left_arm.send_request_async(
+                    x=pick_point.x, y=pick_point.y, z=0.85, vel=0.15, named_pose=""
+                )
 
-                #Grasp object
-                await self.cli_left_arm.send_request_async(x=pick_point.x,y=pick_point.y,z=0.8,vel=0.15,named_pose="")
+                # Grasp object
+                await self.cli_left_arm.send_request_async(
+                    x=pick_point.x, y=pick_point.y, z=0.8, vel=0.15, named_pose=""
+                )
                 await self.cli_left_gripper.send_request_async(close=True)
 
-                #Lift Object
-                await self.cli_left_arm.send_request_async(x=pick_point.x,y=pick_point.y,z=0.85,vel=0.15,named_pose="")
+                # Lift Object
+                await self.cli_left_arm.send_request_async(
+                    x=pick_point.x, y=pick_point.y, z=0.85, vel=0.15, named_pose=""
+                )
 
-                #Go Home
-                await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="home")
+                # Go Home
+                await self.cli_left_arm.send_request_async(
+                    x=0.0, y=0.0, z=0.0, vel=0.15, named_pose="home"
+                )
 
     async def press_button_policy(self):
-        if not self.perception.obj_in_left_hand and not self.perception.obj_in_right_hand:
-            #Go Home and close the gripper
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="home")
+        """
+        This policy makes OSCAR press the button on the left. If the object is out of reach
+        it is moved closer to the robot.
+        """
+        if (
+            not self.perception.obj_in_left_hand
+            and not self.perception.obj_in_right_hand
+        ):
+            # Go Home and close the gripper
+            await self.cli_left_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.15, named_pose="home"
+            )
             await self.cli_left_gripper.send_request_async(close=True)
 
-            #Go above the button
-            await self.cli_left_arm.send_request_async(x=0.12,y=0.5,z=0.85,vel=0.15,named_pose="")
+            # Go above the button
+            await self.cli_left_arm.send_request_async(
+                x=0.12, y=0.5, z=0.85, vel=0.15, named_pose=""
+            )
 
-            #Press the button
-            await self.cli_left_arm.send_request_async(x=0.12,y=0.5,z=0.8,vel=0.15,named_pose="")
+            # Press the button
+            await self.cli_left_arm.send_request_async(
+                x=0.12, y=0.5, z=0.8, vel=0.15, named_pose=""
+            )
 
-            #Check if object is reachable
-            pick_point=self.perception.red_object
-            left_plan=await self.cli_left_arm.send_request_async(x=pick_point.x,y=pick_point.y,z=pick_point.z,vel=0.0,named_pose="")
-            right_plan=await self.cli_right_arm.send_request_async(x=pick_point.x,y=pick_point.y,z=pick_point.z,vel=0.0,named_pose="")
+            # Check if object is reachable
+            pick_point = self.perception.red_object
+            left_plan = await self.cli_left_arm.send_request_async(
+                x=pick_point.x, y=pick_point.y, z=pick_point.z, vel=0.0, named_pose=""
+            )
+            right_plan = await self.cli_right_arm.send_request_async(
+                x=pick_point.x, y=pick_point.y, z=pick_point.z, vel=0.0, named_pose=""
+            )
 
             if not left_plan.success and not right_plan.success:
                 await self.bring_object_near()
 
-            #Go above the button
-            await self.cli_left_arm.send_request_async(x=0.12,y=0.5,z=0.85,vel=0.15,named_pose="")
+            # Go above the button
+            await self.cli_left_arm.send_request_async(
+                x=0.12, y=0.5, z=0.85, vel=0.15, named_pose=""
+            )
 
-            #Go Home and open the gripper
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="home")
+            # Go Home and open the gripper
+            await self.cli_left_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.15, named_pose="home"
+            )
             await self.cli_left_gripper.send_request_async(close=False)
-    
+
     async def place_object_right_policy(self):
-        #Check if basket is reachable
-        place_point=self.perception.basket
-        plan=await self.cli_right_arm.send_request_async(x=place_point.x,y=place_point.y,z=place_point.z,vel=0.0,named_pose="")
+        """
+        This policy makes OSCAR place the object in the box, given that it has the object in the right arm
+        and the basket is within reach.
+        """
+
+        # Check if basket is reachable
+        place_point = self.perception.basket
+        plan = await self.cli_right_arm.send_request_async(
+            x=place_point.x, y=place_point.y, z=0.9, vel=0.0, named_pose=""
+        )
 
         if self.perception.obj_in_right_hand and plan.success:
-            place_point=self.perception.basket
+            place_point = self.perception.basket
 
-            #Go above basket and release object
-            await self.cli_right_arm.send_request_async(x=place_point.x,y=place_point.y,z=0.9,vel=0.15,named_pose="")
+            # Go above basket and release object
+            await self.cli_right_arm.send_request_async(
+                x=place_point.x, y=place_point.y, z=0.9, vel=0.15, named_pose=""
+            )
             await self.cli_right_gripper.send_request_async(close=False)
 
-            #Go Home
-            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="home")
-        if not plan.success and place_point.y<0: #Basket not reachable when it should
-            self.get_logger().fatal(f"ERROR: Basket not reachable x={place_point.x} y={place_point.y}")
+            # Go Home
+            await self.cli_right_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.15, named_pose="home"
+            )
+        if (
+            not plan.success and place_point.y < 0
+        ):  # Basket not reachable when it should
+            self.get_logger().fatal(
+                f"ERROR: Basket not reachable x={place_point.x} y={place_point.y}"
+            )
 
     async def place_object_left_policy(self):
-        #Check if basket is reachable
-        place_point=self.perception.basket
-        plan=await self.cli_left_arm.send_request_async(x=place_point.x,y=place_point.y,z=place_point.z,vel=0.0,named_pose="")
+        """
+        This policy makes OSCAR place the object in the box, given that it has the object in the left arm
+        and the basket is within reach.
+        """
+
+        # Check if basket is reachable
+        place_point = self.perception.basket
+        plan = await self.cli_left_arm.send_request_async(
+            x=place_point.x, y=place_point.y, z=0.9, vel=0.0, named_pose=""
+        )
 
         if self.perception.obj_in_left_hand and plan.success:
-            place_point=self.perception.basket
+            place_point = self.perception.basket
 
-            #Go above basket and release object
-            await self.cli_left_arm.send_request_async(x=place_point.x,y=place_point.y,z=0.9,vel=0.15,named_pose="")
+            # Go above basket and release object
+            await self.cli_left_arm.send_request_async(
+                x=place_point.x, y=place_point.y, z=0.9, vel=0.15, named_pose=""
+            )
             await self.cli_left_gripper.send_request_async(close=False)
 
-            #Go Home
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.15,named_pose="home")
-        if not plan.success and place_point.y>0: #Basket not reachable when it should
-            self.get_logger().fatal(f"ERROR: Basket not reachable x={place_point.x} y={place_point.y}")
+            # Go Home
+            await self.cli_left_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.15, named_pose="home"
+            )
+        if (
+            not plan.success and place_point.y > 0
+        ):  # Basket not reachable when it should
+            self.get_logger().fatal(
+                f"ERROR: Basket not reachable x={place_point.x} y={place_point.y}"
+            )
 
     async def change_hands_policy(self):
+        """
+        This policy makes OSCAR exchange the object from one arm to the other.
+        """
         if self.perception.obj_in_left_hand:
-            #Move left hand to give position
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1, named_pose="switch_give")
+            # Move left hand to give position
+            await self.cli_left_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.1, named_pose="switch_give"
+            )
 
-            #Move right hand to pre-receive position and open gripper
-            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="pre_switch_collect")
+            # Move right hand to pre-receive position and open gripper
+            await self.cli_right_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.1, named_pose="pre_switch_collect"
+            )
             await self.cli_right_gripper.send_request_async(close=False)
 
-            #Move right hand to receive position and close gripper
-            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="switch_collect")
+            # Move right hand to receive position and close gripper
+            await self.cli_right_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.1, named_pose="switch_collect"
+            )
             await self.cli_right_gripper.send_request_async(close=True)
 
-            #Open left gripper and retract arm 
+            # Open left gripper and retract arm
             await self.cli_left_gripper.send_request_async(close=False)
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="post_switch_give")
-            #Go home
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="home")
-            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="home")
+            await self.cli_left_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.1, named_pose="post_switch_give"
+            )
+            # Go home
+            await self.cli_left_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.1, named_pose="home"
+            )
+            await self.cli_right_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.1, named_pose="home"
+            )
 
         if self.perception.obj_in_right_hand:
-            #Move right hand to give position
-            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="switch_give")
+            # Move right hand to give position
+            await self.cli_right_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.1, named_pose="switch_give"
+            )
 
-            #Move left hand to pre-receive position and open gripper
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="pre_switch_collect")
+            # Move left hand to pre-receive position and open gripper
+            await self.cli_left_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.1, named_pose="pre_switch_collect"
+            )
             await self.cli_left_gripper.send_request_async(close=False)
 
-            #Move left hand to receive position and close gripper
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="switch_collect")
+            # Move left hand to receive position and close gripper
+            await self.cli_left_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.1, named_pose="switch_collect"
+            )
             await self.cli_left_gripper.send_request_async(close=True)
 
-            #Open right gripper and retract arm 
+            # Open right gripper and retract arm
             await self.cli_right_gripper.send_request_async(close=False)
-            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="post_switch_give")
+            await self.cli_right_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.1, named_pose="post_switch_give"
+            )
 
-            #Go home
-            await self.cli_left_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="home")
-            await self.cli_right_arm.send_request_async(x=0.0,y=0.0,z=0.0,vel=0.1,named_pose="home")
+            # Go home
+            await self.cli_left_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.1, named_pose="home"
+            )
+            await self.cli_right_arm.send_request_async(
+                x=0.0, y=0.0, z=0.0, vel=0.1, named_pose="home"
+            )
 
     async def update_perceptions(self):
-        self.get_logger().info('Updating Perceptions...')
-        self.old_perception=self.perception
-        self.perception= await self.cli_oscar_perception.send_request_async()
-
-        #Convert perceptions to distance, angle
-        obj=OscarMDB.cartesian_to_polar(self.perception.red_object)
-        bskt=OscarMDB.cartesian_to_polar(self.perception.basket)
-        
-        #Assign perceptions to MDB messages
-        self.perceptions['cylinders'].data[0].distance=obj[0]
-        self.perceptions['cylinders'].data[0].angle=obj[1]
-        self.perceptions['cylinders'].data[0].diameter=0.025
-
-        self.perceptions['boxes'].data[0].distance=bskt[0]
-        self.perceptions['boxes'].data[0].angle=bskt[1]
-        self.perceptions['boxes'].data[0].diameter=0.1
-
-        self.perceptions['object_in_left_hand'].data=self.perception.obj_in_left_hand
-        self.perceptions['object_in_right_hand'].data=self.perception.obj_in_right_hand
+        """
+        This method requests the latest perceptions from the sensory system.
+        """
+        self.get_logger().info("Updating Perceptions...")
+        self.old_perception = self.perception
+        valid_perception = False
+        trials = 0
+        while not valid_perception:
+            self.perception = await self.cli_oscar_perception.send_request_async()
+            valid_perception = self.perception.success
+            trials += 1
+            if trials == 20:
+                return None
 
     async def update_reward(self):
+        """
+        Method to calculate the reward value according to the current perceptions.
+        """
         self.get_logger().info("Reading Reward....")
 
-        #HACK Check rewards from highest value to lowest 
-        self.reward=self.ball_in_box_reward() #This is the only one that should be checked
-        if self.reward==0:
-            self.reward= await self.switched_hands_reward()
-        if self.reward==0:
-            self.reward=self.grasped_object_reward()
-        if self.reward==0:
-            self.reward=self.approximated_object_reward()
-        
+        # HACK Check rewards from highest value to lowest
+        self.reward = (
+            self.ball_in_box_reward()
+        )  # This is the only one that should be checked
+        if self.reward == 0:
+            self.reward = await self.switched_hands_reward()
+        if self.reward == 0:
+            self.reward = self.grasped_object_reward()
+        if self.reward == 0:
+            self.reward = self.approximated_object_reward()
+
         self.get_logger().info(f"Reward obtained: {self.reward}")
 
     def ball_in_box_reward(self):
-        basket_x=self.perception.basket.x
-        basket_y=self.perception.basket.y
+        """
+        Checks if the object is in the basket. Returns a reward with value of 1, otherwise returns 0.
+        """
+        basket_x = self.perception.basket.x
+        basket_y = self.perception.basket.y
 
-        object_x=self.perception.red_object.x
-        object_y=self.perception.red_object.y
+        object_x = self.perception.red_object.x
+        object_y = self.perception.red_object.y
 
-        delta_x=abs(basket_x-object_x)
-        delta_y=abs(basket_y-object_y)
+        delta_x = abs(basket_x - object_x)
+        delta_y = abs(basket_y - object_y)
 
-        if delta_x<0.043 and delta_y<0.043:
-            reward=1
+        if delta_x < 0.043 and delta_y < 0.043:
+            reward = 1
         else:
-            reward=0
+            reward = 0
         return reward
-    
+
     def approximated_object_reward(self):
-        if self.aprox_object: #Read flag set by bring_object_near
-            reward=0.25
+        """
+        Checks if the object was brought closer to the robot with the button. Returns a reward with value of 0.25, otherwise returns 0.
+        """
+        if self.aprox_object:  # Read flag set by bring_object_near
+            reward = 0.25
         else:
-            reward=0
-        
-        self.aprox_object=False #Reset flag
+            reward = 0
+
+        self.aprox_object = False  # Reset flag
         return reward
 
     def grasped_object_reward(self):
-        #Check if object_in_left_hand or object_in_right_hand went from False to True
-        if self.perception.obj_in_left_hand and not self.old_perception.obj_in_left_hand and not self.old_perception.obj_in_right_hand:
-            reward=0.5
-        elif self.perception.obj_in_right_hand and not self.old_perception.obj_in_right_hand and not self.old_perception.obj_in_left_hand:
-            reward=0.5
+        """
+        Checks if the object was grasped. Returns a reward with value of 0.5, otherwise returns 0.
+        """
+        # Check if object_in_left_hand or object_in_right_hand went from False to True
+        if (
+            self.perception.obj_in_left_hand
+            and not self.old_perception.obj_in_left_hand
+            and not self.old_perception.obj_in_right_hand
+        ):
+            reward = 0.5
+        elif (
+            self.perception.obj_in_right_hand
+            and not self.old_perception.obj_in_right_hand
+            and not self.old_perception.obj_in_left_hand
+        ):
+            reward = 0.5
         else:
-            reward=0
+            reward = 0
         return reward
 
     async def switched_hands_reward(self):
-        place_point=self.perception.basket
-        plan_right= await self.cli_right_arm.send_request_async(x=place_point.x,y=place_point.y,z=place_point.z,vel=0.0,named_pose="")
-        plan_left= await self.cli_left_arm.send_request_async(x=place_point.x,y=place_point.y,z=place_point.z,vel=0.0,named_pose="")
-        #Check if a hand switch was made
-        if self.perception.obj_in_left_hand and self.old_perception.obj_in_right_hand: #Change from right to left
-            if plan_left.success and not plan_right.success: #Basket reachable only by left hand
-                reward=0.75
+        """
+        Checks if the object was switched to the correct arm when the original arm can't reach the basket. Returns a reward with value of 0.75, otherwise returns 0.
+        """
+        place_point = self.perception.basket
+        plan_right = await self.cli_right_arm.send_request_async(
+            x=place_point.x, y=place_point.y, z=0.9, vel=0.0, named_pose=""
+        )
+        plan_left = await self.cli_left_arm.send_request_async(
+            x=place_point.x, y=place_point.y, z=0.9, vel=0.0, named_pose=""
+        )
+        # Check if a hand switch was made
+        if (
+            self.perception.obj_in_left_hand and self.old_perception.obj_in_right_hand
+        ):  # Change from right to left
+            if (
+                plan_left.success and not plan_right.success
+            ):  # Basket reachable only by left hand
+                reward = 0.75
             else:
-                reward=0
-        elif self.perception.obj_in_right_hand and self.old_perception.obj_in_left_hand: #Change from left to right
-            if plan_right.success and not plan_left.success: #Basket reachable only by right hand
-                reward=0.75
+                reward = 0
+        elif (
+            self.perception.obj_in_right_hand and self.old_perception.obj_in_left_hand
+        ):  # Change from left to right
+            if (
+                plan_right.success and not plan_left.success
+            ):  # Basket reachable only by right hand
+                reward = 0.75
             else:
-                reward=0    
+                reward = 0
         else:
-            reward=0
-        return reward  
+            reward = 0
+        return reward
 
     def publish_perception_reward(self):
+        """
+        Method that publishes the current perceptions and the reward values.
+        """
         self.get_logger().info("Publishing Perceptions....")
+        self.publish_perceptions(self.perceptions)
+        self.publish_reward()
 
+    def publish_perceptions_callback(self, msg: PerceptionMsg):
+        """
+        Method that published the current perceptions and the reward value in the appropriate topics.
+        """
+        self.get_logger().debug("DEBUG - Publishing perceptions")
+        # Convert perceptions to distance, angle
+        obj = OscarMDB.cartesian_to_polar(self.perception.red_object)
+        bskt = OscarMDB.cartesian_to_polar(self.perception.basket)
+
+        # Assign perceptions to MDB messages
+        self.perceptions["cylinders"].data[0].distance = obj[0]
+        self.perceptions["cylinders"].data[0].angle = obj[1]
+        self.perceptions["cylinders"].data[0].diameter = 0.025
+
+        self.perceptions["boxes"].data[0].distance = bskt[0]
+        self.perceptions["boxes"].data[0].angle = bskt[1]
+        self.perceptions["boxes"].data[0].diameter = 0.1
+
+        self.perceptions["object_in_left_hand"].data = self.perception.obj_in_left_hand
+        self.perceptions["object_in_right_hand"].data = (
+            self.perception.obj_in_right_hand
+        )
+
+        self.publish_perceptions(self.perceptions)
+
+    def publish_perceptions(self, perceptions):
+        """
+        This method iterates the list of publishers and publishes the corresponding value
+        from the perception input.
+
+        :param perceptions: Dictionary with perceptions.
+        :type perceptions: dict
+        """
         for ident, publisher in self.sim_publishers.items():
-            self.get_logger().debug("Publishing " + ident + " = " + str(self.perceptions[ident].data))
-            publisher.publish(self.perceptions[ident])
+            self.get_logger().debug(
+                "Publishing " + ident + " = " + str(perceptions[ident].data)
+            )
+            publisher.publish(perceptions[ident])
 
+    def publish_reward(self):
+        """
+        Publishes the reward value.
+        """
         self.reward_pub.publish(Float32(data=float(self.reward)))
 
     async def bring_object_near(self):
-        basket_x=self.perception.basket.x
-        basket_y=self.perception.basket.y
+        """
+        This method randomly moves the object so that it is
+        within the reach of the robot and not inside the basket.
+        """
+        basket_x = self.perception.basket.x
+        basket_y = self.perception.basket.y
 
-        object_x=np.random.uniform(low=0.2575,high=0.3625)
-        object_y=np.random.uniform(low=-0.458,high=0.458)
+        object_x = np.random.uniform(low=0.2575, high=0.3625)
+        object_y = np.random.uniform(low=-0.458, high=0.458)
 
-        delta_x=basket_x-object_x
-        delta_y=basket_y-object_y
-        distance=np.sqrt(delta_x*delta_x+delta_y*delta_y)
-        while distance<0.15:
-            object_x=np.random.uniform(low=0.2575,high=0.3625)
-            object_y=np.random.uniform(low=-0.458,high=0.458)
+        delta_x = basket_x - object_x
+        delta_y = basket_y - object_y
+        distance = np.sqrt(delta_x * delta_x + delta_y * delta_y)
+        while distance < 0.15:
+            object_x = np.random.uniform(low=0.2575, high=0.3625)
+            object_y = np.random.uniform(low=-0.458, high=0.458)
 
-            delta_x=basket_x-object_x
-            delta_y=basket_y-object_y
-            distance=np.sqrt(delta_x*delta_x+delta_y*delta_y)
+            delta_x = basket_x - object_x
+            delta_y = basket_y - object_y
+            distance = np.sqrt(delta_x * delta_x + delta_y * delta_y)
 
-        object_pose=Pose(position=Point(x=object_x, y=object_y, z=0.8),orientation=Quaternion(x=0.0,y=0.0,z=0.0,w=1.0))
-        obj_msg=SetEntityState.Request()
+        object_pose = Pose(
+            position=Point(x=object_x, y=object_y, z=0.8),
+            orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0),
+        )
+        obj_msg = SetEntityState.Request()
 
-        obj_msg.state.name="object"
-        obj_msg.state.pose=object_pose
-        obj_msg.state.reference_frame="world"
-        
-        move_resp= await self.cli_set_state.call_async(obj_msg)
-        self.get_logger().debug(f'Moving object. Response: {move_resp.success}')
-        self.aprox_object=True #Aproximated Object Flag
+        obj_msg.state.name = "object"
+        obj_msg.state.pose = object_pose
+        obj_msg.state.reference_frame = "world"
+
+        move_resp = await self.cli_set_state.call_async(obj_msg)
+        self.get_logger().debug(f"Moving object. Response: {move_resp.success}")
+        self.aprox_object = True  # Aproximated Object Flag
 
     async def random_positions(self):
-        basket_x=np.random.uniform(low=0.25,high=0.35)
-        basket_y=np.random.uniform(low=-0.55,high=0.55)
+        """
+        This method randomly places the basket and the object so that
+        they are not coliding.
+        """
+        basket_x = np.random.uniform(low=0.25, high=0.35)
+        basket_y = np.random.uniform(low=-0.55, high=0.55)
 
-        object_x=np.random.uniform(low=0.1125,high=0.7375)
-        object_y=np.random.uniform(low=-0.7415,high=0.7415)
+        object_x = np.random.uniform(low=0.1125, high=0.7375)
+        object_y = np.random.uniform(low=-0.7415, high=0.7415)
 
-        delta_x=basket_x-object_x
-        delta_y=basket_y-object_y
-        distance=np.sqrt(delta_x*delta_x+delta_y*delta_y)
-        while distance<0.15:
-            object_x=np.random.uniform(low=0.1125,high=0.7375)
-            object_y=np.random.uniform(low=-0.7415,high=0.7415)
+        delta_x = basket_x - object_x
+        delta_y = basket_y - object_y
+        distance = np.sqrt(delta_x * delta_x + delta_y * delta_y)
+        while distance < 0.15:
+            object_x = np.random.uniform(low=0.1125, high=0.7375)
+            object_y = np.random.uniform(low=-0.7415, high=0.7415)
 
-            delta_x=basket_x-object_x
-            delta_y=basket_y-object_y
-            distance=np.sqrt(delta_x*delta_x+delta_y*delta_y)
-        
-        basket_pose=Pose(position=Point(x=basket_x,y=basket_y,z=0.8), orientation=Quaternion(x=0.0,y=0.0,z=0.0,w=1.0))
-        object_pose=Pose(position=Point(x=object_x,y=object_y,z=0.8), orientation=Quaternion(x=0.0,y=0.0,z=0.0,w=1.0))
+            delta_x = basket_x - object_x
+            delta_y = basket_y - object_y
+            distance = np.sqrt(delta_x * delta_x + delta_y * delta_y)
 
-        bskt_msg=SetEntityState.Request()
-        obj_msg=SetEntityState.Request()
+        basket_pose = Pose(
+            position=Point(x=basket_x, y=basket_y, z=0.8),
+            orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0),
+        )
+        object_pose = Pose(
+            position=Point(x=object_x, y=object_y, z=0.8),
+            orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0),
+        )
 
-        bskt_msg.state.name="basket"
-        bskt_msg.state.pose=basket_pose
-        bskt_msg.state.reference_frame="world"
+        bskt_msg = SetEntityState.Request()
+        obj_msg = SetEntityState.Request()
 
-        obj_msg.state.name="object"
-        obj_msg.state.pose=object_pose
-        obj_msg.state.reference_frame="world"
+        bskt_msg.state.name = "basket"
+        bskt_msg.state.pose = basket_pose
+        bskt_msg.state.reference_frame = "world"
 
-        move_resp=await self.cli_set_state.call_async(bskt_msg)
+        obj_msg.state.name = "object"
+        obj_msg.state.pose = object_pose
+        obj_msg.state.reference_frame = "world"
+
+        move_resp = await self.cli_set_state.call_async(bskt_msg)
         self.get_logger().debug(move_resp.success)
-        move_resp=await self.cli_set_state.call_async(obj_msg)
+        move_resp = await self.cli_set_state.call_async(obj_msg)
         self.get_logger().debug(move_resp.success)
 
     @staticmethod
     def cartesian_to_polar(point: Point):
-        distance=np.sqrt(point.x*point.x+point.y*point.y)
-        angle=np.arctan2(point.y, point.x)
+        """
+        Helper method that transforms a point (referenced to the base of the robot) to
+        a polar representation.
+
+        :param point: Point to be transformed
+        :type point: Point
+        :return: Tuple with the distance and angle values.
+        :rtype: tuple
+        """
+        distance = np.sqrt(point.x * point.x + point.y * point.y)
+        angle = np.arctan2(point.y, point.x)
         return distance, angle
+
 
 def main():
     rclpy.init()
@@ -521,15 +835,3 @@ def main():
         rclpy.spin(oscar_server)
     except KeyboardInterrupt:
         oscar_server.destroy_node()
-
-
-    
-
-
-
-
-
-
-
-        
-

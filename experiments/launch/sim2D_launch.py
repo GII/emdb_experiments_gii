@@ -35,8 +35,8 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
     )
 
     simulator_node = Node(
-        package="simulators",
-        executable="simulator_discrete",
+        package="sim_2d_emdb",
+        executable="simple_sim",
         output="screen",
         parameters=[
             {
@@ -98,7 +98,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "experiment_file",
-            default_value="default_experiment.yaml",
+            default_value="sim_2d_experiment.yaml",
             description="The file that loads the experiment config",
         )
     )

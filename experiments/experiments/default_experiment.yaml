@@ -10,7 +10,7 @@ Experiment:
 Control:
     id: ltm_simulator
     control_topic: /main_loop/control
-    control_msg: core_interfaces.msg.ControlMsg
+    control_msg: cognitive_processes_interfaces.msg.ControlMsg
     executed_policy_topic: /mdb/baxter/executed_policy
     executed_policy_msg: std_msgs.msg.String
 LTM:
@@ -44,56 +44,56 @@ LTM:
             default_class: cognitive_nodes.world_model.WorldModel
         -
             data: Policy
-            default_class: cognitive_nodes.policy.Policy
+            default_class: cognitive_nodes.policy.PolicyAsync
 
     Nodes:
 
         Policy:
             -
                 name: grasp_object
-                class_name: cognitive_nodes.policy.Policy
+                class_name: cognitive_nodes.policy.PolicyAsync
                 parameters:
                     publisher_msg: std_msgs.msg.String
                     publisher_topic: /mdb/baxter/executed_policy 
             -
                 name: grasp_with_two_hands
-                class_name: cognitive_nodes.policy.Policy
+                class_name: cognitive_nodes.policy.PolicyAsync
                 parameters:
                     publisher_msg: std_msgs.msg.String
                     publisher_topic: /mdb/baxter/executed_policy  
             -
                 name: change_hands
-                class_name: cognitive_nodes.policy.Policy
+                class_name: cognitive_nodes.policy.PolicyAsync
                 parameters:
                     publisher_msg: std_msgs.msg.String
                     publisher_topic: /mdb/baxter/executed_policy 
             -
                 name: sweep_object
-                class_name: cognitive_nodes.policy.Policy
+                class_name: cognitive_nodes.policy.PolicyAsync
                 parameters:
                     publisher_msg: std_msgs.msg.String
                     publisher_topic: /mdb/baxter/executed_policy 
             -
                 name: put_object_in_box
-                class_name: cognitive_nodes.policy.Policy
+                class_name: cognitive_nodes.policy.PolicyAsync
                 parameters:
                     publisher_msg: std_msgs.msg.String
                     publisher_topic: /mdb/baxter/executed_policy  
             -
                 name: put_object_with_robot
-                class_name: cognitive_nodes.policy.Policy
+                class_name: cognitive_nodes.policy.PolicyAsync
                 parameters:
                     publisher_msg: std_msgs.msg.String
                     publisher_topic: /mdb/baxter/executed_policy 
             -
                 name: throw
-                class_name: cognitive_nodes.policy.Policy
+                class_name: cognitive_nodes.policy.PolicyAsync
                 parameters:
                     publisher_msg: std_msgs.msg.String
                     publisher_topic: /mdb/baxter/executed_policy 
             -
                 name: ask_nicely
-                class_name: cognitive_nodes.policy.Policy
+                class_name: cognitive_nodes.policy.PolicyAsync
                 parameters:
                     publisher_msg: std_msgs.msg.String
                     publisher_topic: /mdb/baxter/executed_policy  
