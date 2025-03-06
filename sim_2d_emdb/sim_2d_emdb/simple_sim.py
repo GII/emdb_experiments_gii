@@ -14,7 +14,7 @@ from core.service_client import ServiceClient
 from core_interfaces.srv import LoadConfig
 from core.utils import class_from_classname, actuation_msg_to_dict
 
-from simulators.scenarios_2D import SimpleScenario
+from simulators.scenarios_2D import SimpleScenario, EntityType
 
 
 
@@ -54,7 +54,10 @@ class Sim2DSimple(Node):
         self.load_client=ServiceClient(LoadConfig, 'commander/load_experiment')
 
         #Simulator Instance
-        self.sim=SimpleScenario(visualize=visualize)
+        self.sim=SimpleScenario(visualize=visualize, logger=self.get_logger())
+        self.gripper_l=False
+        self.gripper_r=False
+        self.changed_grippers=False
 
     ##Methods that access the simulation
 
@@ -86,24 +89,76 @@ class Sim2DSimple(Node):
 
         #Drive input
         if self.sim.box1.contents:
-            if self.sim.box1.contents[0].name=="ball_1":
-                self.perceptions["ball_in_box"].data = 1.0
-            else:
-                self.perceptions["ball_in_box"].data = 0.0
+            self.perceptions["ball_in_box"].data = 1.0
+        else:
+            self.perceptions["ball_in_box"].data = 0.0
+        
+        self.get_logger().info(f"DEBUG - Objects in box= {[obj.name for obj in self.sim.box1.contents]}")
 
     def reset_world(self):
         self.sim.restart_scenario(self.rng)
+        self.gripper_l=False
+        self.gripper_r=False
 
     def execute_action(self, action):
         vel_l=action["left_arm"][0]["dist"]
         angle_l=action["left_arm"][0]["angle"]
-        gripper_l=action["left_arm"][0]["gripper"]
+        #gripper_l=action["left_arm"][0]["gripper"]
 
         vel_r=action["right_arm"][0]["dist"]
         angle_r=action["right_arm"][0]["angle"]
-        gripper_r=action["right_arm"][0]["gripper"]
+        #gripper_r=action["right_arm"][0]["gripper"]
 
-        self.sim.apply_action(angle_l, angle_r, vel_l, vel_r, gripper_l, gripper_r)
+        self.sim.apply_action(angle_l, angle_r, vel_l, vel_r, self.gripper_l, self.gripper_r)
+
+        #GRASP OBJECT IF GRIPPER IS CLOSE
+        grippers_close = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=50), EntityType.ROBOT)
+        self.get_logger().info(f"DEBUG - {[ent.name for ent in grippers_close]}")
+        if grippers_close and not self.changed_grippers: #If grippers are close, change hands
+            self.get_logger().info(f"DEBUG - Checking if changing grippers is possible")
+            #Ball in left gripper
+            if self.sim.robots[0].catched_object and not self.sim.robots[1].catched_object:
+                self.gripper_l=False
+                self.sim.apply_action(gripper_left=self.gripper_l, gripper_right=self.gripper_r)
+                self.gripper_r=True
+                self.sim.apply_action(gripper_left=self.gripper_l, gripper_right=self.gripper_r)
+                self.changed_grippers=True
+                self.get_logger().info(f"DEBUG - Change from left to right gripper")
+
+            #Ball in right gripper
+            if self.sim.robots[1].catched_object and not self.sim.robots[0].catched_object:
+                self.gripper_r=False
+                self.sim.apply_action(gripper_left=self.gripper_l, gripper_right=self.gripper_r)
+                self.gripper_l=True
+                self.sim.apply_action(gripper_left=self.gripper_l, gripper_right=self.gripper_r)
+                self.changed_grippers=True
+                self.get_logger().info(f"DEBUG - Change from right to left gripper")
+            
+        if not grippers_close: #Check if objects are close to the grippers
+            self.get_logger().info(f"DEBUG - Checking if objects are close to gripper")
+            self.changed_grippers=False
+            close_l_obj = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=50), EntityType.BALL)
+            close_r_obj = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[1], threshold=50), EntityType.BALL)
+            if close_l_obj:
+                self.get_logger().info(f"DEBUG - Objects {[obj.name for obj in close_l_obj]} detected close to left gripper")
+                self.gripper_l = True
+            if close_r_obj:
+                self.get_logger().info(f"DEBUG - Objects {[obj.name for obj in close_r_obj]} detected close to right gripper")
+                self.gripper_r = True
+        
+            #RELEASE OBJECT IF OVER BOX
+            left_over_box = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=50), EntityType.BOX)
+            right_over_box = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[1], threshold=50), EntityType.BOX)
+            if left_over_box:
+                self.get_logger().info(f"DEBUG - Boxes {[box.name for box in left_over_box]} detected close to left gripper")
+                self.gripper_l = False
+            if right_over_box:
+                self.get_logger().info(f"DEBUG - Boxes {[box.name for box in right_over_box]} detected close to right gripper")
+                self.gripper_r = False
+            
+            self.sim.apply_action(gripper_left=self.gripper_l, gripper_right=self.gripper_r)
+
+
         
 
     ##Callbacks for the world reset, action and perception services/topics

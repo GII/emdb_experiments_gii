@@ -7,6 +7,9 @@ Experiment:
         iterations: 60000
         trials: 500
         subgoals: False
+        softmax_selection: False
+        softmax_temperature: 0.3
+        kill_on_finish: True
 Control:
     id: ltm_simulator
     control_topic: /main_loop/control
@@ -23,14 +26,14 @@ LTM:
             id: goodness
             class: core.file.FileGoodness
             file: goodness.txt
-        -
-            id: pnodes_success
-            class: core.file.FilePNodesSuccess
-            file: pnodes_success.txt
-        -
-            id: pnodes_content
-            class: core.file.FilePNodesContent
-            file: pnodes_content.txt
+        # -
+        #     id: pnodes_success
+        #     class: core.file.FilePNodesSuccess
+        #     file: pnodes_success.txt
+        # -
+        #     id: pnodes_content
+        #     class: core.file.FilePNodesContent
+        #     file: pnodes_content.txt
         -
             id: trials
             class: core.file.FileTrialsSuccess
@@ -44,7 +47,7 @@ LTM:
             default_class: cognitive_nodes.perception.Perception
         -
             data: PNode
-            default_class: cognitive_nodes.pnode.PNode
+            default_class: dummy_nodes.dummy_pnodes.NonActivatedDummyPNode
         -
             data: CNode
             default_class: cognitive_nodes.cnode.CNode
@@ -72,8 +75,6 @@ LTM:
                                 angle:
                                     type: float
                                     bounds: [-90 , 90]
-                                gripper:
-                                    type: bool
                             right_arm:
                                 dist:
                                     type: float
@@ -81,8 +82,6 @@ LTM:
                                 angle:
                                     type: float
                                     bounds: [-90 , 90]
-                                gripper:
-                                    type: bool
                     perception_config:
                         ball:
                             x:
@@ -124,75 +123,6 @@ LTM:
                             angle:
                                 type: float
                                 bounds: [-180, 180]
-        Policy:
-            -
-                name: random_action
-                class_name: cognitive_nodes.novelty.PolicyRandomAction
-                parameters:
-                    service_msg: cognitive_node_interfaces.srv.Action
-                    service_name: /mdb/baxter/executed_action 
-                    actuation_config:
-                        left_arm:
-                            dist:
-                                type: float
-                                bounds: [0 , 60]
-                            angle:
-                                type: float
-                                bounds: [-90 , 90]
-                            gripper:
-                                type: bool
-                        right_arm:
-                            dist:
-                                type: float
-                                bounds: [0 , 60]
-                            angle:
-                                type: float
-                                bounds: [-90 , 90]
-                            gripper:
-                                type: bool
-                    perception_config:
-                        ball:
-                            x:
-                                type: float
-                                bounds: [100 , 2400]
-                            y:
-                                type: float
-                                bounds: [50 , 800]
-                        ball_in_left_hand:
-                            data:
-                                type: bool
-                        ball_in_right_hand:
-                            data:
-                                type: bool
-                        box:
-                            x:
-                                type: float
-                                bounds: [100 , 2400]
-                            y:
-                                type: float
-                                bounds: [50 , 800]
-                        left_arm:
-                            x:
-                                type: float
-                                bounds: [100 , 1250]
-                            y:
-                                type: float
-                                bounds: [50 , 800]
-                            angle:
-                                type: float
-                                bounds: [-180, 180]
-                        right_arm:
-                            x:
-                                type: float
-                                bounds: [1050 , 2400]
-                            y:
-                                type: float
-                                bounds: [50 , 800]
-                            angle:
-                                type: float
-                                bounds: [-180, 180]
-
-
 
 
         Perception:
@@ -302,7 +232,7 @@ LTM:
         PNode:
             -
                 name: novelty_pnode
-                class_name: dummy_nodes.activated_dummy_pnode.ActivatedDummyPNode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
                 parameters:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
         CNode:
@@ -310,7 +240,72 @@ LTM:
                 name: novelty_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}, {"name": "random_action", "node_type": "Policy"}]
+                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
+
+        Policy:
+            -
+                name: random_action
+                class_name: cognitive_nodes.novelty.PolicyRandomAction
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Action
+                    service_name: /mdb/baxter/executed_action 
+                    neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
+                    actuation_config:
+                        left_arm:
+                            dist:
+                                type: float
+                                bounds: [0 , 60]
+                            angle:
+                                type: float
+                                bounds: [-90 , 90]
+                        right_arm:
+                            dist:
+                                type: float
+                                bounds: [0 , 60]
+                            angle:
+                                type: float
+                                bounds: [-90 , 90]
+                    perception_config:
+                        ball:
+                            x:
+                                type: float
+                                bounds: [100 , 2400]
+                            y:
+                                type: float
+                                bounds: [50 , 800]
+                        ball_in_left_hand:
+                            data:
+                                type: bool
+                        ball_in_right_hand:
+                            data:
+                                type: bool
+                        box:
+                            x:
+                                type: float
+                                bounds: [100 , 2400]
+                            y:
+                                type: float
+                                bounds: [50 , 800]
+                        left_arm:
+                            x:
+                                type: float
+                                bounds: [100 , 1250]
+                            y:
+                                type: float
+                                bounds: [50 , 800]
+                            angle:
+                                type: float
+                                bounds: [-180, 180]
+                        right_arm:
+                            x:
+                                type: float
+                                bounds: [1050 , 2400]
+                            y:
+                                type: float
+                                bounds: [50 , 800]
+                            angle:
+                                type: float
+                                bounds: [-180, 180]
 
         
 

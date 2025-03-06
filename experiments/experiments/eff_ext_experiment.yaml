@@ -163,12 +163,12 @@ LTM:
         PNode:
             -
                 name: novelty_pnode
-                class_name: dummy_nodes.activated_dummy_pnode.ActivatedDummyPNode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
                 parameters:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
             -
                 name: external_effects_pnode
-                class_name: dummy_nodes.activated_dummy_pnode.ActivatedDummyPNode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
                 parameters:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
         CNode:
