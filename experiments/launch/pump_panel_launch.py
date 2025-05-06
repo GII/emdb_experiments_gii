@@ -37,7 +37,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
 
     simulator_node = Node(
         package="simulators",
-        executable="fruit_shop_simulator",
+        executable="pump_panel_simulator",
         output="screen",
         parameters=[
             {
@@ -106,7 +106,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "experiment_file",
-            default_value="fruit_shop_progress_experiment.yaml",
+            default_value="pump_panel_llm_experiment.yaml",
             description="The file that loads the experiment config",
         )
     )
