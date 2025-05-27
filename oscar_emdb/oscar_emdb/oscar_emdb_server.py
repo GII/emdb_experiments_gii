@@ -161,6 +161,8 @@ class OscarMDB(Node):
                     classname.replace("List", "")
                 )
                 self.perceptions[sid].data.append(self.base_messages[sid]())
+            elif "Float" in classname:
+                self.perceptions[sid].data = 0.0
             else:
                 self.perceptions[sid].data = False
             self.get_logger().info("I will publish to... " + str(topic))
@@ -182,17 +184,18 @@ class OscarMDB(Node):
         self.get_logger().info("Subscribing to... " + str(topic))
         self.create_subscription(message, topic, self.new_command_callback, 0)
         topic = simulation.get("executed_policy_topic")
-        service = simulation.get("executed_policy_service")
-        classname = simulation["executed_policy_msg"]
-        message = class_from_classname(classname)
+        service_policy = simulation.get("executed_policy_service")
+        service_world_reset = simulation.get("world_reset_service")
         if topic:
             self.get_logger().info("Subscribing to... " + str(topic))
             self.create_subscription(message, topic, self.policy_callback, 0)
-        if service:
-            self.get_logger().info("Creating server... " + str(service))
+        if service_policy:
+            self.get_logger().info("Creating server... " + str(service_policy))
+            classname = simulation["executed_policy_msg"]
+            message_policy_srv = class_from_classname(classname)
             self.create_service(
-                message,
-                service,
+                message_policy_srv,
+                service_policy,
                 self.policy_service,
                 callback_group=self.mdb_commands_cbg,
             )
@@ -204,6 +207,11 @@ class OscarMDB(Node):
                 self.publish_perceptions_callback,
                 0,
             )
+        if service_world_reset:
+            classname= simulation["executed_policy_msg"]
+            self.message_world_reset = class_from_classname(simulation["world_reset_msg"])
+            self.create_service(self.message_world_reset, service_world_reset, self.world_reset_service_callback, callback_group=self.mdb_commands_cbg)   
+        
 
     def load_experiment_file_in_commander(self):
         """
@@ -238,7 +246,7 @@ class OscarMDB(Node):
         await self.update_perceptions()
         await getattr(self, data.data + "_policy")()
         await self.update_perceptions()
-        await self.update_reward()
+        await self.update_reward_sensor()
         self.publish_perception_reward()
 
     async def policy_service(self, request, response):
@@ -256,10 +264,17 @@ class OscarMDB(Node):
         await self.update_perceptions()
         await getattr(self, request.policy + "_policy")()
         await self.update_perceptions()
-        await self.update_reward()
-        self.publish_reward()
+        self.update_reward_sensor()
+        self.publish_perceptions(self.perceptions)
+        # self.publish_reward()
         response.success = True
         return response
+    
+    async def world_reset_service_callback(self, request, response):
+        await self.reset_world()
+        response.success=True
+        return response
+
 
     async def reset_world(self):
         """
@@ -272,7 +287,7 @@ class OscarMDB(Node):
         # Go Home
         await self.init_oscar()
         await self.update_perceptions()
-        await self.update_reward()
+        self.update_reward_sensor()
 
     async def init_oscar(self):
         """
@@ -569,24 +584,15 @@ class OscarMDB(Node):
             if trials == 20:
                 return None
 
-    async def update_reward(self):
-        """
-        Method to calculate the reward value according to the current perceptions.
-        """
-        self.get_logger().info("Reading Reward....")
+    def update_reward_sensor(self):
+        """Update goal sensors' values."""
+        for sensor in self.perceptions:
+            reward_method = getattr(self, "reward_" + sensor, None)
+            if callable(reward_method):
+                reward_method()
 
-        # HACK Check rewards from highest value to lowest
-        self.reward = (
-            self.ball_in_box_reward()
-        )  # This is the only one that should be checked
-        if self.reward == 0:
-            self.reward = await self.switched_hands_reward()
-        if self.reward == 0:
-            self.reward = self.grasped_object_reward()
-        if self.reward == 0:
-            self.reward = self.approximated_object_reward()
-
-        self.get_logger().info(f"Reward obtained: {self.reward}")
+    def reward_ball_in_box_goal(self):
+        self.perceptions["ball_in_box_goal"].data = self.ball_in_box_reward()
 
     def ball_in_box_reward(self):
         """
@@ -602,9 +608,9 @@ class OscarMDB(Node):
         delta_y = abs(basket_y - object_y)
 
         if delta_x < 0.043 and delta_y < 0.043:
-            reward = 1
+            reward = 1.0
         else:
-            reward = 0
+            reward = 0.0
         return reward
 
     def approximated_object_reward(self):
