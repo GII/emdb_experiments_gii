@@ -19,7 +19,13 @@ from simulators.scenarios_2D import SimpleScenario, EntityType
 
 
 class Sim2DSimple(Node):
+    """
+    A simple 2D simulator for the e-MDB experiments.
+    """
     def __init__(self):
+        """
+        Initialize the 2D simulator node.
+        """
         super().__init__("sim_2d")
 
         # Setup parameters
@@ -62,6 +68,9 @@ class Sim2DSimple(Node):
     ##Methods that access the simulation
 
     def get_perceptions(self):
+        """
+        Get the current perceptions from the simulation and update the perception messages.
+        """
         left_arm=self.sim.baxter_left.get_pos()
         left_angle=self.sim.baxter_left.get_angle()
         right_arm=self.sim.baxter_right.get_pos()
@@ -96,11 +105,20 @@ class Sim2DSimple(Node):
         self.get_logger().info(f"DEBUG - Objects in box= {[obj.name for obj in self.sim.box1.contents]}")
 
     def reset_world(self):
+        """
+        Reset the world to a random state.
+        """
         self.sim.restart_scenario(self.rng)
         self.gripper_l=False
         self.gripper_r=False
 
     def execute_action(self, action):
+        """
+        Execute an action in the simulation.
+
+        :param action: The action to be executed.
+        :type action: dict
+        """
         vel_l=action["left_arm"][0]["dist"]
         angle_l=action["left_arm"][0]["angle"]
         #gripper_l=action["left_arm"][0]["gripper"]
@@ -164,15 +182,25 @@ class Sim2DSimple(Node):
     ##Callbacks for the world reset, action and perception services/topics
 
     def world_reset_service_callback(self, request, response):
+        """
+        Callback for the world reset service.
+
+        :param request: The message that contains the request to reset the world.
+        :type request: ROS msg defined in the config file Typically cognitive_processes_interfaces.srv.WorldReset.Request
+        :param response: Response of the world reset service.
+        :type response: ROS msg defined in the config file. Typically cognitive_processes_interfaces.srv.WorldReset.Response
+        :return: Response indicating the success of the world reset.
+        :rtype: ROS msg defined in the config file. Typically cognitive_processes_interfaces.srv.WorldReset.Response
+        """
         self.reset_world()
         response.success=True
         return response
 
     def new_command_callback(self, data):
         """
-        Process a command received
+        Process a command received.
 
-        :param data: The message that contais the command received
+        :param data: The message that contais the command received.
         :type data: ROS msg defined in setup_control_channel
         """
         self.get_logger().debug(f"Command received... ITERATION: {data.iteration}")
@@ -187,10 +215,12 @@ class Sim2DSimple(Node):
         """
         Execute a policy and publish new perceptions.
 
-        :param request: The message that contains the policy to execute
-        :type request: ROS srv defined in setup_control_channel
-        :param response: Response of the success of the execution of the action
-        :type response: ROS srv defined in setup_control_channel
+        :param request: The message that contains the policy to execute.
+        :type request: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Policy.Request
+        :param response: Response of the success of the execution of the action.
+        :type response: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Policy.Response
+        :return: Response indicating the success of the action execution.
+        :rtype: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Policy.Response
         """
         action=actuation_msg_to_dict(request.action)
         self.get_logger().info("Executing action " + str(action))
@@ -208,17 +238,18 @@ class Sim2DSimple(Node):
     ##TODO: REFACTOR THESE METHODS BELOW INTO A SINGLE CLASS 
 
     def load_experiment_file_in_commander(self):
+        """
+        Load the configuration file in the commander node.
+
+        :return: Response from the commander node indicating the success of the loading.
+        :rtype: core_interfaces.srv.LoadConfig.Response
+        """
         loaded = self.load_client.send_request(file = self.config_file)
         return loaded
 
     def load_configuration(self):
         """
         Load configuration from a file.
-
-        :param random_seed: The seed for the random numbers generation
-        :type random_seed: int
-        :param config_file: The file with the params to configurate the simulation
-        :type config_file: yaml file
         """
         if self.config_file is None:
             self.get_logger().error("No configuration file for the LTM simulator specified!")
@@ -248,7 +279,7 @@ class Sim2DSimple(Node):
         """
         Configure the ROS topic/service where listen for commands to be executed.
 
-        :param simulation: The params from the config file to setup the control channel
+        :param simulation: The params from the config file to setup the control channel.
         :type simulation: dict
         """
         self.ident = simulation["id"]
@@ -279,7 +310,7 @@ class Sim2DSimple(Node):
         """
         Configure the ROS publishers where publish perception values.
 
-        :param perceptions: The params from the config file to setup the perceptions
+        :param perceptions: The params from the config file to setup the perceptions.
         :type perceptions: dict
         """
         for perception in perceptions:

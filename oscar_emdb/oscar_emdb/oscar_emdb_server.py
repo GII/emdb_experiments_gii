@@ -35,6 +35,9 @@ class OscarMDB(Node):
     """
 
     def __init__(self):
+        """
+        Constructor of the OscarMDB class
+        """
         super().__init__("oscar_emdb_server")
 
         # Setup parameters
@@ -104,11 +107,6 @@ class OscarMDB(Node):
     def load_configuration(self):
         """
         Load configuration from a file.
-
-        :param random_seed: The seed for the random numbers generation
-        :type random_seed: int
-        :param config_file: The file with the params to configurate the simulation
-        :type config_file: yaml file
         """
 
         if self.config_file is None:
@@ -146,7 +144,7 @@ class OscarMDB(Node):
         This method creates publishers for each element of the perception list
         passed.
 
-        :param perceptions: List of perceptions
+        :param perceptions: List of perceptions.
         :type perceptions: list
         """
         for perception in perceptions:
@@ -172,9 +170,9 @@ class OscarMDB(Node):
 
     def setup_control_channel(self, simulation):
         """
-        Configure the ROS topic where listen for commands to be executed.
+        Configure the ROS topic/service where listen for commands to be executed.
 
-        :param simulation: The params from the config file to setup the control channel
+        :param simulation: The params from the config file to setup the control channel.
         :type simulation: dict
         """
         self.ident = simulation["id"]
@@ -215,7 +213,10 @@ class OscarMDB(Node):
 
     def load_experiment_file_in_commander(self):
         """
-        Calls the load config service in the commander node.
+        Load the configuration file in the commander node.
+
+        :return: Response from the commander node indicating the success of the loading.
+        :rtype: core_interfaces.srv.LoadConfig.Response
         """
         loaded = self.cli_mdb_commander.send_request(file=self.config_file)
         return loaded
@@ -224,8 +225,8 @@ class OscarMDB(Node):
         """
         Process a command received
 
-        :param data: The message that contais the command received
-        :type data: ROS msg defined in setup_control_channel
+        :param data: The message that contais the command received.
+        :type data: ROS msg defined in the config file. Typically cognitive_processes_interfaces.msg.ControlMsg
         """
         self.get_logger().debug(f"Command received... ITERATION: {data.iteration}")
         if data.command == "reset_world":
@@ -240,7 +241,7 @@ class OscarMDB(Node):
         published in a topic.
 
         :param data: Message with the name of the policy to be executed.
-        :type data: std_msgs.msg.String
+        :type data: ROS msg defined in the config file. 
         """
         self.get_logger().info(f"Executing {data.data} policy...")
         await self.update_perceptions()
@@ -253,11 +254,11 @@ class OscarMDB(Node):
         """
         Generic method that executes a policy according to a service request.
 
-        :param request: Message with the name of the policy to be executed
+        :param request: Message with the name of the policy to be executed.
         :type request: cognitive_node_interfaces.srv.Policy.Request
-        :param response: Message with execution success information
+        :param response: Message with execution success information.
         :type response: cognitive_node_interfaces.srv.Policy.Response
-        :return: Service Response
+        :return: Message with execution success information.
         :rtype: cognitive_node_interfaces.srv.Policy.Response
         """
         self.get_logger().info(f"Executing {request.policy} policy...")
@@ -271,6 +272,16 @@ class OscarMDB(Node):
         return response
     
     async def world_reset_service_callback(self, request, response):
+        """
+        Callback for the world reset service.
+
+        :param request: The message that contains the request to reset the world.
+        :type request: ROS msg defined in the config file Typically cognitive_processes_interfaces.srv.WorldReset.Request
+        :param response: Response of the world reset service.
+        :type response: ROS msg defined in the config file. Typically cognitive_processes_interfaces.srv.WorldReset.Response
+        :return: Response indicating the success of the world reset.
+        :rtype: ROS msg defined in the config file. Typically cognitive_processes_interfaces.srv.WorldReset.Response
+        """
         await self.reset_world()
         response.success=True
         return response
@@ -572,6 +583,9 @@ class OscarMDB(Node):
     async def update_perceptions(self):
         """
         This method requests the latest perceptions from the sensory system.
+
+        :return: None if the maximum number of trials is reached. 
+        :rtype: None
         """
         self.get_logger().info("Updating Perceptions...")
         self.old_perception = self.perception
@@ -585,18 +599,27 @@ class OscarMDB(Node):
                 return None
 
     def update_reward_sensor(self):
-        """Update goal sensors' values."""
+        """
+        Update goal sensors' values.
+        """
         for sensor in self.perceptions:
             reward_method = getattr(self, "reward_" + sensor, None)
             if callable(reward_method):
                 reward_method()
 
     def reward_ball_in_box_goal(self):
+        """
+        Updates the ball_in_box_goal sensor with the reward value.
+        If the object is in the basket, the reward is 1.0, otherwise 0.0
+        """
         self.perceptions["ball_in_box_goal"].data = self.ball_in_box_reward()
 
     def ball_in_box_reward(self):
         """
-        Checks if the object is in the basket. Returns a reward with value of 1, otherwise returns 0.
+        Checks if the object is in the basket. Returns a reward with value of 1.0, otherwise returns 0.0
+
+        :return: Reward value based on the position of the object relative to the basket.
+        :rtype: float
         """
         basket_x = self.perception.basket.x
         basket_y = self.perception.basket.y
@@ -616,6 +639,9 @@ class OscarMDB(Node):
     def approximated_object_reward(self):
         """
         Checks if the object was brought closer to the robot with the button. Returns a reward with value of 0.25, otherwise returns 0.
+
+        :return: Reward value based on whether the object was approximated.
+        :rtype: float
         """
         if self.aprox_object:  # Read flag set by bring_object_near
             reward = 0.25
@@ -628,6 +654,9 @@ class OscarMDB(Node):
     def grasped_object_reward(self):
         """
         Checks if the object was grasped. Returns a reward with value of 0.5, otherwise returns 0.
+
+        :return: Reward value based on whether the object was grasped.
+        :rtype: float
         """
         # Check if object_in_left_hand or object_in_right_hand went from False to True
         if (
@@ -649,6 +678,9 @@ class OscarMDB(Node):
     async def switched_hands_reward(self):
         """
         Checks if the object was switched to the correct arm when the original arm can't reach the basket. Returns a reward with value of 0.75, otherwise returns 0.
+
+        :return: Reward value based on whether the object was switched to the correct arm.
+        :rtype: float
         """
         place_point = self.perception.basket
         plan_right = await self.cli_right_arm.send_request_async(
@@ -690,7 +722,10 @@ class OscarMDB(Node):
 
     def publish_perceptions_callback(self, msg: PerceptionMsg):
         """
-        Method that published the current perceptions and the reward value in the appropriate topics.
+        Method that publishes the current perceptions and the reward value in the appropriate topics.
+
+        :param msg: Perception message with the latest perceptions.
+        :type msg: cognitive_processes_interfaces.msg.Perception
         """
         self.get_logger().debug("DEBUG - Publishing perceptions")
         # Convert perceptions to distance, angle
@@ -823,7 +858,7 @@ class OscarMDB(Node):
         a polar representation.
 
         :param point: Point to be transformed
-        :type point: Point
+        :type point: geometry_msgs.msg.Point
         :return: Tuple with the distance and angle values.
         :rtype: tuple
         """

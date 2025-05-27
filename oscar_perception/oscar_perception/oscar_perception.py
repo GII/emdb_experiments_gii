@@ -33,6 +33,9 @@ class OscarPerception(Node):
     """
 
     def __init__(self):
+        """
+        Initializes the OSCAR perception node.
+        """
         super().__init__("oscar_perception")
 
         # Callback groups
@@ -93,7 +96,7 @@ class OscarPerception(Node):
 
     def image_process_callback(self, msg):
         """
-        Callback that reads raw images and transforms them to a numpy array
+        Callback that reads raw images and transforms them to a numpy array.
 
         :param msg: Raw image message.
         :type msg: sensor_msgs.msg.Image
@@ -109,9 +112,9 @@ class OscarPerception(Node):
         Callback that reads the data from gripper controllers and calculates
         position error.
 
-        :param msg: State of the gripper controllers
-        :type msg: JointTrajectoryControllerState
-        :param arm: Selects the arm that corresponds to the data
+        :param msg: State of the gripper controllers.
+        :type msg: control_msgs.msg.JointTrajectoryControllerState
+        :param arm: Selects the arm that corresponds to the data.
         :type arm: str
         """
         self.gripper_semaphore.acquire()
@@ -124,10 +127,10 @@ class OscarPerception(Node):
         """
         Service callback that provides the latest processed perceptions.
 
-        :param response: Message with the position of the objects and state of the grippers
-        :type response: emdb_interfaces.srv.Perception.Response
-        :return: _description_
-        :rtype: emdb_interfaces.srv.Perception.Response
+        :param response: Message with the position of the objects and state of the grippers.
+        :type response: oscar_emdb_interfaces.srv.Perception.Response
+        :return: Message with the position of the objects and state of the grippers.
+        :rtype: oscar_emdb_interfaces.srv.Perception.Response
         """
         self.get_logger().info("Processing perception...")
         found, obj, bskt, left, right = self.process_perception()
@@ -142,12 +145,7 @@ class OscarPerception(Node):
 
     def perception_publication(self):
         """
-        Service callback that provides the latest processed perceptions.
-
-        :param response: Message with the position of the objects and state of the grippers
-        :type response: emdb_interfaces.srv.Perception.Response
-        :return: _description_
-        :rtype: emdb_interfaces.srv.Perception.Response
+        Periodic publication of the processed perceptions.
         """
 
         self.get_logger().debug("DEBUG - Publishing redescribed sensors")
@@ -170,7 +168,7 @@ class OscarPerception(Node):
 
     def process_perception(self):
         """
-        Periodic publication of the processed perceptions.
+        Processes the latest perception data from the camera and grippers.
 
         :return: Tuple with the position of the objects and state of the grippers. If objects were properly segmented, the flag 'found' is set to True.
         :rtype: tuple
@@ -337,17 +335,17 @@ class OscarPerception(Node):
         self, rgb_img, r_limits=(0, 255), g_limits=(0, 255), b_limits=(0, 255)
     ):
         """
-        Color segmentation according to RGB limits
+        Color segmentation according to RGB limits.
 
         :param rgb_img: Raw image in R8G8B8 format.
         :type rgb_img: np.ndarray
-        :param r_limits: Tuple with low, high limits for red channel, defaults to (0, 255)
+        :param r_limits: Tuple with low, high limits for red channel.
         :type r_limits: tuple
-        :param g_limits: Tuple with low, high limits for green channel, defaults to (0, 255)
+        :param g_limits: Tuple with low, high limits for green channel.
         :type g_limits: tuple
-        :param b_limits: Tuple with low, high limits for blue channel, defaults to (0, 255)
+        :param b_limits: Tuple with low, high limits for blue channel.
         :type b_limits: tuple
-        :return: Binary image
+        :return: Binary image.
         :rtype: np.ndarray
         """
 
@@ -367,7 +365,7 @@ class OscarPerception(Node):
 
     def color_segment_hsv(self, hsv_img, h_limits, s_limits, v_limits):
         """
-        Color segmentation in the HSV space
+        Color segmentation in the HSV space.
 
         :param hsv_img: Image in OpenCV HSV format.
         :type hsv_img: np.ndarray
@@ -377,7 +375,7 @@ class OscarPerception(Node):
         :type s_limits: tuple
         :param v_limits: Tuple with low, high values for the value channel.
         :type v_limits: tuple
-        :return: Binary image
+        :return: Binary image.
         :rtype: np.ndarray
         """
         h_limits = ((h_limits / 2).astype(int)).tolist()
@@ -406,12 +404,12 @@ class OscarPerception(Node):
         """
         Finds the centroid of an object in a binary image.
 
-        :param img_bin: Binary image
+        :param img_bin: Binary image.
         :type img_bin: np.ndarray
-        :param info_string: Name of the object (for logging purposes only)
+        :param info_string: Name of the object (for logging purposes only).
         :type info_string: str
-        :return: Tuple with: Success Flag, (pixel height, pixel width)
-        :rtype: Tuple
+        :return: Tuple with: Success Flag, (pixel height, pixel width).
+        :rtype: tuple
         """
 
         label_image = label(img_bin)
