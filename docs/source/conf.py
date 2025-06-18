@@ -6,24 +6,7 @@
 import sys
 import os
 
-# Set up mock imports BEFORE adding paths
-import unittest.mock
-import importlib.util
-
-# Create mocks for problematic modules
-MOCK_MODULES = [
-    "rclpy", "std_msgs", "tensorflow", "core_interfaces", 
-    "cognitive_node_interfaces", "cognitive_nodes", "oscar_interfaces",
-    "oscar_emdb_interfaces", "core", "yamlloader", "simulators",
-    "ros2_numpy", "cv_bridge", "cv2", "cameratransform", "gazebo_msgs", 
-    "skimage", "core.service_client", "core.utils", "simulators.scenarios_2D",
-    "tensorflow.keras", "tensorflow.keras.models", "tensorflow.keras.layers"
-]
-
-for mod_name in MOCK_MODULES:
-    sys.modules[mod_name] = unittest.mock.MagicMock()
-
-# Now add paths to find the actual modules we want to document
+# Add all necessary paths for documentation
 sys.path.insert(0, os.path.abspath("../.."))  # Root of the project
 sys.path.insert(0, os.path.abspath("../../oscar_emdb"))
 sys.path.insert(0, os.path.abspath("../../oscar_perception"))
@@ -52,8 +35,26 @@ extensions = [
 templates_path = ["_templates"]
 exclude_patterns = []
 
-# These are still needed for autodoc itself
-autodoc_mock_imports = MOCK_MODULES
+# Mock modules that might not be available during documentation build
+autodoc_mock_imports = [
+    "rclpy",
+    "std_msgs",
+    "tensorflow",
+    "core_interfaces",
+    "cognitive_node_interfaces",
+    "cognitive_nodes",
+    "oscar_interfaces",
+    "oscar_emdb_interfaces",
+    "core",
+    "yamlloader",
+    "simulators",
+    "ros2_numpy",
+    "cv_bridge",
+    "cv2", 
+    "cameratransform",
+    "gazebo_msgs",
+    "skimage"
+]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
