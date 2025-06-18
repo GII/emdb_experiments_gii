@@ -6,7 +6,12 @@
 import sys
 import os
 
+# Add all necessary paths for documentation
+sys.path.insert(0, os.path.abspath("../.."))  # Root of the project
 sys.path.insert(0, os.path.abspath("../../oscar_emdb"))
+sys.path.insert(0, os.path.abspath("../../oscar_perception"))
+sys.path.insert(0, os.path.abspath("../../sim_2d_emdb"))
+sys.path.insert(0, os.path.abspath("../../sim_2d_emdb/sim_2d_emdb"))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -30,14 +35,25 @@ extensions = [
 templates_path = ["_templates"]
 exclude_patterns = []
 
+# Mock modules that might not be available during documentation build
 autodoc_mock_imports = [
     "rclpy",
     "std_msgs",
+    "tensorflow",
     "core_interfaces",
     "cognitive_node_interfaces",
     "cognitive_nodes",
     "oscar_interfaces",
-    "oscar_emdb_interfaces"
+    "oscar_emdb_interfaces",
+    "core",
+    "yamlloader",
+    "simulators",
+    "ros2_numpy",
+    "cv_bridge",
+    "cv2", 
+    "cameratransform",
+    "gazebo_msgs",
+    "skimage"
 ]
 
 # -- Options for HTML output -------------------------------------------------

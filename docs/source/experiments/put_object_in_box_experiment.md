@@ -1,19 +1,25 @@
-# OSCAR Experiment
+# PutObjectInBox Experiment
 
-This experiment is the [PutObjectInBox experiment](put_object_in_box_experiment.md) implemented in the OSCAR robot in the Gazebo simulator. 
+This experiment uses a Discrete Event Simulator that simulates, without physics, the Baxter robot, which has two arms. 
 
-Remembering, the task consists in placing a cylinder in a box. These elements are placed in random positions and may be out of reach of the robot.
+The task consists in placing a cylinder in a box. These elements are placed in random positions and may be out of reach of the robot.
+
 
 <div style="width:100%; margin:auto; text-align:center;">
 
-![OSCAR robot](images/OSCAR.png)
+![Baxter robot](images/P1030749-2.png)
 
-*OSCAR robot*
+*Baxter robot*
 </div>
 
 ## Experiment description
 
-As in the PutObjectInBox experiment, this experiment tests the behavior of the Long-Term Memory (LTM) of the architecture. There is a single World Model (GripperAndLowFriction), and no Desires (Needs & Missions) nor Drives are used.
+In this experiment is tested the behavior of the Long-Term Memory (LTM), without any motivational system. There are no Desires (Needs & Missions) and Drives, and the Policies, Goal, and World Model are defined in the beginning. The objective is to create the corresponding P-Nodes and C-Nodes, which allow the simulated robot to achieve the Goal effectively, choosing the correct Policy in each situation.
+
+The World Model node, called GripperAndLowFriction, defines the behavior of the simulator, but it hasn't effect on the operation of the cognitive architecture, because it 
+acts as a dummy node that always has 1.0 activation. That is, changing the WorldModel affects the behavior of the simulated environment and, therefore, the effect of the policies in it, but without a direct influence on the cognitive architecture.
+
+The Goal node, called ObjectInBoxStandalone, consists on introducing a cylinder into a box correctly. It can give several values of reward: 0.2 if the policy executed slightly approached the robot to the final objective of putting the cylinder in the box; 0.3 or 0.6 if the robot approached to it more closely; or 1.0 if the robot reached the objective. This node, as the World Model, has always 1.0 activation.
 
 The perceptions received by the cognitive architecture are the following ones:
 
@@ -40,9 +46,7 @@ The policies that the robot can use to solve the task are the following ones:
 - **Put object in box:** Place an object in a receptacle.
 - **Throw:** Throw an object to a position.
 
-The goal node ObjectInBoxStandalone provides reward for placing the cylinder inside the box. Partial rewards are given as the robot nears the final objective: 0.25 for approaching the cylinder with the button, 0.5 for grasping the cylinder, 0.75 for changing the cylinder to the appropriate hand and 1.0 for placing the cylinder in the box.    
-
-A P-Node and C-Node pair is created each time a reward is obtained. Thus, at the end of the experiment, seven pairs should be created, one per Policy, except *Put object with robot*, which doesn't lead to any reward.
+During the execution of the experiment, a P-Node and C-Node pair is created each time a reward is obtained. Thus, at the end of the experiment, seven pairs should be created, one per Policy, except *Put object with robot*, which doesn't lead to any reward.
 
 We will have this structure for each Policy:
 
@@ -57,21 +61,13 @@ So, as we can see, the Policies activation depends exclusively on their P-Nodes 
 
 ## Execution
 
-To execute this experiment, the OSCAR simulator must be installed. The instructions can be found [here](https://github.com/efallash/oscar/tree/humble_gazebo_classic).
-
-Once installed, to run the experiment, first the OSCAR simulator must be launched:
+The experiment is launched using the following command:
 
 ```bash
-ros2 launch oscar_bringup oscar_table_launch.py
+ros2 launch experiments put_object_in_box_launch.py
 ```
 
-Afterwards, the experiment can be launched:
-
-```bash
-ros2 launch experiments oscar_launch.py
-```
-
-This experiment is configured through the **oscar_experiment.yaml** file, which you can find in the *experiments* package of this repository.
+This experiment is configured through the **put_object_in_box.yaml** file, which you can find in the *experiments* package of this repository.
 
 Once executed, it is possible to see the logs in the terminal, being able to follow the behavior of the experiment in real time.
 
@@ -85,9 +81,11 @@ In the first one, it is possible to observe important information, such as the p
 tail -f goodness.txt
 ```
 
-| Iteration | Goal More documentation addedt_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 0.2    | press_button          | True              | 6       |
-| 1416      | object_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 0.5    | grasp_right           | True              | 6       |
-| 1417      | object_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 1.0    | place_object_right    | True              | 6       |
+| Iteration | Goal                     | World                     | Reward | Policy                | Sensorial changes | C-nodes |
+|-----------|--------------------------|---------------------------|--------|-----------------------|-------------------|---------|
+| 1416      | object_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 0.3    | sweep_object          | True              | 7       |
+| 1417      | object_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 0.6    | grasp_with_two_hands  | True              | 7       |
+| 1418      | object_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 1.0    | put_object_in_box     | True              | 7       |
 
 In the second file, it's possible to see an activation historical of the P-Nodes and if it was a point (True) or an anti-point (False).
 
@@ -103,7 +101,7 @@ python3 ~/eMDB_ws/src/wp5_gii/emdb_core/core/scripts/generate_grouped_success_st
 To use these scripts it's necessary to have installed **python-magic 0.4.27** dependency.
 ```
 
-By plotting the data of these final files, it is possible to obtain a visual interpretation of the learning of the cognitive architecture.  -->
+By plotting the data of these final files, it is possible to obtain a visual interpretation of the learning of the cognitive architecture. -->
 
 
 
