@@ -38,7 +38,7 @@ exclude_patterns = []
 # Mock modules that might not be available during documentation build
 autodoc_mock_imports = [
     "rclpy",
-    "std_msgs",
+    "std_msgs", 
     "tensorflow",
     "core_interfaces",
     "cognitive_node_interfaces",
@@ -53,7 +53,24 @@ autodoc_mock_imports = [
     "cv2", 
     "cameratransform",
     "gazebo_msgs",
-    "skimage"
+    "skimage",
+    "numpy",
+    "threading",
+    "rcl_interfaces",
+    "sensor_msgs",
+    "control_msgs",
+    "trajectory_msgs",
+    "geometry_msgs",
+    "yaml",
+    "os",
+    "enum",
+    "rclpy.node",
+    "rclpy.callback_groups",
+    "rclpy.executors",
+    "rclpy.task",
+    "rclpy.logging",
+    "rclpy.action",
+    "simulators.scenarios_2D"
 ]
 
 # -- Options for HTML output -------------------------------------------------
