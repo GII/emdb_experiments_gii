@@ -4,8 +4,8 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 60000
-        trials: 500
+        iterations: 15000
+        trials: 50
         subgoals: False
         softmax_selection: False
         softmax_temperature: 0.3
@@ -15,7 +15,7 @@ Control:
     control_topic: /main_loop/control
     control_msg: cognitive_processes_interfaces.msg.ControlMsg
     episodes_topic: /main_loop/episodes
-    episodes_msg: cognitive_processes_interfaces.msg.Episode
+    episodes_msg: cognitive_node_interfaces.msg.Episode
     executed_action_service: /mdb/baxter/executed_action
     executed_action_msg: cognitive_node_interfaces.srv.Action
     world_reset_service: /mdb/baxter/world_reset
@@ -65,64 +65,10 @@ LTM:
         WorldModel:
             -
                 name: GRIPPER_AND_LOW_FRICTION
-                class_name: cognitive_nodes.world_model.Sim2DWorldModel
+                class_name: cognitive_nodes.world_model.WorldModelLearned
                 parameters:
-                    actuation_config:
-                            left_arm:
-                                dist:
-                                    type: float
-                                    bounds: [0 , 60]
-                                angle:
-                                    type: float
-                                    bounds: [-90 , 90]
-                            right_arm:
-                                dist:
-                                    type: float
-                                    bounds: [0 , 60]
-                                angle:
-                                    type: float
-                                    bounds: [-90 , 90]
-                    perception_config:
-                        ball:
-                            x:
-                                type: float
-                                bounds: [100 , 2400]
-                            y:
-                                type: float
-                                bounds: [50 , 800]
-                        ball_in_left_hand:
-                            data:
-                                type: bool
-                        ball_in_right_hand:
-                            data:
-                                type: bool
-                        box:
-                            x:
-                                type: float
-                                bounds: [100 , 2400]
-                            y:
-                                type: float
-                                bounds: [50 , 800]
-                        left_arm:
-                            x:
-                                type: float
-                                bounds: [100 , 1250]
-                            y:
-                                type: float
-                                bounds: [50 , 800]
-                            angle:
-                                type: float
-                                bounds: [-180, 180]
-                        right_arm:
-                            x:
-                                type: float
-                                bounds: [1050 , 2400]
-                            y:
-                                type: float
-                                bounds: [50 , 800]
-                            angle:
-                                type: float
-                                bounds: [-180, 180]
+                    episodes_topic: /main_loop/episodes
+                    prediction_srv_type: cognitive_node_interfaces.srv.Predict
 
 
         Perception:

@@ -15,7 +15,7 @@ Control:
     control_topic: /main_loop/control
     control_msg: cognitive_processes_interfaces.msg.ControlMsg
     episodes_topic: /main_loop/episodes
-    episodes_msg: cognitive_processes_interfaces.msg.Episode
+    episodes_msg: cognitive_node_interfaces.msg.Episode
     executed_policy_service: /mdb/oscar/executed_policy
     executed_policy_msg: cognitive_node_interfaces.srv.Policy
     world_reset_service: /emdb/simulator/world_reset
@@ -164,7 +164,7 @@ LTM:
                 class_name: cognitive_nodes.effectance.DriveEffectanceExternal
                 parameters:
                     episodes_topic: /main_loop/episodes
-                    episodes_msg: cognitive_processes_interfaces.msg.Episode
+                    episodes_msg: cognitive_node_interfaces.msg.Episode
                     neighbors: [{"name": "external_effects_need", "node_type": "Need"}]
             -
                 name: prospection_drive

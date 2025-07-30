@@ -102,7 +102,7 @@ class Sim2DSimple(Node):
         else:
             self.perceptions["ball_in_box"].data = 0.0
         
-        self.get_logger().info(f"DEBUG - Objects in box= {[obj.name for obj in self.sim.box1.contents]}")
+        self.get_logger().debug(f"DEBUG - Objects in box= {[obj.name for obj in self.sim.box1.contents]}")
 
     def reset_world(self):
         """
