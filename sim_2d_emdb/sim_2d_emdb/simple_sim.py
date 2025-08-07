@@ -6,6 +6,7 @@ import yaml
 import yamlloader
 import numpy
 import rclpy
+from copy import deepcopy
 from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rcl_interfaces.msg import ParameterDescriptor
@@ -112,6 +113,26 @@ class Sim2DSimple(Node):
         self.gripper_l=False
         self.gripper_r=False
 
+    def denormalize_actuation(self, actuation, actuation_config):
+        """
+        Denormalizes the actuation values.
+
+        :param actuation: Actuation values to denormalize.
+        :type actuation: dict
+        :param actuation_config: Actuation configuration.
+        :type actuation_config: dict
+        :return: Denormalized actuation.
+        :rtype: dict
+        """        
+        act=deepcopy(actuation)
+        for actuator in act:
+            for param in act[actuator][0]:
+                if actuation_config[actuator][param]["type"]=="float":
+                    bounds=actuation_config[actuator][param]["bounds"]
+                    value=act[actuator][0][param]
+                    act[actuator][0][param]=bounds[0]+(value*(bounds[1]-bounds[0]))
+        return act
+
     def execute_action(self, action):
         """
         Execute an action in the simulation.
@@ -119,6 +140,9 @@ class Sim2DSimple(Node):
         :param action: The action to be executed.
         :type action: dict
         """
+
+        action = self.denormalize_actuation(action, self.actuation_config)
+
         vel_l=action["left_arm"][0]["dist"]
         angle_l=action["left_arm"][0]["angle"]
         #gripper_l=action["left_arm"][0]["gripper"]
@@ -246,7 +270,7 @@ class Sim2DSimple(Node):
         """
         loaded = self.load_client.send_request(file = self.config_file)
         return loaded
-
+ 
     def load_configuration(self):
         """
         Load configuration from a file.
@@ -265,6 +289,7 @@ class Sim2DSimple(Node):
                     Loader=yamlloader.ordereddict.CLoader,
                 )
                 self.setup_perceptions(config["SimulatedBaxter"]["Perceptions"])
+                self.actuation_config = config["SimulatedBaxter"]["Actuation"]
                 # Be ware, we can not subscribe to control channel before creating all sensor publishers.
                 self.setup_control_channel(config["Control"])
         if self.random_seed:
