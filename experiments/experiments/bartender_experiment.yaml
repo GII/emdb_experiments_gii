@@ -144,6 +144,13 @@ LTM:
                         diameter_min: 0.0
                         diameter_max: 0.15
                         n_states: 3
+            - 
+                name: last_bottle
+                class_name: cognitive_nodes.perception.FruitShopPerception
+                parameters:
+                    default_msg: std_msgs.msg.Int8
+                    default_topic: /emdb/simulator/sensor/last_bottle
+                
         WorldModel:
             -
                 name: FRUIT_SHOP
@@ -422,6 +429,14 @@ DiscreteEventSimulator:
             name: last_bottle
             perception_topic: /emdb/simulator/sensor/last_bottle
             perception_msg: std_msgs.msg.Int8
+        -
+            name: bottles
+            perception_topic: /emdb/simulator/sensor/bottles
+            perception_msg: simulators_interfaces.msg.BottleListMsg
+        -
+            name: glass
+            perception_topic: /emdb/simulator/sensor/glass
+            perception_msg: simulators_interfaces.msg.BottleListMsg
 
     Stages:
         stage0: 1000
