@@ -136,21 +136,19 @@ LTM:
                 parameters:
                     default_msg: std_msgs.msg.Int8
                     default_topic: /emdb/simulator/sensor/client
-                    normalize_data:
-                        distance_min: 0.2
-                        distance_max: 1.9
-                        angle_min: -1.4
-                        angle_max: 1.4
-                        diameter_min: 0.0
-                        diameter_max: 0.15
-                        n_states: 3
             - 
                 name: last_bottle
                 class_name: cognitive_nodes.perception.FruitShopPerception
                 parameters:
                     default_msg: std_msgs.msg.Int8
                     default_topic: /emdb/simulator/sensor/last_bottle
-                
+
+            - name: robot_position
+              class_name: cognitive_nodes.perception.FruitShopPerception
+              parameters:
+                  default_msg: std_msgs.msg.Bool
+                  default_topic: /emdb/simulator/sensor/robot_position
+
         WorldModel:
             -
                 name: FRUIT_SHOP
@@ -316,13 +314,37 @@ LTM:
                     service_msg: cognitive_node_interfaces.srv.Policy
                     service_name: /emdb/simulator/executed_policy
             -
-                name: place_fruit
+                name: pick_glass
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: pick_bottle
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: place_object
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: prepare_drink
                 class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
                     service_msg: cognitive_node_interfaces.srv.Policy
                     service_name: /emdb/simulator/executed_policy
             -
                 name: change_hands
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: move_to
                 class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
                     service_msg: cognitive_node_interfaces.srv.Policy
@@ -437,6 +459,18 @@ DiscreteEventSimulator:
             name: glass
             perception_topic: /emdb/simulator/sensor/glass
             perception_msg: simulators_interfaces.msg.BottleListMsg
+        -
+            name: glass_in_left_hand
+            perception_topic: /emdb/simulator/sensor/glass_in_left_hand
+            perception_msg: std_msgs.msg.Bool
+        -
+            name: bottle_in_right_hand
+            perception_topic: /emdb/simulator/sensor/bottle_in_right_hand
+            perception_msg: std_msgs.msg.Bool
+        -
+            name: robot_position
+            perception_topic: /emdb/simulator/sensor/robot_position
+            perception_msg: std_msgs.msg.Bool
 
     Stages:
         stage0: 1000
