@@ -6,7 +6,6 @@ Experiment:
     parameters: 
         iterations: 6000
         trials: 50
-        subgoals: False
 Control:
     id: ltm_simulator
     control_topic: /main_loop/control

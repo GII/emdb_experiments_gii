@@ -6,7 +6,6 @@ Experiment:
     parameters: 
         iterations: 10000
         trials: 20
-        subgoals: False
         softmax_selection: True
         softmax_temperature: 0.3
         kill_on_finish: True

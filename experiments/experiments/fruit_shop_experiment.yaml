@@ -2,11 +2,10 @@ Experiment:
     name: main_loop
     class_name: cognitive_processes.main_loop.MainLoop
     new_executor: True
-    threads: 2
+    threads: 1
     parameters: 
         iterations: 10000
         trials: 20
-        subgoals: False
         softmax_selection: True
         softmax_temperature: 0.3
         kill_on_finish: True
