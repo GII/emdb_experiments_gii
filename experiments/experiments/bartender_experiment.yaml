@@ -85,21 +85,21 @@ LTM:
         Perception:
             -
                 name: client
-                class_name: cognitive_nodes.perception.FruitShopPerception
+                class_name: cognitive_nodes.perception.BartenderPerception
                 parameters:
                     default_msg: std_msgs.msg.Int8
                     default_topic: /emdb/simulator/sensor/client
             - 
                 name: last_bottle
-                class_name: cognitive_nodes.perception.FruitShopPerception
+                class_name: cognitive_nodes.perception.BartenderPerception
                 parameters:
                     default_msg: std_msgs.msg.Int8
                     default_topic: /emdb/simulator/sensor/last_bottle
             - 
                 name: robot_position
-                class_name: cognitive_nodes.perception.FruitShopPerception
+                class_name: cognitive_nodes.perception.BartenderPerception
                 parameters:
-                    default_msg: std_msgs.msg.Bool
+                    default_msg: std_msgs.msg.Int8
                     default_topic: /emdb/simulator/sensor/robot_position
             -   
                 name: glass
@@ -117,6 +117,23 @@ LTM:
                         dim_min: 0.03
                         dim_max: 0.1
                         n_states: 2
+            -   
+                name: bottles
+                class_name: cognitive_nodes.perception.BartenderPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.BottleListMsg
+                    default_topic: /emdb/simulator/sensor/bottles
+                    normalize_data:
+                        distance_min: 0.2
+                        distance_max: 1.9
+                        angle_min: -1.4
+                        angle_max: 1.4
+                        diameter_min: 0.0
+                        diameter_max: 0.15
+                        dim_min: 0.03
+                        dim_max: 0.1
+                        n_states: 2
+                        n_ids: 3
             -
                 name: glass_in_left_hand
                 class_name: cognitive_nodes.perception.FruitShopPerception
@@ -391,7 +408,7 @@ DiscreteEventSimulator:
         -
             name: robot_position
             perception_topic: /emdb/simulator/sensor/robot_position
-            perception_msg: std_msgs.msg.Bool
+            perception_msg: std_msgs.msg.Int8
         -   
             name: left_the_glass_goal
             perception_topic: /emdb/simulator/sensor/left_the_glass_goal
