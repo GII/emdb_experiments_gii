@@ -4,7 +4,7 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 20
+        iterations: 200
         trials: 20
         subgoals: False
         softmax_selection: True
@@ -136,20 +136,20 @@ LTM:
                         n_ids: 3
             -
                 name: glass_in_left_hand
-                class_name: cognitive_nodes.perception.FruitShopPerception
+                class_name: cognitive_nodes.perception.BartenderPerception
                 parameters:
                     default_msg: std_msgs.msg.Bool
                     default_topic: /emdb/simulator/sensor/glass_in_left_hand
             - 
                 name: bottle_in_right_hand
-                class_name: cognitive_nodes.perception.FruitShopPerception
+                class_name: cognitive_nodes.perception.BartenderPerception
                 parameters:
                     default_msg: std_msgs.msg.Bool
                     default_topic: /emdb/simulator/sensor/bottle_in_right_hand
 
         WorldModel:
             -
-                name: FRUIT_SHOP
+                name: BARTENDER
                 class_name: cognitive_nodes.world_model.WorldModel
         Need: 
             -
@@ -287,22 +287,22 @@ LTM:
                 name: novelty_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
+                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "BARTENDER", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
             -
                 name: effectance_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "effectance_pnode", "node_type": "PNode"}]
+                    neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "BARTENDER", "node_type": "WorldModel"}, {"name": "effectance_pnode", "node_type": "PNode"}]
             -
                 name: external_effects_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "external_effects_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "external_effects_pnode", "node_type": "PNode"}]
+                    neighbors: [{"name": "external_effects_goal", "node_type": "Goal"}, {"name": "BARTENDER", "node_type": "WorldModel"}, {"name": "external_effects_pnode", "node_type": "PNode"}]
             -
                 name: prospection_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "prospection_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "prospection_pnode", "node_type": "PNode"}]
+                    neighbors: [{"name": "prospection_goal", "node_type": "Goal"}, {"name": "BARTENDER", "node_type": "WorldModel"}, {"name": "prospection_pnode", "node_type": "PNode"}]
 
         Policy:
             -
@@ -337,7 +337,7 @@ LTM:
                     service_name: /emdb/simulator/executed_policy 
             -
                 name: ask_nicely
-                class_name: cognitive_nodes.policy.PolicyBlocking
+                class_name: bartender_experiment.policy.BartenderClientPolicy
                 parameters:
                     service_msg: cognitive_node_interfaces.srv.Policy
                     service_name: /emdb/simulator/executed_policy
