@@ -1,5 +1,5 @@
 from cognitive_nodes.policy import Policy
-from core.utils import perception_dict_to_msg, class_from_classname
+from core.utils import perception_dict_to_msg, class_from_classname, perception_msg_to_dict
 from core.service_client import ServiceClientAsync
 
 class BartenderClientPolicy(Policy):
@@ -19,10 +19,7 @@ class BartenderClientPolicy(Policy):
         :param service_name: Name of the service that executes the policy.
         :type service_name: str
         """        
-        super().__init__(name, class_name, service_msg, service_name, **params)
-        self.service_msg=service_msg
-        self.service_name=service_name
-        self.policy_service=ServiceClientAsync(self, class_from_classname(service_msg), service_name, self.cbgroup_client)
+        super().__init__(name, class_name, **params)
 
     async def execute_callback(self, request, response):
 
@@ -37,10 +34,50 @@ class BartenderClientPolicy(Policy):
         :rtype: cognitive_node_interfaces.srv.Execute.Response
         """
         self.get_logger().info('Executing bartender policy: ' + self.name + '...')
-        # Debug: Imprimir la estructura completa del objeto perception
-        self.get_logger().info(f"Perception type: {type(request.perception)}")
-        self.get_logger().info(f"Perception attributes: {dir(request.perception)}")
-        self.get_logger().info(f"Perception content: {request.perception}")
-        await self.policy_service.send_request_async(policy=self.name)
+    
+        try:
+            # Intentar extraer el ID del cliente
+            client_id = self.get_client_id(request.perception)
+            
+            if client_id is not None:
+                client_name = f"client_{client_id}"
+                self.get_logger().info(f"Creating node client for: {client_name}")
+                await self.create_node_client(name=client_name, class_name="cognitive_nodes.world_model.SimBartender")
+            else:
+                self.get_logger().warn("Could not extract client ID from perception")
+                
+        except Exception as e:
+            self.get_logger().error(f"Error extracting client ID: {e}")
+        
         response.policy = self.name
         return response
+    
+    def get_client_id(self, perception):
+        """
+        Extract client ID from perception data.
+        
+        :param perception: The perception message
+        :return: Client ID value
+        """
+        try:
+            # Para debug
+            self.get_logger().debug(f"Extracting client ID from: {type(perception)}")
+            perception_dict = perception_msg_to_dict(perception)
+            self.get_logger().debug(f"Perception dict: {perception_dict}")
+
+            # Buscar datos del cliente
+            if 'client' in perception_dict and perception_dict['client']:
+                client_list = perception_dict['client']
+                if len(client_list) > 0:
+                    client = client_list[0]
+                    client_id = client.get('id', 0.0)
+                    self.get_logger().debug(f"Found client ID: {client_id}")
+                    client_id = str(client_id).replace('.', '_')
+                    return client_id
+            
+            self.get_logger().debug("No client found in perception")
+            return "0_0"
+            
+        except Exception as e:
+            self.get_logger().error(f"Error extracting client ID: {e}")
+            return "0_0"
