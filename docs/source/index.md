@@ -3,13 +3,17 @@ This is part of the e-MDB architecture documentation. Main page [here.](https://
 
 # e-MDB experiments implemented by the GII
 
-In this [repository](https://github.com/pillar-robots/emdb_experiments_gii), you can find experiments developed by the GII that use the e-MDB cognitive architecture. At this moment, two experiments are implemented:
+In this [repository](https://github.com/pillar-robots/emdb_experiments_gii), you can find experiments developed by the GII that use the e-MDB cognitive architecture. The following experiments are implemented:
 
-- [PutObjectInBox Experiment](experiments/put_object_in_box_experiment.md): Experiment in which is tested the behavior of the Long-Term Memory (LTM) of the e-MDB cognitive architecture, without any motivational system. It is simulated with a discrete event simulator.
+- [PutObjectInBox Experiment](experiments/put_object_in_box_experiment.md): Experiment that demonstrates the operation of the Long-Term Memory (LTM) of the cognitive architecture. It uses a simple motivational structure with predefined goals. It is simulated with a discrete event simulator.
 
-- [OSCAR Experiment](experiments/oscar_experiment.md): The same experiment as the PutObjectInBox one, but being simulated with the OSCAR, a two arms robot in Gazebo.
+- [OSCAR Experiment](experiments/oscar_experiment.md): Manipulation experiment simulated in Gazebo with the OSCAR, a dual-armed robot. It also focuses on the operation of the Long-Term Memory (LTM). 
 
-- **FruitShop Experiment (Work In Progress)**: Experiment in which is tested the behavior of the motivational system and the implemented intrinsic motivations.
+- [FruitShop Experiment](experiments/fruit_shop_experiment.md): Experiment in which the behavior of the motivational system and the implemented intrinsic motivations are tested. A bridge to execute this experiment with a real TIAGo++ robot is also provided. 
+
+- [PumpPanel Experiment](experiments/pump_panel_experiment.md): Experiment that demonstrates the use of the LLM exploration policy to solve a complex multi-step task. 
+
+- 2D Manipulation Experiment (Work in progress): Experiment that demonstrates low-level actuation, and learning of deliverative models (Planned for next version).  
 
 The *experiments* ROS package includes the YAML files that configure the experiments and the launch files to run them.
 
@@ -20,8 +24,7 @@ In this repository are also included packages that allow the communication betwe
 :caption: GII Experiments
 :glob:
 
-experiments/put_object_in_box_experiment.md
-experiments/oscar_experiment.md
+experiments/*
 
 ```
 
@@ -31,5 +34,7 @@ experiments/oscar_experiment.md
 :glob:
 
 api_documentation/oscar_emdb.rst
+api_documentation/tiago_emdb.rst
+api_documentation/sim_2d_emdb.rst
 
 ```

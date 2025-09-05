@@ -96,7 +96,45 @@ LTM:
                         ball_in_right_hand:
                             data:
                                 type: bool
-                        box:
+                        box:    Perception:
+        -
+            name: ball_in_left_hand
+            class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
+            parameters:
+                default_msg: std_msgs.msg.Bool
+                default_topic: /mdb/baxter/sensor/ball_in_left_hand
+        -
+            name: ball_in_right_hand
+            class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
+            parameters:
+                default_msg: std_msgs.msg.Bool
+                default_topic: /mdb/baxter/sensor/ball_in_right_hand
+        -
+            name: boxes
+            class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
+            parameters:
+                default_msg: simulators_interfaces.msg.ObjectListMsg
+                default_topic: /mdb/baxter/sensor/boxes
+                normalize_data:
+                    distance_min: 0.2
+                    distance_max: 1.9
+                    angle_min: -1.4
+                    angle_max: 1.4
+                    diameter_min: 0.0
+                    diameter_max: 0.15
+        -
+            name: cylinders
+            class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
+            parameters:
+                default_msg: simulators_interfaces.msg.ObjectListMsg
+                default_topic: /mdb/baxter/sensor/cylinders
+                normalize_data:
+                    distance_min: 0.2
+                    distance_max: 1.9
+                    angle_min: -1.4
+                    angle_max: 1.4
+                    diameter_min: 0.0
+                    diameter_max: 0.15
                             x:
                                 type: float
                                 bounds: [100 , 2400]

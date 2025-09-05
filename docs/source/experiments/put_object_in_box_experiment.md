@@ -67,7 +67,7 @@ The experiment is launched using the following command:
 ros2 launch experiments put_object_in_box_launch.py
 ```
 
-This experiment is configured through the **put_object_in_box.yaml** file, which you can find in the *experiments* package of this repository.
+This experiment is configured through the [put_object_in_box_experiment.yaml](https://github.com/pillar-robots/emdb_experiments_gii/blob/main/experiments/experiments/put_object_in_box_experiment.yaml) file, which you can find in the *experiments* package of this repository.
 
 Once executed, it is possible to see the logs in the terminal, being able to follow the behavior of the experiment in real time.
 
