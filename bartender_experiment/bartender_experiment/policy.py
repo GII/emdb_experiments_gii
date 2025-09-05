@@ -22,35 +22,93 @@ class BartenderClientPolicy(Policy):
         super().__init__(name, class_name, **params)
 
     async def execute_callback(self, request, response):
-
         """
         Makes a service call to the server that handles the execution of the policy.
-
-        :param request: The request to execute the policy.
-        :type request: cognitive_node_interfaces.srv.Execute.Request
-        :param response: The response indicating the executed policy.
-        :type response: cognitive_node_interfaces.srv.Execute.Response
-        :return: The response with the executed policy name.
-        :rtype: cognitive_node_interfaces.srv.Execute.Response
+        Creates a client world model if needed and marks the client as known.
         """
         self.get_logger().info('Executing bartender policy: ' + self.name + '...')
     
         try:
-            # Intentar extraer el ID del cliente
+            # Extract client ID from perception
             client_id = self.get_client_id(request.perception)
             
-            if client_id is not None:
+            if client_id is not None and client_id != "0_0":
                 client_name = f"client_{client_id}"
-                self.get_logger().info(f"Creating node client for: {client_name}")
-                await self.create_node_client(name=client_name, class_name="cognitive_nodes.world_model.SimBartender")
+                
+                # Check if world model already exists
+                expected_topic = f"/cognitive_node/{client_name}/activation"
+                topic_names_and_types = self.get_topic_names_and_types()
+                existing_topics = [topic_name for topic_name, _ in topic_names_and_types]
+                
+                if expected_topic not in existing_topics:
+                    self.get_logger().info(f"Creating world model for client: {client_name}")
+                    
+                    # Create the world model node
+                    success = await self.create_node_client(
+                        name=client_name, 
+                        class_name="bartender_experiment.world_model.SimBartender"
+                    )
+                    
+                    if success:
+                        self.get_logger().info(f"World model {client_name} created successfully")
+                    else:
+                        self.get_logger().error(f"Failed to create world model {client_name}")
+                else:
+                    self.get_logger().info(f"World model {client_name} already exists")
+                
+                # Add client to known_clients list regardless of world model creation
+                # Convert client_id back to float for storage
+                client_id_float = float(client_id.replace('_', '.'))
+                success = await self.add_known_client(client_id_float)
+                
+                if success:
+                    self.get_logger().info(f"Client {client_id_float} added to known clients")
+                else:
+                    self.get_logger().warn(f"Failed to add client {client_id_float} to known clients")
+                    
             else:
-                self.get_logger().warn("Could not extract client ID from perception")
+                self.get_logger().warn("Could not extract valid client ID from perception")
                 
         except Exception as e:
-            self.get_logger().error(f"Error extracting client ID: {e}")
+            self.get_logger().error(f"Error processing client: {e}")
         
         response.policy = self.name
         return response
+    
+    async def add_known_client(self, client_id):
+        """
+        Add a client to the known clients list using the know_client service.
+        
+        :param client_id: The ID of the client to add (as float)
+        :return: True if successful, False otherwise
+        """
+        try:
+            from bartender_experiment_interfaces.srv import KnowClient
+            
+            # Create the service client if it doesn't exist
+            service_name = "/world_model/BARTENDER/know_client"  # Adjust based on your YAML configuration
+            if self.know_client_service is None:
+                self.know_client_service = ServiceClientAsync(
+                    self, KnowClient, service_name, self.cbgroup_client
+                )
+            
+            # Wait for service to be available
+            if not await self.know_client_service.wait_for_service(timeout_sec=5.0):
+                self.get_logger().error(f"Service {service_name} not available")
+                return False
+            
+            # Send the request
+            request = KnowClient.Request()
+            request.client_id = client_id
+            
+            response = await self.know_client_service.send_request_async(request)
+            
+            self.get_logger().info(f"Add known client result: {response.success}")
+            return response.success
+            
+        except Exception as e:
+            self.get_logger().error(f"Failed to add known client {client_id}: {e}")
+            return False
     
     def get_client_id(self, perception):
         """
