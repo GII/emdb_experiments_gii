@@ -4,10 +4,10 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 20
+        iterations: 10000
         trials: 20
         subgoals: False
-        softmax_selection: True
+        softmax_selection: False
         softmax_temperature: 0.3
         kill_on_finish: True
 Control:
@@ -85,28 +85,30 @@ LTM:
         Perception:
             -
                 name: client
-                class_name: cognitive_nodes.perception.BartenderPerception
+                class_name: bartender_experiment.perception.BartenderPerception
                 parameters:
                     default_msg: simulators_interfaces.msg.ClientListMsg
                     default_topic: /emdb/simulator/sensor/client
                     normalize_data:
-                        n_ids: 3
+                        n_ids: 4
                         n_preferences: 4
             - 
                 name: last_bottle
-                class_name: cognitive_nodes.perception.BartenderPerception
+                class_name: bartender_experiment.perception.BartenderPerception
                 parameters:
                     default_msg: std_msgs.msg.Int8
                     default_topic: /emdb/simulator/sensor/last_bottle
+                    normalize_data:
+                        n_ids: 4
             - 
                 name: robot_position
-                class_name: cognitive_nodes.perception.BartenderPerception
+                class_name: bartender_experiment.perception.BartenderPerception
                 parameters:
-                    default_msg: std_msgs.msg.Int8
+                    default_msg: std_msgs.msg.Float32
                     default_topic: /emdb/simulator/sensor/robot_position
             -   
                 name: glass
-                class_name: cognitive_nodes.perception.BartenderPerception
+                class_name: bartender_experiment.perception.BartenderPerception
                 parameters:
                     default_msg: simulators_interfaces.msg.GlassListMsg
                     default_topic: /emdb/simulator/sensor/glass
@@ -122,7 +124,7 @@ LTM:
                         n_states: 2
             -   
                 name: bottles
-                class_name: cognitive_nodes.perception.BartenderPerception
+                class_name: bartender_experiment.perception.BartenderFilterPerception
                 parameters:
                     default_msg: simulators_interfaces.msg.BottleListMsg
                     default_topic: /emdb/simulator/sensor/bottles
@@ -136,16 +138,16 @@ LTM:
                         dim_min: 0.03
                         dim_max: 0.1
                         n_states: 2
-                        n_ids: 3
+                        n_ids: 4
             -
                 name: glass_in_left_hand
-                class_name: cognitive_nodes.perception.BartenderPerception
+                class_name: bartender_experiment.perception.BartenderPerception
                 parameters:
                     default_msg: std_msgs.msg.Bool
                     default_topic: /emdb/simulator/sensor/glass_in_left_hand
             - 
                 name: bottle_in_right_hand
-                class_name: cognitive_nodes.perception.BartenderPerception
+                class_name: bartender_experiment.perception.BartenderPerception
                 parameters:
                     default_msg: std_msgs.msg.Bool
                     default_topic: /emdb/simulator/sensor/bottle_in_right_hand
@@ -153,7 +155,7 @@ LTM:
         WorldModel:
             -
                 name: BARTENDER
-                class_name: bartender_experiment.world_model.SimBartenderEmpty
+                class_name: bartender_experiment.world_model.BarEmpty
         Need:
             -
                 name: get_response_need
@@ -335,7 +337,7 @@ LTM:
                 name: novelty_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "BARTENDER", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
+                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "novelty_pnode", "node_type": "PNode"}]
             -
                 name: effectance_cnode
                 class_name: cognitive_nodes.cnode.CNode
@@ -471,7 +473,7 @@ DiscreteEventSimulator:
         -
             name: robot_position
             perception_topic: /emdb/simulator/sensor/robot_position
-            perception_msg: std_msgs.msg.Int8
+            perception_msg: std_msgs.msg.Float32    
         -   
             name: left_the_glass_goal
             perception_topic: /emdb/simulator/sensor/left_the_glass_goal
