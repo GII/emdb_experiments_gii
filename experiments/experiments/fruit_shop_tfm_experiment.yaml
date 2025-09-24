@@ -1,0 +1,572 @@
+stage0: &stage0 1000
+stage1: &stage1 3000
+stage2: &stage2 4000
+
+Experiment:
+    name: main_loop
+    class_name: cognitive_processes.main_loop.MainLoop
+    new_executor: True
+    threads: 2
+    parameters: 
+        iterations: 10000
+        trials: 20
+        subgoals: False
+        softmax_selection: True
+        softmax_temperature: 0.3
+        kill_on_finish: True
+Control:
+    id: ltm_simulator
+    control_topic: /main_loop/control
+    control_msg: cognitive_processes_interfaces.msg.ControlMsg
+    episodes_topic: /main_loop/episodes
+    episodes_msg: cognitive_processes_interfaces.msg.Episode
+    executed_policy_service: /emdb/simulator/executed_policy
+    executed_policy_msg: cognitive_node_interfaces.srv.Policy
+    world_reset_service: /emdb/simulator/world_reset
+    world_reset_msg: cognitive_processes_interfaces.srv.WorldReset
+LTM:
+    Files:
+        -
+            id: goodness
+            class: core.file.FileGoodness
+            file: goodness.txt
+        -
+            id: pnodes_success
+            class: core.file.FilePNodesSuccess
+            file: pnodes_success.txt
+        -
+            id: pnodes_content
+            class: core.file.FilePNodesContent
+            file: pnodes_content.txt
+        -
+            id: pnodes_content_last_iteration
+            class: core.file.FileLastIterationPNodesContent
+            file: pnodes_content_last_ite.txt
+        -
+            id: goals_content
+            class: core.file.FileGoalsContent
+            file: goals_content.txt
+        -
+            id: goals_content_last_iteration
+            class: core.file.FileLastIterationGoalsContent
+            file: goals_content_last_ite.txt
+        -
+            id: trials
+            class: core.file.FileTrialsSuccess
+            file: trials.txt
+        -
+            id: neighbors
+            class: core.file.FileNeighbors
+            file: neighbors.txt
+        -
+            id: neighbors_full
+            class: core.file.FileNeighborsFull
+            file: neighbors_full.txt
+    Connectors:
+        -
+            data: Space
+            default_class: cognitive_nodes.space.ANNSpace
+        -
+            data: Perception
+            default_class: cognitive_nodes.perception.Perception
+        -
+            data: PNode
+            default_class: cognitive_nodes.pnode.PNode
+        -
+            data: CNode
+            default_class: cognitive_nodes.cnode.CNode
+        -
+            data: Goal
+            default_class: cognitive_nodes.goal.GoalLearnedSpace
+        -
+            data: WorldModel
+            default_class: cognitive_nodes.world_model.WorldModel
+        -
+            data: Policy
+            default_class: cognitive_nodes.policy.PolicyBlocking
+
+    Nodes:
+        Perception:
+            -
+                name: button_light
+                class_name: cognitive_nodes.perception.FruitShopPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /emdb/simulator/sensor/button_light
+            -
+                name: fruit_in_left_hand
+                class_name: cognitive_nodes.perception.FruitShopPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /emdb/simulator/sensor/fruit_in_left_hand
+            -
+                name: fruit_in_right_hand
+                class_name: cognitive_nodes.perception.FruitShopPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /emdb/simulator/sensor/fruit_in_right_hand
+            -
+                name: fruits
+                class_name: cognitive_nodes.perception.FruitShopPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.FruitListMsg
+                    default_topic: /emdb/simulator/sensor/fruits
+                    normalize_data:
+                        distance_min: 0.2
+                        distance_max: 1.9
+                        angle_min: -1.4
+                        angle_max: 1.4
+                        diameter_min: 0.0
+                        diameter_max: 0.15
+                        dim_min: 0.03
+                        dim_max: 0.1
+            -
+                name: scales
+                class_name: cognitive_nodes.perception.FruitShopPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.ScaleListMsg
+                    default_topic: /emdb/simulator/sensor/scales
+                    normalize_data:
+                        distance_min: 0.2
+                        distance_max: 1.9
+                        angle_min: -1.4
+                        angle_max: 1.4
+                        diameter_min: 0.0
+                        diameter_max: 0.15
+                        n_states: 3
+        WorldModel:
+            -
+                name: FRUIT_SHOP
+                class_name: cognitive_nodes.world_model.WorldModel
+        Need: 
+            -
+                name: classify_fruit_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 1.0
+                    drive_id: 'classify_fruit_drive'
+                    need_type: 'Operational'
+            -
+                name: place_fruit_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 1.0
+                    drive_id: 'place_fruit_drive'
+                    need_type: 'Other'
+            - 
+                name: llm_exploration_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 0.1
+                    drive_id: 'llm_exploration_drive'
+                    need_type: 'Cognitive'
+            - 
+                name: effectance_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 0.25
+                    drive_id: 'effectance_drive'
+                    need_type: 'Cognitive'
+            - 
+                name: external_effects_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 0.3
+                    drive_id: 'external_effects_drive'
+                    need_type: 'Cognitive'
+            - 
+                name: prospection_need
+                class_name: cognitive_nodes.need.Need
+                parameters:
+                    weight: 1.0
+                    drive_id: 'prospection_drive'
+                    need_type: 'Cognitive'
+        Drive:
+            -
+                name: classify_fruit_drive
+                class_name: cognitive_nodes.drive.DriveExponential
+                parameters:
+                    input_topic: /emdb/simulator/sensor/classify_fruit
+                    input_msg: std_msgs.msg.Float32
+                    min_eval: 0.8 
+                    neighbors: [{"name": "classify_fruit_need", "node_type": "Need"}]
+            -
+                name: place_fruit_drive
+                class_name: cognitive_nodes.drive.DriveExponential
+                parameters:
+                    input_topic: /emdb/simulator/sensor/place_fruit
+                    input_msg: std_msgs.msg.Float32
+                    min_eval: 0.8 
+                    neighbors: [{"name": "place_fruit_need", "node_type": "Need"}]
+
+            -
+                name: llm_exploration_drive
+                class_name: cognitive_nodes.llm_exploration.DriveLLMExploration
+                parameters:
+                    neighbors: [{"name": "llm_exploration_need", "node_type": "Need"}]
+            -
+                name: effectance_drive
+                class_name: cognitive_nodes.effectance.DriveEffectanceInternal
+                parameters:
+                    ltm_id: ltm_0
+                    min_confidence: 0.84
+                    limit_depth: True
+                    neighbors: [{"name": "effectance_need", "node_type": "Need"}]
+            -
+                name: external_effects_drive
+                class_name: cognitive_nodes.effectance.DriveEffectanceExternal
+                parameters:
+                    episodes_topic: /main_loop/episodes
+                    episodes_msg: cognitive_processes_interfaces.msg.Episode
+                    neighbors: [{"name": "external_effects_need", "node_type": "Need"}]
+            -
+                name: prospection_drive
+                class_name: cognitive_nodes.prospection.ProspectionDrive
+                parameters:
+                    ltm_id: ltm_0
+                    min_pnode_rate: 0.85
+                    min_goal_rate: 0.95
+                    neighbors: [{"name": "prospection_need", "node_type": "Need"}]
+        Goal:
+            -
+                name: llm_exploration_goal
+                class_name: cognitive_nodes.goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "llm_exploration_drive", "node_type": "Drive"}]
+            -
+                name: effectance_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "effectance_drive", "node_type": "Drive"}]
+            -
+                name: external_effects_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "external_effects_drive", "node_type": "Drive"}]
+            -
+                name: prospection_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "prospection_drive", "node_type": "Drive"}]
+        PNode:
+            -
+                name: llm_exploration_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: effectance_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: external_effects_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: prospection_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+        CNode:
+            -
+                name: llm_exploration_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "llm_exploration_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "llm_exploration_pnode", "node_type": "PNode"}]
+            -
+                name: effectance_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "effectance_pnode", "node_type": "PNode"}]
+            -
+                name: external_effects_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "external_effects_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "external_effects_pnode", "node_type": "PNode"}]
+            -
+                name: prospection_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "prospection_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "prospection_pnode", "node_type": "PNode"}]
+
+        Policy:
+            -
+                name: pick_fruit
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: place_fruit
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: change_hands
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: test_fruit
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy  
+            -
+                name: accept_fruit
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy   
+            -
+                name: discard_fruit
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy  
+            -
+                name: press_button
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy  
+            -
+                name: ask_nicely
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: llm_exploration_policy
+                class_name: cognitive_nodes.llm_exploration.PolicyLLMExplorationFruitShop
+                parameters:
+                    exclude_list: ["effectance_policy", "external_effect_policy", "prospection_policy"]
+                    neighbors: [{"name": "llm_exploration_cnode", "node_type": "CNode"}]
+                    model: "llama3.3:70b"
+                    client_host: "http://10.113.36.20:11434"
+                    temperature: 0.1
+                    num_predict: 8
+                    exp_stages: [*stage0,*stage1,*stage2]
+                    max_episodes: 4
+                    ltm_id: ltm_0
+                    initial_prompts:
+                    -
+                        role: "system"
+                        content: |
+                            You are in an scenario from which you are going to receive the following perceptions:
+                            """
+                            - fruit: 
+                                - distance: How far the closest fruit is from the robot (values from 0 to 1, 0 is closest). Distance = 1 means there are no fruits.
+                                - angle: Where the fruit is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side). Angle = 1 means there are no fruits.
+                                - dim_max: Size of the fruit (values from 0 to 1, larger is closer to 1). Small fruits have Dim_max less than 0.78, big fruits have Dim_max more than 0.78. Dim_max = 1 means there are no fruits.
+                            - scale:
+                                - distance: How far the scale is from the robot (values from 0 to 1, 0 is closest).
+                                - angle: Where the scale is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side).
+                                - state: 0 if the fruit is not classified, 0.5 if the fruits weight is correct, 0.98 if the fruits weight is incorrect.
+                                - active: 1 if a fruit is on the scale, 0 if not.
+                            - fruit_in_left_hand: True if a fruit is grasped by the left arm, False if not.
+                            - fruit_in_right_hand: True if a fruit is grasped by the right arm, False if not.
+                            - button_light: True if the button light is on, False if off.
+                            """
+
+                            Taking into account the following set of possible actions, defined with a name and an explanation:
+                            """
+                            - pick_fruit: Grab the nearest fruit with your gripper.
+                            - change_hands: Transfer a small fruit, with Dim_max less than 0.78, from one gripper to the other (moves fruit to opposite table side). Not valid for big fruits, with Dim_max more than 0.78.
+                            - place_fruit: Put held fruit at table center (empties gripper, it can be used to move a big fruit, with Dim_max more than 0.78, to the other side of the table).
+                            - test_fruit: Place held fruit on scale to check weight (scale and fruit must be on same side of the table).
+                            - discard_fruit: Put tested fruit with wrong weight (Scale State = 0.98) into rejection box.
+                            - accept_fruit: Put tested fruit with correct weight (Scales State = 0.50) into acceptance box.
+                            - press_button: Toggle the lighted button state.
+                            - ask_nicely: Request new fruits when there are none.
+                            """
+                            First, you will receive the goal to achieve.
+                            You will receive several messages, ordered chronologically, in YAML format with the last episodes (old_state, action_executed, current_state, goal_reached). In the first step, you will only have available the current_state.
+                            Rules:
+                            - Choose ONE action name per response.
+                            - DO NOT repeat an action if it did not change the state in the last episode.
+                            - NO explanations, NO extra words, NO punctuation. Reply only with the action name.
+
+                            USER_GOAL: Cause effects in the enviroment. Effect means that a boolean sensor change its value from 0 to 1.
+                    -   
+                        role: "system"
+                        content: |
+                            You are in an scenario from which you are going to receive the following perceptions:
+                            """
+                            - fruit: 
+                                - distance: How far the closest fruit is from the robot (values from 0 to 1, 0 is closest). Distance = 1 means there are no fruits.
+                                - angle: Where the fruit is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side). Angle = 1 means there are no fruits.
+                                - dim_max: Size of the fruit (values from 0 to 1, larger is closer to 1). Small fruits have Dim_max less than 0.78, big fruits have Dim_max more than 0.78. Dim_max = 1 means there are no fruits.
+                            - scale:
+                                - distance: How far the scale is from the robot (values from 0 to 1, 0 is closest).
+                                - angle: Where the scale is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side).
+                                - state: 0 if the fruit is not classified, 0.5 if the fruits weight is correct, 0.98 if the fruits weight is incorrect.
+                                - active: 1 if a fruit is on the scale, 0 if not.
+                            - fruit_in_left_hand: True if a fruit is grasped by the left arm, False if not.
+                            - fruit_in_right_hand: True if a fruit is grasped by the right arm, False if not.
+                            - button_light: True if the button light is on, False if off.
+                            """
+
+                            Taking into account the following set of possible actions, defined with a name and an explanation:
+                            """
+                            - pick_fruit: Grab the nearest fruit with your gripper.
+                            - change_hands: Transfer a small fruit, with Dim_max less than 0.78, from one gripper to the other (moves fruit to opposite table side). Not valid for big fruits, with Dim_max more than 0.78.
+                            - place_fruit: Put held fruit at table center (empties gripper, it can be used to move a big fruit, with Dim_max more than 0.78, to the other side of the table).
+                            - test_fruit: Place held fruit on scale to check weight (scale and fruit must be on same side of the table).
+                            - discard_fruit: Put tested fruit with wrong weight (Scale State = 0.98) into rejection box.
+                            - accept_fruit: Put tested fruit with correct weight (Scales State = 0.50) into acceptance box.
+                            - press_button: Toggle the lighted button state.
+                            - ask_nicely: Request new fruits when there are none.
+                            """
+                            First, you will receive the goal to achieve.
+                            You will receive several messages, ordered chronologically, in YAML format with the last episodes (old_state, action_executed, current_state, goal_reached). In the first step, you will only have available the current_state.
+                            Rules:
+                            - Choose ONE action name per response.
+                            - DO NOT repeat an action if it did not change the state in the last episode.
+                            - NO explanations, NO extra words, NO punctuation. Reply only with the action name.
+
+                            USER_GOAL: Place the fruit in the table center.
+                    -
+                        role: "system"
+                        content: |
+                            You are in an scenario from which you are going to receive the following perceptions:
+                            """
+                            - fruit: 
+                                - distance: How far the closest fruit is from the robot (values from 0 to 1, 0 is closest). Distance = 1 means there are no fruits.
+                                - angle: Where the fruit is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side). Angle = 1 means there are no fruits.
+                                - dim_max: Size of the fruit (values from 0 to 1, larger is closer to 1). Small fruits have Dim_max less than 0.78, big fruits have Dim_max more than 0.78. Dim_max = 1 means there are no fruits.
+                            - scale:
+                                - distance: How far the scale is from the robot (values from 0 to 1, 0 is closest).
+                                - angle: Where the scale is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side).
+                                - state: 0 if the fruit is not classified, 0.5 if the fruits weight is correct, 0.98 if the fruits weight is incorrect.
+                                - active: 1 if a fruit is on the scale, 0 if not.
+                            - fruit_in_left_hand: True if a fruit is grasped by the left arm, False if not.
+                            - fruit_in_right_hand: True if a fruit is grasped by the right arm, False if not.
+                            - button_light: True if the button light is on, False if off.
+                            """
+
+                            Taking into account the following set of possible actions, defined with a name and an explanation:
+                            """
+                            - pick_fruit: Grab the nearest fruit with your gripper.
+                            - change_hands: Transfer a small fruit, with Dim_max less than 0.78, from one gripper to the other (moves fruit to opposite table side). Not valid for big fruits, with Dim_max more than 0.78.
+                            - place_fruit: Put held fruit at table center (empties gripper, it can be used to move a big fruit, with Dim_max more than 0.78, to the other side of the table).
+                            - test_fruit: Place held fruit on scale to check weight (scale and fruit must be on same side of the table).
+                            - discard_fruit: Put tested fruit with wrong weight (Scale State = 0.98) into rejection box.
+                            - accept_fruit: Put tested fruit with correct weight (Scales State = 0.50) into acceptance box.
+                            - press_button: Toggle the lighted button state.
+                            - ask_nicely: Request new fruits when there are none.
+                            """
+                            First, you will receive the goal to achieve.
+                            You will receive several messages, ordered chronologically, in YAML format with the last episodes (old_state, action_executed, current_state, goal_reached). In the first step, you will only have available the current_state.
+                            Rules:
+                            - Choose ONE action name per response.
+                            - DO NOT repeat an action if it did not change the state in the last episode.
+                            - NO explanations, NO extra words, NO punctuation. Reply only with the action name.
+
+                            USER_GOAL: Cause effects in the enviroment. Effect means that a boolean sensor change its value from 0 to 1.
+                    -
+                        role: "system"
+                        content: |
+                            You are in an scenario from which you are going to receive the following perceptions:
+                            """
+                            - fruit: 
+                                - distance: How far the closest fruit is from the robot (values from 0 to 1, 0 is closest). Distance = 1 means there are no fruits.
+                                - angle: Where the fruit is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side). Angle = 1 means there are no fruits.
+                                - dim_max: Size of the fruit (values from 0 to 1, larger is closer to 1). Small fruits have Dim_max less than 0.78, big fruits have Dim_max more than 0.78. Dim_max = 1 means there are no fruits.
+                            - scale:
+                                - distance: How far the scale is from the robot (values from 0 to 1, 0 is closest).
+                                - angle: Where the scale is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side).
+                                - state: 0 if the fruit is not classified, 0.5 if the fruits weight is correct, 0.98 if the fruits weight is incorrect.
+                                - active: 1 if a fruit is on the scale, 0 if not.
+                            - fruit_in_left_hand: True if a fruit is grasped by the left arm, False if not.
+                            - fruit_in_right_hand: True if a fruit is grasped by the right arm, False if not.
+                            - button_light: True if the button light is on, False if off.
+                            """
+
+                            Taking into account the following set of possible actions, defined with a name and an explanation:
+                            """
+                            - pick_fruit: Grab the nearest fruit with your gripper.
+                            - change_hands: Transfer a small fruit, with Dim_max less than 0.78, from one gripper to the other (moves fruit to opposite table side). Not valid for big fruits, with Dim_max more than 0.78.
+                            - place_fruit: Put held fruit at table center (empties gripper, it can be used to move a big fruit, with Dim_max more than 0.78, to the other side of the table).
+                            - test_fruit: Place held fruit on scale to check weight (scale and fruit must be on same side of the table).
+                            - discard_fruit: Put tested fruit with wrong weight (Scale State = 0.98) into rejection box.
+                            - accept_fruit: Put tested fruit with correct weight (Scales State = 0.50) into acceptance box.
+                            - press_button: Toggle the lighted button state.
+                            - ask_nicely: Request new fruits when there are none.
+                            """
+                            First, you will receive the goal to achieve.
+                            You will receive several messages, ordered chronologically, in YAML format with the last episodes (old_state, action_executed, current_state, goal_reached). In the first step, you will only have available the current_state.
+                            Rules:
+                            - Choose ONE action name per response.
+                            - DO NOT repeat an action if it did not change the state in the last episode.
+                            - NO explanations, NO extra words, NO punctuation. Reply only with the action name.
+
+                            USER_GOAL: Classify the fruit by its weight.
+
+            -
+                name: effectance_policy
+                class_name: cognitive_nodes.effectance.PolicyEffectanceInternal
+                parameters:
+                    goal_class: cognitive_nodes.effectance.GoalActivatePNode
+                    neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
+                    confidence: 0.5
+                    threshold_delta: 0.5
+                    limit_depth: True
+                    ltm_id: ltm_0
+            -
+                name: external_effect_policy
+                class_name: cognitive_nodes.effectance.PolicyEffectanceExternal
+                parameters:
+                    drive_name: external_effects_drive
+                    goal_class: cognitive_nodes.effectance.GoalRecreateEffect
+                    space_class: cognitive_nodes.space.ANNSpace
+                    neighbors: [{"name": "external_effects_cnode", "node_type": "CNode"}]
+                    ltm_id: ltm_0
+            -
+                name: prospection_policy
+                class_name: cognitive_nodes.prospection.PolicyProspection
+                parameters:
+                    drive_name: prospection_drive
+                    neighbors: [{"name": "prospection_cnode", "node_type": "CNode"}]
+                    ltm_id: ltm_0
+
+
+DiscreteEventSimulator:
+    Perceptions:
+        -
+            name: fruits
+            perception_topic: /emdb/simulator/sensor/fruits
+            perception_msg: simulators_interfaces.msg.FruitListMsg
+        -
+            name: scales
+            perception_topic: /emdb/simulator/sensor/scales
+            perception_msg: simulators_interfaces.msg.ScaleListMsg
+        -
+            name: fruit_in_left_hand
+            perception_topic: /emdb/simulator/sensor/fruit_in_left_hand
+            perception_msg: std_msgs.msg.Bool
+        -
+            name: fruit_in_right_hand
+            perception_topic: /emdb/simulator/sensor/fruit_in_right_hand
+            perception_msg: std_msgs.msg.Bool
+        -
+            name: button_light
+            perception_topic: /emdb/simulator/sensor/button_light
+            perception_msg: std_msgs.msg.Bool
+        -
+            name: classify_fruit_goal
+            perception_topic: /emdb/simulator/sensor/classify_fruit
+            perception_msg: std_msgs.msg.Float32
+        -
+            name: place_fruit_goal
+            perception_topic: /emdb/simulator/sensor/place_fruit
+            perception_msg: std_msgs.msg.Float32
+
+    Stages:
+        stage0: *stage0
+        stage1: *stage1
+        stage2: *stage2

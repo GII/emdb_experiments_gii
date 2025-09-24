@@ -71,7 +71,8 @@ autodoc_mock_imports = [
     "rclpy.logging",
     "rclpy.action",
     "simulators.scenarios_2D", 
-    "tiago_moveit_py_interfaces", 
+    "tiago_moveit_py_interfaces",
+    "tiago_emdb.tiago_emdb_server" 
     "stereo_location_interfaces", 
     "tts_msgs"
 ]
