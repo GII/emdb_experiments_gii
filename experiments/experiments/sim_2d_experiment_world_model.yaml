@@ -4,7 +4,7 @@ Experiment:
     new_executor: False
     threads: 1
     parameters: 
-        iterations: 10
+        iterations: 200
         trials: 5
         softmax_selection: False
         softmax_temperature: 0.3
@@ -42,10 +42,6 @@ LTM:
             id: trials
             class: core.file.FileTrialsSuccess
             file: trials.txt
-        -
-            id: dataset
-            class: core.file.FileEpisodesDataset
-            file: dataset.csv
     Connectors:
         -
             data: Space
@@ -70,7 +66,7 @@ LTM:
                 ltm_id: ltm_0
         -
             data: WorldModel
-            default_class: cognitive_nodes.world_model.WorldModelLearned
+            default_class: cognitive_nodes.world_model.WorldModel
             parameters:
                 episodes_topic: /main_loop/episodes
                 prediction_srv_type: cognitive_node_interfaces.srv.Predict
@@ -78,84 +74,84 @@ LTM:
             data: UtilityModel
             default_class: cognitive_nodes.utility_model.LearnedUtilityModel
             parameters:
-                    max_iterations: 50
-                    candidate_actions: 100
+                    max_iterations: 20
+                    candidate_actions: 20
                     ltm_id: ltm_0
                     candidate_generation: "latin"
                     softmax_selection: True
                     softmax_temperature: 0.1
-                    min_traces: 50
-                    max_traces: 100
-                    max_antitraces: 15
+                    min_traces: 10
+                    max_traces: 50
+                    max_antitraces: 10
         -
             data: Policy
             default_class: cognitive_nodes.policy.PolicyBlocking
 
     Nodes:
-        WorldModel:
-            -
-                name: GRIPPER_AND_LOW_FRICTION
-                #class_name: cognitive_nodes.world_model.WorldModelLearned
-                class_name: cognitive_nodes.world_model.Sim2DWorldModel
-                parameters:
-                    episodes_topic: /main_loop/episodes
-                    prediction_srv_type: cognitive_node_interfaces.srv.Predict
-                    wm_actuation_config:
-                        left_arm:
-                            dist:
-                                type: float
-                                bounds: [0 , 150]
-                            angle:
-                                type: float
-                                bounds: [-120 , 120]
-                        right_arm:
-                            dist:
-                                type: float
-                                bounds: [0 , 150]
-                            angle:
-                                type: float
-                                bounds: [-120 , 120]
-                    wm_perception_config:
-                        ball:
-                            x:
-                                type: float
-                                bounds: [100 , 2400]
-                            y:
-                                type: float
-                                bounds: [50 , 800]
-                        ball_in_left_hand:
-                            data:
-                                type: bool
-                        ball_in_right_hand:
-                            data:
-                                type: bool
-                        box:
-                            x:
-                                type: float
-                                bounds: [100 , 2400]
-                            y:
-                                type: float
-                                bounds: [50 , 800]
-                        left_arm:
-                            x:
-                                type: float
-                                bounds: [100 , 2400]
-                            y:
-                                type: float
-                                bounds: [50 , 800]
-                            angle:
-                                type: float
-                                bounds: [-180, 180]
-                        right_arm:
-                            x:
-                                type: float
-                                bounds: [100 , 2400]
-                            y:
-                                type: float
-                                bounds: [50 , 800]
-                            angle:
-                                type: float
-                                bounds: [-180, 180]
+        # WorldModel:
+        #     -
+        #         name: GRIPPER_AND_LOW_FRICTION
+        #         #class_name: cognitive_nodes.world_model.WorldModelLearned
+        #         class_name: cognitive_nodes.world_model.Sim2DWorldModel
+        #         parameters:
+        #             episodes_topic: /main_loop/episodes
+        #             prediction_srv_type: cognitive_node_interfaces.srv.Predict
+        #             wm_actuation_config:
+        #                 left_arm:
+        #                     dist:
+        #                         type: float
+        #                         bounds: [0 , 150]
+        #                     angle:
+        #                         type: float
+        #                         bounds: [-120 , 120]
+        #                 right_arm:
+        #                     dist:
+        #                         type: float
+        #                         bounds: [0 , 150]
+        #                     angle:
+        #                         type: float
+        #                         bounds: [-120 , 120]
+        #             wm_perception_config:
+        #                 ball:
+        #                     x:
+        #                         type: float
+        #                         bounds: [100 , 2400]
+        #                     y:
+        #                         type: float
+        #                         bounds: [50 , 800]
+        #                 ball_in_left_hand:
+        #                     data:
+        #                         type: bool
+        #                 ball_in_right_hand:
+        #                     data:
+        #                         type: bool
+        #                 box:
+        #                     x:
+        #                         type: float
+        #                         bounds: [100 , 2400]
+        #                     y:
+        #                         type: float
+        #                         bounds: [50 , 800]
+        #                 left_arm:
+        #                     x:
+        #                         type: float
+        #                         bounds: [100 , 2400]
+        #                     y:
+        #                         type: float
+        #                         bounds: [50 , 800]
+        #                     angle:
+        #                         type: float
+        #                         bounds: [-180, 180]
+        #                 right_arm:
+        #                     x:
+        #                         type: float
+        #                         bounds: [100 , 2400]
+        #                     y:
+        #                         type: float
+        #                         bounds: [50 , 800]
+        #                     angle:
+        #                         type: float
+        #                         bounds: [-180, 180]
 
 
         Perception:
@@ -320,22 +316,12 @@ LTM:
                 name: novelty_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
+                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "novelty_pnode", "node_type": "PNode"}]
             -
                 name: model_creation_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "model_creation_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "model_creation_pnode", "node_type": "PNode"}]
-            # -
-            #     name: object_in_box_cnode
-            #     class_name: cognitive_nodes.cnode.CNode
-            #     parameters:
-            #         neighbors: [{"name": "object_in_box_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}]
-            # -
-            #     name: grasped_ball_cnode
-            #     class_name: cognitive_nodes.cnode.CNode
-            #     parameters:
-            #         neighbors: [{"name": "grasped_ball_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}]
+                    neighbors: [{"name": "model_creation_goal", "node_type": "Goal"}, {"name": "model_creation_pnode", "node_type": "PNode"}]
 
         Policy:
             -
@@ -355,7 +341,7 @@ LTM:
                 new_executor: True
                 threads: 2
                 parameters:
-                    max_iterations: 50
+                    max_iterations: 20
                     candidate_actions: 100
                     ltm_id: ltm_0
                     neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
