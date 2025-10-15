@@ -4,7 +4,7 @@ Experiment:
     new_executor: False
     threads: 1
     parameters: 
-        iterations: 500
+        iterations: 2000
         trials: 5
         softmax_selection: False
         softmax_temperature: 0.3
@@ -50,6 +50,8 @@ LTM:
         -
             data: Space
             default_class: cognitive_nodes.space.ANNSpace
+            parameters:
+                size: 50000
         -
             data: Perception
             default_class: cognitive_nodes.perception.Perception
@@ -269,29 +271,8 @@ LTM:
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "model_creation_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "model_creation_pnode", "node_type": "PNode"}]
-        # Policy:
-        #     -
-        #         name: model_creation_policy
-        #         class_name: cognitive_nodes.model_creation.ModelCreationPolicy
-        #         parameters:
-        #             neighbors: [{"name": "model_creation_cnode", "node_type": "CNode"}]
-        #             LTM_id: ltm_0
-        #             max_iterations: 20
-        #             episodes_topic: /main_loop/episodes
-        #             episodes_msg: cognitive_node_interfaces.msg.Episode
 
         UtilityModel:
-            -
-                name: novelty_exploration
-                class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
-                new_executor: True
-                threads: 2
-                parameters:
-                    max_iterations: 50
-                    candidate_actions: 100
-                    ltm_id: ltm_0
-                    neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
-                    softmax_temperature: 0.1
             -
                 name: random_exploration
                 class_name: cognitive_nodes.utility_model.UtilityModel
@@ -303,6 +284,7 @@ LTM:
                     ltm_id: ltm_0
                     neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
                     softmax_temperature: 0.1
+                    exploration_process: True
 
 
 

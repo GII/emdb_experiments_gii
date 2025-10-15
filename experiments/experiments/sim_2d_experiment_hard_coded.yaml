@@ -225,14 +225,14 @@ LTM:
                 name: object_in_box_need
                 class_name: cognitive_nodes.need.Need
                 parameters:
-                    weight: 1.0
+                    weight: 0.0
                     drive_id: 'object_in_box_drive'
                     need_type: 'Operational'
             -
                 name: grasped_ball_need
                 class_name: cognitive_nodes.need.Need
                 parameters:
-                    weight: 0.0
+                    weight: 1.0
                     drive_id: 'grasped_ball_drive'
                     need_type: 'Operational'
             - 
@@ -289,11 +289,11 @@ LTM:
                 class_name: cognitive_nodes.goal.GoalMotiven
                 parameters:
                     neighbors: [{"name": "object_in_box_drive", "node_type": "Drive"}]
-            # -
-            #     name: grasped_ball_goal
-            #     class_name: cognitive_nodes.goal.GoalMotiven
-            #     parameters:
-            #         neighbors: [{"name": "grasped_ball_drive", "node_type": "Drive"}]
+            -
+                name: grasped_ball_goal
+                class_name: cognitive_nodes.goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "grasped_ball_drive", "node_type": "Drive"}]
             -
                 name: novelty_goal
                 class_name: dummy_nodes.dummy_goal.GoalDummy
@@ -312,6 +312,11 @@ LTM:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
             -
                 name: object_in_box_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: grasped_ball_pnode
                 class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
                 parameters:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
@@ -336,11 +341,11 @@ LTM:
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "object_in_box_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "object_in_box_pnode", "node_type": "PNode"}]
-            # -
-            #     name: grasped_ball_cnode
-            #     class_name: cognitive_nodes.cnode.CNode
-            #     parameters:
-            #         neighbors: [{"name": "grasped_ball_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}]
+            -
+                name: grasped_ball_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "grasped_ball_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "grasped_ball_pnode", "node_type": "PNode"}]
 
         Policy:
             -
@@ -354,36 +359,26 @@ LTM:
                     episodes_msg: cognitive_node_interfaces.msg.Episode
 
         UtilityModel:
-            # -
-            #     name: novelty_exploration
-            #     class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
-            #     new_executor: True
-            #     threads: 2
-            #     parameters:
-            #         max_iterations: 50
-            #         candidate_actions: 100
-            #         ltm_id: ltm_0
-            #         neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
-            #         softmax_temperature: 0.1
-
             -
                 name: pick_ball
                 # class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
-                class_name: cognitive_nodes.utility_model.HardCodedUtilityModel
-                # class_name: cognitive_nodes.utility_model.LearnedUtilityModel
+                # class_name: cognitive_nodes.utility_model.HardCodedUtilityModel
+                class_name: cognitive_nodes.utility_model.LearnedUtilityModel
                 new_executor: False
                 threads: 1
                 parameters:
                     max_iterations: 20
-                    candidate_actions: 20
+                    candidate_actions: 100
                     ltm_id: ltm_0
-                    neighbors: [{"name": "object_in_box_cnode", "node_type": "CNode"}]
+                    #neighbors: [{"name": "object_in_box_cnode", "node_type": "CNode"}]
+                    neighbors: [{"name": "grasped_ball_cnode", "node_type": "CNode"}]
                     candidate_generation: "latin"
                     softmax_selection: True
                     softmax_temperature: 0.1
-                    min_traces: 10
+                    min_traces: .inf
                     max_traces: 50
                     max_antitraces: 10
+                    model_file: /home/efallash/ros2_ws/src/MDB/test_scripts/utility_model_offline.keras
 
 
 
