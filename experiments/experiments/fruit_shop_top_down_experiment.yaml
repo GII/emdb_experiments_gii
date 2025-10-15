@@ -134,42 +134,43 @@ LTM:
             -
                 name: FRUIT_SHOP
                 class_name: cognitive_nodes.world_model.WorldModel
-        Need: 
+        RobotPurpose: 
             -
-                name: classify_fruit_need
-                class_name: cognitive_nodes.need.Need
+                name: classify_fruit_mission
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
                     drive_id: 'classify_fruit_drive'
-                    need_type: 'Operational'
+                    purpose_type: 'Mission'
+                    terminal: True
             -
-                name: place_fruit_need
-                class_name: cognitive_nodes.need.Need
+                name: place_fruit_mission
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
                     drive_id: 'place_fruit_drive'
-                    need_type: 'Other'
+                    purpose_type: 'Mission'
             - 
                 name: novelty_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.1
                     drive_id: 'novelty_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             - 
                 name: external_effects_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.3
                     drive_id: 'external_effects_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             - 
                 name: effectance_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.25
                     drive_id: 'effectance_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
         Drive:
             -
                 name: classify_fruit_drive
@@ -178,7 +179,7 @@ LTM:
                     input_topic: /emdb/simulator/sensor/classify_fruit
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
-                    neighbors: [{"name": "classify_fruit_need", "node_type": "Need"}]
+                    neighbors: [{"name": "classify_fruit_mission", "node_type": "RobotPurpose"}]
             -
                 name: place_fruit_drive
                 class_name: cognitive_nodes.drive.DriveExponential
@@ -186,12 +187,12 @@ LTM:
                     input_topic: /emdb/simulator/sensor/place_fruit
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
-                    neighbors: [{"name": "place_fruit_need", "node_type": "Need"}]
+                    neighbors: [{"name": "place_fruit_mission", "node_type": "RobotPurpose"}]
             -
                 name: novelty_drive
                 class_name: cognitive_nodes.novelty.DriveNovelty
                 parameters:
-                    neighbors: [{"name": "novelty_need", "node_type": "Need"}]
+                    neighbors: [{"name": "novelty_need", "node_type": "RobotPurpose"}]
             -
                 name: effectance_drive
                 class_name: cognitive_nodes.effectance.DriveEffectanceInternal
@@ -199,14 +200,14 @@ LTM:
                     ltm_id: ltm_0
                     min_confidence: 0.84
                     limit_depth: False
-                    neighbors: [{"name": "effectance_need", "node_type": "Need"}]
+                    neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
             -
                 name: external_effects_drive
                 class_name: cognitive_nodes.effectance.DriveEffectanceExternal
                 parameters:
                     episodes_topic: /main_loop/episodes
                     episodes_msg: cognitive_processes_interfaces.msg.Episode
-                    neighbors: [{"name": "external_effects_need", "node_type": "Need"}]
+                    neighbors: [{"name": "external_effects_need", "node_type": "RobotPurpose"}]
         Goal:
             -
                 name: novelty_goal
