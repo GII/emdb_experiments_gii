@@ -4,8 +4,8 @@ Experiment:
     new_executor: False
     threads: 1
     parameters: 
-        iterations: 10
-        trials: 5
+        iterations: 10000
+        trials: 25
         softmax_selection: False
         softmax_temperature: 0.3
         kill_on_finish: False
@@ -78,15 +78,17 @@ LTM:
             data: UtilityModel
             default_class: cognitive_nodes.utility_model.LearnedUtilityModel
             parameters:
-                    max_iterations: 50
-                    candidate_actions: 100
+                    max_iterations: 10
+                    candidate_actions: 500
                     ltm_id: ltm_0
                     candidate_generation: "latin"
-                    softmax_selection: True
+                    softmax_selection: False
                     softmax_temperature: 0.1
                     min_traces: 50
                     max_traces: 100
-                    max_antitraces: 15
+                    epochs: 20
+                    output_activation: "sigmoid"
+                    max_antitraces: 5
         -
             data: Policy
             default_class: cognitive_nodes.policy.PolicyBlocking
@@ -234,7 +236,7 @@ LTM:
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
-                    drive_id: 'object_in_box_drive'
+                    drive_id: 'grasped_ball_drive'
                     purpose_type: 'Mission'
                     terminal: True
 
@@ -252,6 +254,7 @@ LTM:
                     weight: 1.0
                     drive_id: 'model_creation_drive'
                     purpose_type: 'Need'
+
         Drive:
             -
                 name: object_in_box_drive
@@ -269,7 +272,6 @@ LTM:
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
                     neighbors: [{"name": "grasped_ball_need", "node_type": "RobotPurpose"}]
-
             -
                 name: novelty_drive
                 class_name: cognitive_nodes.novelty.DriveNovelty
@@ -358,10 +360,11 @@ LTM:
                 new_executor: True
                 threads: 2
                 parameters:
-                    max_iterations: 50
+                    max_iterations: 10
                     candidate_actions: 100
                     ltm_id: ltm_0
                     neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
+                    softmax_selection: False
                     softmax_temperature: 0.1
 
             # -

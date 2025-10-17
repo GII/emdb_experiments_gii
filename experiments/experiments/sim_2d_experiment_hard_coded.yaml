@@ -220,35 +220,39 @@ LTM:
                         angle_min: -180
                         angle_max: 180
             
-        Need: 
+        RobotPurpose: 
             -
                 name: object_in_box_need
-                class_name: cognitive_nodes.need.Need
-                parameters:
-                    weight: 0.0
-                    drive_id: 'object_in_box_drive'
-                    need_type: 'Operational'
-            -
-                name: grasped_ball_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
+                    drive_id: 'object_in_box_drive'
+                    purpose_type: 'Mission'
+                    terminal: True
+            -
+                name: grasped_ball_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 0.0
                     drive_id: 'grasped_ball_drive'
-                    need_type: 'Operational'
+                    purpose_type: 'Mission'
+                    terminal: True
+
             - 
                 name: novelty_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.2
                     drive_id: 'novelty_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             - 
                 name: model_creation_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
                     drive_id: 'model_creation_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
+
         Drive:
             -
                 name: object_in_box_drive
@@ -257,7 +261,7 @@ LTM:
                     input_topic: /mdb/baxter/sensor/ball_in_box
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
-                    neighbors: [{"name": "object_in_box_need", "node_type": "Need"}]
+                    neighbors: [{"name": "object_in_box_need", "node_type": "RobotPurpose"}]
             -
                 name: grasped_ball_drive
                 class_name: cognitive_nodes.drive.DriveExponential
@@ -265,18 +269,17 @@ LTM:
                     input_topic: /mdb/baxter/sensor/grasped_ball
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
-                    neighbors: [{"name": "grasped_ball_need", "node_type": "Need"}]
-
+                    neighbors: [{"name": "grasped_ball_need", "node_type": "RobotPurpose"}]
             -
                 name: novelty_drive
                 class_name: cognitive_nodes.novelty.DriveNovelty
                 parameters:
-                    neighbors: [{"name": "novelty_need", "node_type": "Need"}]
+                    neighbors: [{"name": "novelty_need", "node_type": "RobotPurpose"}]
             -
                 name: model_creation_drive
                 class_name: cognitive_nodes.model_creation.ModelCreationDrive
                 parameters:
-                    neighbors: [{"name": "model_creation_need", "node_type": "Need"}]
+                    neighbors: [{"name": "model_creation_need", "node_type": "RobotPurpose"}]
                     LTM_id: ltm_0
                     max_iterations: 20
                     episodes_topic: /main_loop/episodes
@@ -362,16 +365,16 @@ LTM:
             -
                 name: pick_ball
                 # class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
-                # class_name: cognitive_nodes.utility_model.HardCodedUtilityModel
-                class_name: cognitive_nodes.utility_model.LearnedUtilityModel
+                class_name: cognitive_nodes.utility_model.HardCodedUtilityModel
+                # class_name: cognitive_nodes.utility_model.LearnedUtilityModel
                 new_executor: False
                 threads: 1
                 parameters:
                     max_iterations: 20
                     candidate_actions: 100
                     ltm_id: ltm_0
-                    #neighbors: [{"name": "object_in_box_cnode", "node_type": "CNode"}]
-                    neighbors: [{"name": "grasped_ball_cnode", "node_type": "CNode"}]
+                    neighbors: [{"name": "object_in_box_cnode", "node_type": "CNode"}]
+                    #neighbors: [{"name": "grasped_ball_cnode", "node_type": "CNode"}]
                     candidate_generation: "latin"
                     softmax_selection: True
                     softmax_temperature: 0.1
