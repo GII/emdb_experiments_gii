@@ -167,9 +167,9 @@ LTM:
                     default_topic: /mdb/baxter/sensor/ball
                     normalize_data:
                         x_min: 100
-                        x_max: 2400
+                        x_max: 2700
                         y_min: 50
-                        y_max: 800
+                        y_max: 1350
             -
                 name: ball_in_left_hand
                 class_name: cognitive_nodes.perception.Sim2DPerception
@@ -190,9 +190,9 @@ LTM:
                     default_topic: /mdb/baxter/sensor/box
                     normalize_data:
                         x_min: 100
-                        x_max: 2400
+                        x_max: 2700
                         y_min: 50
-                        y_max: 800
+                        y_max: 1350
             -
                 name: left_arm
                 class_name: cognitive_nodes.perception.Sim2DPerception
@@ -201,9 +201,9 @@ LTM:
                     default_topic: /mdb/baxter/sensor/left_arm
                     normalize_data:
                         x_min: 100
-                        x_max: 2400
+                        x_max: 2700
                         y_min: 50
-                        y_max: 800
+                        y_max: 1350
                         angle_min: -180
                         angle_max: 180
             -
@@ -214,9 +214,9 @@ LTM:
                     default_topic: /mdb/baxter/sensor/right_arm
                     normalize_data:
                         x_min: 100
-                        x_max: 2400
+                        x_max: 2700
                         y_min: 50
-                        y_max: 800
+                        y_max: 1350
                         angle_min: -180
                         angle_max: 180
             
