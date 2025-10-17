@@ -100,28 +100,29 @@ LTM:
             -
                 name: PUMP_PANEL
                 class_name: cognitive_nodes.world_model.WorldModel
-        Need: 
+        RobotPurpose: 
             -
-                name: start_pump_need
-                class_name: cognitive_nodes.need.Need
+                name: start_pump_mission
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
                     drive_id: 'start_pump_drive'
-                    need_type: 'Operational'
+                    purpose_type: 'Mission'
+                    terminal: True
             - 
                 name: llm_exploration_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.1
                     drive_id: 'llm_exploration_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             - 
                 name: effectance_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.25
                     drive_id: 'effectance_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
         Drive:
             -
                 name: start_pump_drive
@@ -130,12 +131,12 @@ LTM:
                     input_topic: /emdb/simulator/sensor/start_pump
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
-                    neighbors: [{"name": "start_pump_need", "node_type": "Need"}]
+                    neighbors: [{"name": "start_pump_mission", "node_type": "RobotPurpose"}]
             -
                 name: llm_exploration_drive
                 class_name: cognitive_nodes.llm_exploration.DriveLLMExploration
                 parameters:
-                    neighbors: [{"name": "llm_exploration_need", "node_type": "Need"}]
+                    neighbors: [{"name": "llm_exploration_need", "node_type": "RobotPurpose"}]
             -
                 name: effectance_drive
                 class_name: cognitive_nodes.effectance.DriveEffectanceInternal
@@ -143,7 +144,7 @@ LTM:
                     ltm_id: ltm_0
                     min_confidence: 0.84
                     limit_depth: False
-                    neighbors: [{"name": "effectance_need", "node_type": "Need"}]
+                    neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
         Goal:
             -
                 name: llm_exploration_goal

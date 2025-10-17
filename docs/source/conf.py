@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath("../../sim_2d_emdb/sim_2d_emdb"))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "e-MDB Experiments implemented by the GII"
-copyright = "2024, GII"
+copyright = "2025, GII"
 author = "GII"
 release = "Apache-2.0"
 
@@ -70,7 +70,11 @@ autodoc_mock_imports = [
     "rclpy.task",
     "rclpy.logging",
     "rclpy.action",
-    "simulators.scenarios_2D"
+    "simulators.scenarios_2D", 
+    "tiago_moveit_py_interfaces",
+    "tiago_emdb.tiago_emdb_server" 
+    "stereo_location_interfaces", 
+    "tts_msgs"
 ]
 
 # -- Options for HTML output -------------------------------------------------

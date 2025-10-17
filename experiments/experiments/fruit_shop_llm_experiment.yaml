@@ -137,49 +137,50 @@ LTM:
             -
                 name: FRUIT_SHOP
                 class_name: cognitive_nodes.world_model.WorldModel
-        Need: 
+        RobotPurpose: 
             -
-                name: classify_fruit_need
-                class_name: cognitive_nodes.need.Need
+                name: classify_fruit_mission
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
                     drive_id: 'classify_fruit_drive'
-                    need_type: 'Operational'
+                    purpose_type: 'Mission'
+                    terminal: True
             -
-                name: place_fruit_need
-                class_name: cognitive_nodes.need.Need
+                name: place_fruit_mission
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
                     drive_id: 'place_fruit_drive'
-                    need_type: 'Other'
+                    purpose_type: 'Mission'
             - 
                 name: llm_exploration_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.1
                     drive_id: 'llm_exploration_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             - 
                 name: effectance_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.25
                     drive_id: 'effectance_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             - 
                 name: external_effects_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.3
                     drive_id: 'external_effects_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             - 
                 name: prospection_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
                     drive_id: 'prospection_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
         Drive:
             -
                 name: classify_fruit_drive
@@ -188,7 +189,7 @@ LTM:
                     input_topic: /emdb/simulator/sensor/classify_fruit
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
-                    neighbors: [{"name": "classify_fruit_need", "node_type": "Need"}]
+                    neighbors: [{"name": "classify_fruit_mission", "node_type": "RobotPurpose"}]
             -
                 name: place_fruit_drive
                 class_name: cognitive_nodes.drive.DriveExponential
@@ -196,13 +197,13 @@ LTM:
                     input_topic: /emdb/simulator/sensor/place_fruit
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
-                    neighbors: [{"name": "place_fruit_need", "node_type": "Need"}]
+                    neighbors: [{"name": "place_fruit_mission", "node_type": "RobotPurpose"}]
 
             -
                 name: llm_exploration_drive
                 class_name: cognitive_nodes.llm_exploration.DriveLLMExploration
                 parameters:
-                    neighbors: [{"name": "llm_exploration_need", "node_type": "Need"}]
+                    neighbors: [{"name": "llm_exploration_need", "node_type": "RobotPurpose"}]
             -
                 name: effectance_drive
                 class_name: cognitive_nodes.effectance.DriveEffectanceInternal
@@ -210,14 +211,14 @@ LTM:
                     ltm_id: ltm_0
                     min_confidence: 0.84
                     limit_depth: True
-                    neighbors: [{"name": "effectance_need", "node_type": "Need"}]
+                    neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
             -
                 name: external_effects_drive
                 class_name: cognitive_nodes.effectance.DriveEffectanceExternal
                 parameters:
                     episodes_topic: /main_loop/episodes
                     episodes_msg: cognitive_node_interfaces.msg.Episode
-                    neighbors: [{"name": "external_effects_need", "node_type": "Need"}]
+                    neighbors: [{"name": "external_effects_need", "node_type": "RobotPurpose"}]
             -
                 name: prospection_drive
                 class_name: cognitive_nodes.prospection.ProspectionDrive
@@ -225,7 +226,7 @@ LTM:
                     ltm_id: ltm_0
                     min_pnode_rate: 0.85
                     min_goal_rate: 0.95
-                    neighbors: [{"name": "prospection_need", "node_type": "Need"}]
+                    neighbors: [{"name": "prospection_need", "node_type": "RobotPurpose"}]
         Goal:
             -
                 name: llm_exploration_goal
@@ -345,152 +346,167 @@ LTM:
                 parameters:
                     exclude_list: ["effectance_policy", "external_effect_policy", "prospection_policy"]
                     neighbors: [{"name": "llm_exploration_cnode", "node_type": "CNode"}]
-                    model: "phi4:14b"
+                    model: "llama3.3:70b"
                     client_host: "http://10.113.36.20:11434"
                     temperature: 0.1
                     num_predict: 8
                     exp_stages: [*stage0,*stage1,*stage2]
+                    max_episodes: 4
+                    ltm_id: ltm_0
                     initial_prompts:
                     -
                         role: "system"
                         content: |
-                            A cognitive architecture is controlling a robot with two arms. You have to guide the cognitive architecture in the first steps to achieve the goal. The goal is: cause effects in the enviroment.
-                            Effect means that a boolean sensor change its value from 0 to 1.
-                            <Perceptions>
-                            - Fruits: 
-                                - Distance: How far the closest fruit is from the robot (0 to 1, 0 is closest). Distance = 1 means there are no fruits.
-                                - Angle: Where the fruit is (0 to 1, less than 0.5 is left, more than 0.5 is right). Angle = 1 means there are no fruits.
-                                - Dim_max: Size of the fruit (0 to 1, larger is closer to 1). Dim_max = 1 means there are no fruits.
-                            - Scales:
-                                - Distance: How far the scale is from the robot (0 to 1, 0 is closest).
-                                - Angle: Where the scale is (0 to 1, less than 0.5 is left, more than 0.5 is right).
-                                - State: 0 if the fruit is not classified, 0.5 if the fruit’s weight is correct, 0.98 if the fruit’s weight is incorrect.
-                                - Active: 1 if a fruit is on the scale, 0 if not.
-                            - Fruit_in_left_hand: 1 if a fruit is in the left arm, 0 if not.
-                            - Fruit_in_right_hand: 1 if a fruit is in the right arm, 0 if not.
-                            - Button_light: 1 if the button light is on, 0 if off. 
-                            </Perceptions>
+                            You are in an scenario from which you are going to receive the following perceptions:
+                            """
+                            - fruit: 
+                                - distance: How far the closest fruit is from the robot (values from 0 to 1, 0 is closest). Distance = 1 means there are no fruits.
+                                - angle: Where the fruit is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side). Angle = 1 means there are no fruits.
+                                - dim_max: Size of the fruit (values from 0 to 1, larger is closer to 1). Small fruits have Dim_max less than 0.78, big fruits have Dim_max more than 0.78. Dim_max = 1 means there are no fruits.
+                            - scale:
+                                - distance: How far the scale is from the robot (values from 0 to 1, 0 is closest).
+                                - angle: Where the scale is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side).
+                                - state: 0 if the fruit is not classified, 0.5 if the fruits weight is correct, 0.98 if the fruits weight is incorrect.
+                                - active: 1 if a fruit is on the scale, 0 if not.
+                            - fruit_in_left_hand: True if a fruit is grasped by the left arm, False if not.
+                            - fruit_in_right_hand: True if a fruit is grasped by the right arm, False if not.
+                            - button_light: True if the button light is on, False if off.
+                            """
 
-                            <Actions> 
-                            - pick_fruit: Grab the closest fruit if it is close (right arm for right side, left arm for left side). 
-                            - change_hands: Move a fruit to the other arm if it is already grasped if its size (Dim_max) is less than 0.78.
-                            - place_fruit: Put a fruit on the table center to change its side if the fruit is already grasped.
-                            - test_fruit: Put a fruit on the scale to check its weight if the fruit is grasped in the same side of the scale.
-                            - discard_fruit: Put a fruit with incorrect weight (Scales State = 0.98) in the discarded fruit box. 
-                            - accept_fruit: Put a fruit with correct weight (Scales State = 0.5) in the accepted fruit box. 
-                            - press_button: Turn the button light on or off.
-                            - ask_nicely: Ask the experimenter for more fruits, if there are none. 
-                            </Actions>
+                            Taking into account the following set of possible actions, defined with a name and an explanation:
+                            """
+                            - pick_fruit: Grab the nearest fruit with your gripper.
+                            - change_hands: Transfer a small fruit, with Dim_max less than 0.78, from one gripper to the other (moves fruit to opposite table side). Not valid for big fruits, with Dim_max more than 0.78.
+                            - place_fruit: Put held fruit at table center (empties gripper, it can be used to move a big fruit, with Dim_max more than 0.78, to the other side of the table).
+                            - test_fruit: Place held fruit on scale to check weight (scale and fruit must be on same side of the table).
+                            - discard_fruit: Put tested fruit with wrong weight (Scale State = 0.98) into rejection box.
+                            - accept_fruit: Put tested fruit with correct weight (Scales State = 0.50) into acceptance box.
+                            - press_button: Toggle the lighted button state.
+                            - ask_nicely: Request new fruits when there are none.
+                            """
+                            First, you will receive the goal to achieve.
+                            You will receive several messages, ordered chronologically, in YAML format with the last episodes (old_state, action_executed, current_state, goal_reached). In the first step, you will only have available the current_state.
+                            Rules:
+                            - Choose ONE action name per response.
+                            - DO NOT repeat an action if it did not change the state in the last episode.
+                            - NO explanations, NO extra words, NO punctuation. Reply only with the action name.
 
-                            You will receive several messages, ordered chronologically, in YAML format with the last episodes (old_perception, policy_executed, current_perception, goal_reached). In the first step, you will only have avaliable the current_perception.
-                            Try to change all the boolean sensors from 0 to 1.
-                            Try to use actions other than those that reached the goal in the previous episodes, in order to try to discover new effects.
-
-                            Reply only with one action name (pick_fruit, change_hands, place_fruit, test_fruit, accept_fruit, discard_fruit, press_button, ask_nicely), with no explanations or extra words.
+                            USER_GOAL: Cause effects in the enviroment. Effect means that a boolean sensor change its value from 0 to 1.
                     -   
                         role: "system"
                         content: |
-                            A cognitive architecture is controlling a robot with two arms. You have to guide the cognitive architecture in the first steps to achieve the goal. The goal is: place the fruit in the table center.
-                            <Perceptions>
-                            - Fruits: 
-                                - Distance: How far the closest fruit is from the robot (0 to 1, 0 is closest). Distance = 1 means there are no fruits.
-                                - Angle: Where the fruit is (0 to 1, less than 0.5 is left, more than 0.5 is right). Angle = 1 means there are no fruits.
-                                - Dim_max: Size of the fruit (0 to 1, larger is closer to 1). Dim_max = 1 means there are no fruits.
-                            - Scales:
-                                - Distance: How far the scale is from the robot (0 to 1, 0 is closest).
-                                - Angle: Where the scale is (0 to 1, less than 0.5 is left, more than 0.5 is right).
-                                - State: 0 if the fruit is not classified, 0.5 if the fruit’s weight is correct, 0.98 if the fruit’s weight is incorrect.
-                                - Active: 1 if a fruit is on the scale, 0 if not.
-                            - Fruit_in_left_hand: 1 if a fruit is in the left arm, 0 if not.
-                            - Fruit_in_right_hand: 1 if a fruit is in the right arm, 0 if not.
-                            - Button_light: 1 if the button light is on, 0 if off. 
-                            </Perceptions>
+                            You are in an scenario from which you are going to receive the following perceptions:
+                            """
+                            - fruit: 
+                                - distance: How far the closest fruit is from the robot (values from 0 to 1, 0 is closest). Distance = 1 means there are no fruits.
+                                - angle: Where the fruit is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side). Angle = 1 means there are no fruits.
+                                - dim_max: Size of the fruit (values from 0 to 1, larger is closer to 1). Small fruits have Dim_max less than 0.78, big fruits have Dim_max more than 0.78. Dim_max = 1 means there are no fruits.
+                            - scale:
+                                - distance: How far the scale is from the robot (values from 0 to 1, 0 is closest).
+                                - angle: Where the scale is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side).
+                                - state: 0 if the fruit is not classified, 0.5 if the fruits weight is correct, 0.98 if the fruits weight is incorrect.
+                                - active: 1 if a fruit is on the scale, 0 if not.
+                            - fruit_in_left_hand: True if a fruit is grasped by the left arm, False if not.
+                            - fruit_in_right_hand: True if a fruit is grasped by the right arm, False if not.
+                            - button_light: True if the button light is on, False if off.
+                            """
 
-                            <Actions> 
-                            - pick_fruit: Grab the closest fruit if it is close (right arm for right side, left arm for left side). 
-                            - change_hands: Move a fruit to the other arm if it is already grasped if its size (Dim_max) is less than 0.78.
-                            - place_fruit: Put a fruit on the table center to change its side if the fruit is already grasped.
-                            - test_fruit: Put a fruit on the scale to check its weight if the fruit is grasped in the same side of the scale.
-                            - discard_fruit: Put a fruit with incorrect weight (Scales State = 0.98) in the discarded fruit box. 
-                            - accept_fruit: Put a fruit with correct weight (Scales State = 0.5) in the accepted fruit box.
-                            - press_button: Turn the button light on or off.
-                            - ask_nicely: Ask the experimenter for more fruits, if there are none. 
-                            </Actions>
+                            Taking into account the following set of possible actions, defined with a name and an explanation:
+                            """
+                            - pick_fruit: Grab the nearest fruit with your gripper.
+                            - change_hands: Transfer a small fruit, with Dim_max less than 0.78, from one gripper to the other (moves fruit to opposite table side). Not valid for big fruits, with Dim_max more than 0.78.
+                            - place_fruit: Put held fruit at table center (empties gripper, it can be used to move a big fruit, with Dim_max more than 0.78, to the other side of the table).
+                            - test_fruit: Place held fruit on scale to check weight (scale and fruit must be on same side of the table).
+                            - discard_fruit: Put tested fruit with wrong weight (Scale State = 0.98) into rejection box.
+                            - accept_fruit: Put tested fruit with correct weight (Scales State = 0.50) into acceptance box.
+                            - press_button: Toggle the lighted button state.
+                            - ask_nicely: Request new fruits when there are none.
+                            """
+                            First, you will receive the goal to achieve.
+                            You will receive several messages, ordered chronologically, in YAML format with the last episodes (old_state, action_executed, current_state, goal_reached). In the first step, you will only have available the current_state.
+                            Rules:
+                            - Choose ONE action name per response.
+                            - DO NOT repeat an action if it did not change the state in the last episode.
+                            - NO explanations, NO extra words, NO punctuation. Reply only with the action name.
 
-                            You will receive several messages, ordered chronologically, in YAML format with the last episodes (old_perception, policy_executed, current_perception, goal_reached). In the first step, you will only have avaliable the current_perception.
-                            If an action did not change the perceptions in the last episode received (old_perception == current_perception), do not repeat it in the current step.
-                            Reply only with one action name (pick_fruit, change_hands, place_fruit, test_fruit, accept_fruit, discard_fruit, press_button, ask_nicely), with no explanations, extra words or extra elements.
+                            USER_GOAL: Place the fruit in the table center.
                     -
                         role: "system"
                         content: |
-                            A cognitive architecture is controlling a robot with two arms. You have to guide the cognitive architecture in the first steps to achieve the goal. The goal is: cause effects in the enviroment.
-                            Effect means that a boolean sensor change its value from 0 to 1.
-                            <Perceptions>
-                            - Fruits: 
-                                - Distance: How far the closest fruit is from the robot (0 to 1, 0 is closest). Distance = 1 means there are no fruits.
-                                - Angle: Where the fruit is (0 to 1, less than 0.5 is left, more than 0.5 is right). Angle = 1 means there are no fruits.
-                                - Dim_max: Size of the fruit (0 to 1, larger is closer to 1). Dim_max = 1 means there are no fruits.
-                            - Scales:
-                                - Distance: How far the scale is from the robot (0 to 1, 0 is closest).
-                                - Angle: Where the scale is (0 to 1, less than 0.5 is left, more than 0.5 is right).
-                                - State: 0 if the fruit is not classified, 0.5 if the fruit’s weight is correct, 0.98 if the fruit’s weight is incorrect.
-                                - Active: 1 if a fruit is on the scale, 0 if not.
-                            - Fruit_in_left_hand: 1 if a fruit is in the left arm, 0 if not.
-                            - Fruit_in_right_hand: 1 if a fruit is in the right arm, 0 if not.
-                            - Button_light: 1 if the button light is on, 0 if off. 
-                            </Perceptions>
+                            You are in an scenario from which you are going to receive the following perceptions:
+                            """
+                            - fruit: 
+                                - distance: How far the closest fruit is from the robot (values from 0 to 1, 0 is closest). Distance = 1 means there are no fruits.
+                                - angle: Where the fruit is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side). Angle = 1 means there are no fruits.
+                                - dim_max: Size of the fruit (values from 0 to 1, larger is closer to 1). Small fruits have Dim_max less than 0.78, big fruits have Dim_max more than 0.78. Dim_max = 1 means there are no fruits.
+                            - scale:
+                                - distance: How far the scale is from the robot (values from 0 to 1, 0 is closest).
+                                - angle: Where the scale is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side).
+                                - state: 0 if the fruit is not classified, 0.5 if the fruits weight is correct, 0.98 if the fruits weight is incorrect.
+                                - active: 1 if a fruit is on the scale, 0 if not.
+                            - fruit_in_left_hand: True if a fruit is grasped by the left arm, False if not.
+                            - fruit_in_right_hand: True if a fruit is grasped by the right arm, False if not.
+                            - button_light: True if the button light is on, False if off.
+                            """
 
-                            <Actions> 
-                            - pick_fruit: Grab the closest fruit if it is close (right arm for right side, left arm for left side). 
-                            - change_hands: Move a fruit to the other arm if it is already grasped if its size (Dim_max) is less than 0.78.
-                            - place_fruit: Put a fruit on the table center to change its side if the fruit is already grasped.
-                            - test_fruit: Put a fruit on the scale to check its weight if the fruit is grasped in the same side of the scale.
-                            - discard_fruit: Put a fruit with incorrect weight (Scales State = 0.98) in the discarded fruit box. 
-                            - accept_fruit: Put a fruit with correct weight (Scales State = 0.5) in the accepted fruit box. 
-                            - press_button: Turn the button light on or off.
-                            - ask_nicely: Ask the experimenter for more fruits, if there are none. 
-                            </Actions>
+                            Taking into account the following set of possible actions, defined with a name and an explanation:
+                            """
+                            - pick_fruit: Grab the nearest fruit with your gripper.
+                            - change_hands: Transfer a small fruit, with Dim_max less than 0.78, from one gripper to the other (moves fruit to opposite table side). Not valid for big fruits, with Dim_max more than 0.78.
+                            - place_fruit: Put held fruit at table center (empties gripper, it can be used to move a big fruit, with Dim_max more than 0.78, to the other side of the table).
+                            - test_fruit: Place held fruit on scale to check weight (scale and fruit must be on same side of the table).
+                            - discard_fruit: Put tested fruit with wrong weight (Scale State = 0.98) into rejection box.
+                            - accept_fruit: Put tested fruit with correct weight (Scales State = 0.50) into acceptance box.
+                            - press_button: Toggle the lighted button state.
+                            - ask_nicely: Request new fruits when there are none.
+                            """
+                            First, you will receive the goal to achieve.
+                            You will receive several messages, ordered chronologically, in YAML format with the last episodes (old_state, action_executed, current_state, goal_reached). In the first step, you will only have available the current_state.
+                            Rules:
+                            - Choose ONE action name per response.
+                            - DO NOT repeat an action if it did not change the state in the last episode.
+                            - NO explanations, NO extra words, NO punctuation. Reply only with the action name.
 
-                            You will receive several messages, ordered chronologically, in YAML format with the last episodes (old_perception, policy_executed, current_perception, goal_reached). In the first step, you will only have avaliable the current_perception.
-                            Try to change all the boolean sensors from 0 to 1.
-                            Try to use actions other than those that reached the goal in the previous episodes, in order to try to discover new effects.
-
-                            Reply only with one action name (pick_fruit, change_hands, place_fruit, test_fruit, accept_fruit, discard_fruit, press_button, ask_nicely), with no explanations or extra words.
+                            USER_GOAL: Cause effects in the enviroment. Effect means that a boolean sensor change its value from 0 to 1.
                     -
                         role: "system"
                         content: |
-                            A cognitive architecture is controlling a robot with two arms. You have to guide the cognitive architecture in the first steps to achieve the goal. The goal is: classify fruits by its weight.
-                            <Perceptions>
-                            - Fruits: 
-                                - Distance: How far the closest fruit is from the robot (0 to 1, 0 is closest). Distance = 1 means there are no fruits.
-                                - Angle: Where the fruit is (0 to 1, less than 0.5 is left, more than 0.5 is right). Angle = 1 means there are no fruits.
-                                - Dim_max: Size of the fruit (0 to 1, larger is closer to 1). Dim_max = 1 means there are no fruits.
-                            - Scales:
-                                - Distance: How far the scale is from the robot (0 to 1, 0 is closest).
-                                - Angle: Where the scale is (0 to 1, less than 0.5 is left, more than 0.5 is right).
-                                - State: 0 if the fruit is not classified, 0.5 if the fruit’s weight is correct, 0.98 if the fruit’s weight is incorrect.
-                                - Active: 1 if a fruit is on the scale, 0 if not.
-                            - Fruit_in_left_hand: 1 if a fruit is in the left arm, 0 if not.
-                            - Fruit_in_right_hand: 1 if a fruit is in the right arm, 0 if not.
-                            - Button_light: 1 if the button light is on, 0 if off. 
-                            </Perceptions>
+                            You are in an scenario from which you are going to receive the following perceptions:
+                            """
+                            - fruit: 
+                                - distance: How far the closest fruit is from the robot (values from 0 to 1, 0 is closest). Distance = 1 means there are no fruits.
+                                - angle: Where the fruit is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side). Angle = 1 means there are no fruits.
+                                - dim_max: Size of the fruit (values from 0 to 1, larger is closer to 1). Small fruits have Dim_max less than 0.78, big fruits have Dim_max more than 0.78. Dim_max = 1 means there are no fruits.
+                            - scale:
+                                - distance: How far the scale is from the robot (values from 0 to 1, 0 is closest).
+                                - angle: Where the scale is on the table (values from 0 to 1, less than 0.5 is left side, more than 0.5 is right side).
+                                - state: 0 if the fruit is not classified, 0.5 if the fruits weight is correct, 0.98 if the fruits weight is incorrect.
+                                - active: 1 if a fruit is on the scale, 0 if not.
+                            - fruit_in_left_hand: True if a fruit is grasped by the left arm, False if not.
+                            - fruit_in_right_hand: True if a fruit is grasped by the right arm, False if not.
+                            - button_light: True if the button light is on, False if off.
+                            """
 
-                            <Actions> 
-                            - pick_fruit: Grab the closest fruit if it is close (right arm for right side, left arm for left side). 
-                            - change_hands: Move a fruit to the other arm if it is already grasped if its size (Dim_max) is less than 0.78.
-                            - place_fruit: Put a fruit on the table center to change its side if the fruit is already grasped.
-                            - test_fruit: Put a fruit on the scale to check its weight if the fruit is grasped in the same side of the scale.
-                            - discard_fruit: Put a fruit with incorrect weight (Scales State = 0.98) in the discarded fruit box. 
-                            - accept_fruit: Put a fruit with correct weight (Scales State = 0.5) in the accepted fruit box. 
-                            - press_button: Turn the button light on or off.
-                            - ask_nicely: Ask the experimenter for more fruits, if there are none. 
-                            </Actions>
+                            Taking into account the following set of possible actions, defined with a name and an explanation:
+                            """
+                            - pick_fruit: Grab the nearest fruit with your gripper.
+                            - change_hands: Transfer a small fruit, with Dim_max less than 0.78, from one gripper to the other (moves fruit to opposite table side). Not valid for big fruits, with Dim_max more than 0.78.
+                            - place_fruit: Put held fruit at table center (empties gripper, it can be used to move a big fruit, with Dim_max more than 0.78, to the other side of the table).
+                            - test_fruit: Place held fruit on scale to check weight (scale and fruit must be on same side of the table).
+                            - discard_fruit: Put tested fruit with wrong weight (Scale State = 0.98) into rejection box.
+                            - accept_fruit: Put tested fruit with correct weight (Scales State = 0.50) into acceptance box.
+                            - press_button: Toggle the lighted button state.
+                            - ask_nicely: Request new fruits when there are none.
+                            """
+                            First, you will receive the goal to achieve.
+                            You will receive several messages, ordered chronologically, in YAML format with the last episodes (old_state, action_executed, current_state, goal_reached). In the first step, you will only have available the current_state.
+                            Rules:
+                            - Choose ONE action name per response.
+                            - DO NOT repeat an action if it did not change the state in the last episode.
+                            - NO explanations, NO extra words, NO punctuation. Reply only with the action name.
 
-                            You will receive several messages, ordered chronologically, in YAML format with the last episodes (old_perception, policy_executed, current_perception, goal_reached). In the first step, you will only have avaliable the current_perception.
-                            If an action did not change the perceptions in the last episode received (old_perception == current_perception), do not repeat it in the current step.
-                            Reply only with the action name (pick_fruit, change_hands, place_fruit, test_fruit, accept_fruit, discard_fruit, press_button, ask_nicely), with no explanations or extra words.
-                    max_episodes: 6
-                    ltm_id: ltm_0
+                            USER_GOAL: Classify the fruit by its weight.
+
             -
                 name: effectance_policy
                 class_name: cognitive_nodes.effectance.PolicyEffectanceInternal
