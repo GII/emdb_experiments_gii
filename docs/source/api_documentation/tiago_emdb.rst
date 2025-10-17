@@ -1,16 +1,14 @@
 ==============================
-2D Simulator API Documentation
+TIAGo API Documentation
 ==============================
 
 
 
 ++++++++++++++
-Sim2DSimple 
+TIAGO Server
 ++++++++++++++
 
-(Work In Progress)
-
-.. automodule:: sim_2d_emdb.simple_sim
+.. automodule:: tiago_emdb.tiago_emdb_server
     :members:
     :show-inheritance:
 
