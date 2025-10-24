@@ -5,9 +5,9 @@ Experiment:
     threads: 2
     parameters: 
         iterations: 10000
-        trials: 20
+        trials: 50
         subgoals: False
-        softmax_selection: False
+        softmax_selection: True
         softmax_temperature: 0.3
         kill_on_finish: True
 Control:
@@ -156,63 +156,65 @@ LTM:
             -
                 name: BARTENDER
                 class_name: bartender_experiment.world_model.BarEmpty
-        Need:
+        RobotPurpose:
             -
                 name: get_response_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
                     drive_id: 'get_response_drive'
-                    need_type: 'Cognitive'   
+                    purpose_type: 'Need'  
             -
-                name: serve_the_drink_need
-                class_name: cognitive_nodes.need.Need
+                name: serve_the_drink_mission
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
                     drive_id: 'serve_the_drink_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Mission'
+                    terminal: False
             -
-                name: left_the_glass_need
-                class_name: cognitive_nodes.need.Need
+                name: left_the_glass_mission
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
                     drive_id: 'left_the_glass_drive'
-                    need_type: 'Other'
+                    purpose_type: 'Mission'
+                    terminal: False
             - 
                 name: novelty_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.1
                     drive_id: 'novelty_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             - 
                 name: effectance_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.25
                     drive_id: 'effectance_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             -
                 name: client_present_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
                     drive_id: 'client_present_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             -
                 name: external_effects_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.3
                     drive_id: 'external_effects_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             - 
                 name: prospection_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
                     drive_id: 'prospection_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
         Drive:
             -
                 name: serve_the_drink_drive
@@ -221,30 +223,30 @@ LTM:
                     input_topic: /emdb/simulator/sensor/serve_the_drink
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
-                    neighbors: [{"name": "serve_the_drink_need", "node_type": "Need"}]
+                    neighbors: [{"name": "serve_the_drink_mission", "node_type": "RobotPurpose"}]
             -
                 name: left_the_glass_drive
                 class_name: cognitive_nodes.drive.DriveExponential
                 parameters:
-                    input_topic: /emdb/simulator/sensor/left_the_glass_goal
+                    input_topic: /emdb/simulator/sensor/left_the_glass
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
-                    neighbors: [{"name": "left_the_glass_need", "node_type": "Need"}]
+                    neighbors: [{"name": "left_the_glass_mission", "node_type": "RobotPurpose"}]
             -
                 name: client_present_drive
                 class_name: dummy_nodes.dummy_drive.DriveDummy
                 parameters:
-                    neighbors: [{"name": "client_present_need", "node_type": "Need"}]
+                    neighbors: [{"name": "client_present_need", "node_type": "RobotPurpose"}]
             -   
                 name: get_response_drive
                 class_name: dummy_nodes.dummy_drive.DriveDummy
                 parameters:
-                    neighbors: [{"name": "get_response_need", "node_type": "Need"}]
+                    neighbors: [{"name": "get_response_need", "node_type": "RobotPurpose"}]
             -
                 name: novelty_drive
                 class_name: cognitive_nodes.novelty.DriveNovelty
                 parameters:
-                    neighbors: [{"name": "novelty_need", "node_type": "Need"}]
+                    neighbors: [{"name": "novelty_need", "node_type": "RobotPurpose"}]
             -
                 name: effectance_drive
                 class_name: cognitive_nodes.effectance.DriveEffectanceInternal
@@ -252,14 +254,14 @@ LTM:
                     ltm_id: ltm_0
                     min_confidence: 0.84
                     limit_depth: True
-                    neighbors: [{"name": "effectance_need", "node_type": "Need"}]
+                    neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
             -
                 name: external_effects_drive
                 class_name: cognitive_nodes.effectance.DriveEffectanceExternal
                 parameters:
                     episodes_topic: /main_loop/episodes
                     episodes_msg: cognitive_processes_interfaces.msg.Episode
-                    neighbors: [{"name": "external_effects_need", "node_type": "Need"}]
+                    neighbors: [{"name": "external_effects_need", "node_type": "RobotPurpose"}]
             -
                 name: prospection_drive
                 class_name: cognitive_nodes.prospection.ProspectionDrive
@@ -267,7 +269,7 @@ LTM:
                     ltm_id: ltm_0
                     min_pnode_rate: 0.85
                     min_goal_rate: 0.95
-                    neighbors: [{"name": "prospection_need", "node_type": "Need"}]
+                    neighbors: [{"name": "prospection_need", "node_type": "RobotPurpose"}]
         Goal:
             -
                 name: client_present_goal
@@ -342,22 +344,22 @@ LTM:
                 name: effectance_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "BARTENDER", "node_type": "WorldModel"}, {"name": "effectance_pnode", "node_type": "PNode"}]
+                    neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "effectance_pnode", "node_type": "PNode"}]
             -
                 name: external_effects_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "external_effects_goal", "node_type": "Goal"}, {"name": "BARTENDER", "node_type": "WorldModel"}, {"name": "external_effects_pnode", "node_type": "PNode"}]
+                    neighbors: [{"name": "external_effects_goal", "node_type": "Goal"}, {"name": "external_effects_pnode", "node_type": "PNode"}]
             -
                 name: prospection_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "prospection_goal", "node_type": "Goal"}, {"name": "BARTENDER", "node_type": "WorldModel"}, {"name": "prospection_pnode", "node_type": "PNode"}]
+                    neighbors: [{"name": "prospection_goal", "node_type": "Goal"}, {"name": "prospection_pnode", "node_type": "PNode"}]
             -
                 name: client_present_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "client_present_goal", "node_type": "Goal"}, {"name": "BARTENDER", "node_type": "WorldModel"}, {"name": "client_present_pnode", "node_type": "PNode"}]
+                    neighbors: [{"name": "client_present_goal", "node_type": "Goal"}, {"name": "client_present_pnode", "node_type": "PNode"}]
             -
                 name: get_response_cnode
                 class_name: cognitive_nodes.cnode.CNode
@@ -377,7 +379,19 @@ LTM:
                     service_msg: cognitive_node_interfaces.srv.Policy
                     service_name: /emdb/simulator/executed_policy
             -
-                name: place_object
+                name: place_bottle
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: place_glass_serving
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: place_glass_return
                 class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
                     service_msg: cognitive_node_interfaces.srv.Policy
@@ -443,10 +457,6 @@ LTM:
 DiscreteEventSimulator:
     Perceptions:
         -
-            name: serve_the_drink_goal
-            perception_topic: /emdb/simulator/sensor/serve_the_drink
-            perception_msg: std_msgs.msg.Float32
-        -
             name: client
             perception_topic: /emdb/simulator/sensor/client
             perception_msg: simulators_interfaces.msg.ClientListMsg
@@ -476,10 +486,13 @@ DiscreteEventSimulator:
             perception_msg: std_msgs.msg.Float32    
         -   
             name: left_the_glass_goal
-            perception_topic: /emdb/simulator/sensor/left_the_glass_goal
+            perception_topic: /emdb/simulator/sensor/left_the_glass
+            perception_msg: std_msgs.msg.Float32
+        -
+            name: serve_the_drink_goal
+            perception_topic: /emdb/simulator/sensor/serve_the_drink
             perception_msg: std_msgs.msg.Float32
 
     Stages:
-        stage0: 1000
-        stage1: 3000
-        stage2: 4000
+        stage0: 200
+        stage1: 500
