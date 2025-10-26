@@ -6,9 +6,9 @@ Experiment:
     parameters: 
         iterations: 10000
         trials: 50
-        subgoals: False
+        subgoals: True
         softmax_selection: True
-        softmax_temperature: 0.3
+        softmax_temperature: 0.8
         kill_on_finish: True
 Control:
     id: ltm_simulator
@@ -184,14 +184,14 @@ LTM:
                 name: novelty_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 0.1
+                    weight: 0.6
                     drive_id: 'novelty_drive'
                     purpose_type: 'Need'
             - 
                 name: effectance_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 0.25
+                    weight: 0.5
                     drive_id: 'effectance_drive'
                     purpose_type: 'Need'
             -
@@ -212,7 +212,7 @@ LTM:
                 name: prospection_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 1.0
+                    weight: 0.5
                     drive_id: 'prospection_drive'
                     purpose_type: 'Need'
         Drive:
@@ -252,7 +252,7 @@ LTM:
                 class_name: cognitive_nodes.effectance.DriveEffectanceInternal
                 parameters:
                     ltm_id: ltm_0
-                    min_confidence: 0.84
+                    min_confidence: 0.6
                     limit_depth: True
                     neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
             -
@@ -267,18 +267,18 @@ LTM:
                 class_name: cognitive_nodes.prospection.ProspectionDrive
                 parameters:
                     ltm_id: ltm_0
-                    min_pnode_rate: 0.85
-                    min_goal_rate: 0.95
+                    min_pnode_rate: 0.5
+                    min_goal_rate: 0.7
                     neighbors: [{"name": "prospection_need", "node_type": "RobotPurpose"}]
         Goal:
             -
                 name: client_present_goal
-                class_name: cognitive_nodes.goal.GoalMotiven
+                class_name: dummy_nodes.dummy_goal.GoalDummy
                 parameters:
                     neighbors: [{"name": "client_present_drive", "node_type": "Drive"}]
             -   
                 name: get_response_goal
-                class_name: dummy_nodes.dummy_goal.GoalMotiven
+                class_name: dummy_nodes.dummy_goal.GoalDummy
                 parameters:
                     neighbors: [{"name": "get_response_drive", "node_type": "Drive"}]
             -
@@ -494,5 +494,5 @@ DiscreteEventSimulator:
             perception_msg: std_msgs.msg.Float32
 
     Stages:
-        stage0: 200
-        stage1: 500
+        stage0: 5000
+        stage1: 5000

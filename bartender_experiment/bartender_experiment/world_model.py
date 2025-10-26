@@ -158,7 +158,7 @@ class ClientInBar(WorldModel):
 
         # OPT: timer más suave (100ms está bien) pero con QoS y sin trabajo pesado dentro
         self.preference_timer = self.create_timer(
-            0.1,
+            0.01,
             self.log_preference,
             callback_group=self.timer_cbgroup
         )
