@@ -73,8 +73,8 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
 
     shutdown_on_exit = RegisterEventHandler(
         OnProcessExit(
-            target_action=core_node,  # Nodo que supervisar
-            on_exit=[Shutdown()],  # Acción: Cerrar todos los nodos
+            target_action=core_node,
+            on_exit=[Shutdown()],  
         )
     )
 
@@ -106,7 +106,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "experiment_file",
-            default_value="fruit_shop_progress_experiment.yaml",
+            default_value="fruit_shop_experiment.yaml",
             description="The file that loads the experiment config",
         )
     )
