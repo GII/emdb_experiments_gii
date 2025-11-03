@@ -4,7 +4,7 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 2000
+        iterations: 1000
         trials: 10
         subgoals: False
         softmax_selection: False

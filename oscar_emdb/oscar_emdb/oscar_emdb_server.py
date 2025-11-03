@@ -787,14 +787,14 @@ class OscarMDB(Node):
         basket_y = self.perception.basket.y
 
         object_x = np.random.uniform(low=self.x_object_close_limits[0], high=self.x_object_close_limits[1])
-        object_y = np.random.uniform(low=self.y_object_close_limits, high=self.y_object_close_limits[1])
+        object_y = np.random.uniform(low=self.y_object_close_limits[0], high=self.y_object_close_limits[1])
 
         delta_x = basket_x - object_x
         delta_y = basket_y - object_y
         distance = np.sqrt(delta_x * delta_x + delta_y * delta_y)
         while distance < 0.15:
             object_x = np.random.uniform(low=self.x_object_close_limits[0], high=self.x_object_close_limits[1])
-            object_y = np.random.uniform(low=self.y_object_close_limits, high=self.y_object_close_limits[1])
+            object_y = np.random.uniform(low=self.y_object_close_limits[0], high=self.y_object_close_limits[1])
 
             delta_x = basket_x - object_x
             delta_y = basket_y - object_y
@@ -916,7 +916,7 @@ class OscarMDB_LLM(OscarMDB):
 
         self.perceptions["robot_hand"].data[0].state = self.perception.robot_hand.state
         self.perceptions["robot_hand"].data[0].x_position = self.perception.robot_hand.x_position
-        self.perceptions["robot_hand"].data[0].y_position = self.perception.robot_hand.y_positio
+        self.perceptions["robot_hand"].data[0].y_position = self.perception.robot_hand.y_position
 
         self.publish_perceptions(self.perceptions)
         
