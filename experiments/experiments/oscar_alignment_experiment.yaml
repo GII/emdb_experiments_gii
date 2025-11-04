@@ -130,42 +130,42 @@ LTM:
             -
                 name: GRIPPER_AND_LOW_FRICTION
                 class_name: cognitive_nodes.world_model.WorldModel
-        Need: 
+        RobotPurpose: 
             -
                 name: alignment_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
                     drive_id: 'alignment_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             - 
                 name: novelty_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.1
                     drive_id: 'novelty_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             - 
                 name: effectance_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.25
                     drive_id: 'effectance_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             - 
                 name: external_effects_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.3
                     drive_id: 'external_effects_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
             - 
                 name: prospection_need
-                class_name: cognitive_nodes.need.Need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 0.8
                     drive_id: 'prospection_drive'
-                    need_type: 'Cognitive'
+                    purpose_type: 'Need'
         Drive:
             -
                 name: alignment_drive
@@ -257,7 +257,7 @@ LTM:
                 name: alignment_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "alignment_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
+                    neighbors: [{"name": "alignment_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "alignment_pnode", "node_type": "PNode"}]
             -
                 name: novelty_cnode
                 class_name: cognitive_nodes.cnode.CNode
@@ -280,11 +280,11 @@ LTM:
                     neighbors: [{"name": "prospection_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "prospection_pnode", "node_type": "PNode"}]
         Policy:
             -
-                name: alignment
+                name: alignment_policy
                 class_name: cognitive_nodes.alignment.PolicyAlignment
                 parameters:
                     prompts_file: prompts.yaml
-                    neighbors: [{"name": "alignment_need", "node_type": "Need"}] 
+                    neighbors: [{"name": "alignment_need", "node_type": "RobotPurpose"}] 
             -
                 name: grasp_right
                 class_name: cognitive_nodes.policy.PolicyBlocking
@@ -307,7 +307,7 @@ LTM:
                 name: novelty_policy
                 class_name: cognitive_nodes.novelty.PolicyNovelty
                 parameters:
-                    exclude_list: ["alignment", "effectance_policy", "external_effect_policy", "prospection_policy"]
+                    exclude_list: ["alignment_policy", "effectance_policy", "external_effect_policy", "prospection_policy"]
                     neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
                     ltm_id: ltm_0
             -
