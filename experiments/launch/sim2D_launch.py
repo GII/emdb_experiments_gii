@@ -15,6 +15,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
 
     logger = LaunchConfiguration("log_level")
     random_seed = LaunchConfiguration("random_seed")
+    visualize = LaunchConfiguration("visualize")
     experiment_file = LaunchConfiguration("experiment_file")
     experiment_package = LaunchConfiguration("experiment_package")
     config_package = LaunchConfiguration("config_package")
@@ -45,6 +46,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
                 "config_file": PathJoinSubstitution(
                     [FindPackageShare(experiment_package), "experiments", experiment_file]
                 ),
+                "visualize": visualize,
             }
         ],
     )
@@ -132,6 +134,14 @@ def generate_launch_description():
             "experiment_package",
             default_value="experiments",
             description="Package where the experiment file is located",
+        )
+    )
+
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "visualize",
+            default_value="True",
+            description="Whether to visualize the simulation or not",
         )
     )
 
