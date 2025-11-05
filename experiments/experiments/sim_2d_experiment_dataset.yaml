@@ -8,7 +8,7 @@ Experiment:
         trials: 5
         softmax_selection: False
         softmax_temperature: 0.3
-        kill_on_finish: False
+        kill_on_finish: True
 Control:
     id: ltm_simulator
     control_topic: /main_loop/control
@@ -97,10 +97,67 @@ LTM:
         WorldModel:
             -
                 name: GRIPPER_AND_LOW_FRICTION
-                class_name: cognitive_nodes.world_model.WorldModel
+                # class_name: cognitive_nodes.world_model.WorldModel
+                class_name: cognitive_nodes.world_model.Sim2DWorldModel
                 parameters:
                     episodes_topic: /main_loop/episodes
                     prediction_srv_type: cognitive_node_interfaces.srv.Predict
+                    wm_actuation_config:
+                        left_arm:
+                            dist:
+                                type: float
+                                bounds: [0 , 150]
+                            angle:
+                                type: float
+                                bounds: [-120 , 120]
+                        right_arm:
+                            dist:
+                                type: float
+                                bounds: [0 , 150]
+                            angle:
+                                type: float
+                                bounds: [-120 , 120]
+                    wm_perception_config:
+                        ball:
+                            x:
+                                type: float
+                                bounds: [100 , 2700]
+                            y:
+                                type: float
+                                bounds: [50 , 1350]
+                        ball_in_left_hand:
+                            data:
+                                type: bool
+                        ball_in_right_hand:
+                            data:
+                                type: bool
+                        box:
+                            x:
+                                type: float
+                                bounds: [100 , 2700]
+                            y:
+                                type: float
+                                bounds: [50 , 1350]
+                        left_arm:
+                            x:
+                                type: float
+                                bounds: [100 , 1350]
+                            y:
+                                type: float
+                                bounds: [50 , 1350]
+                            angle:
+                                type: angle
+                                bounds: [-180, 180]
+                        right_arm:
+                            x:
+                                type: float
+                                bounds: [1350 , 2700]
+                            y:
+                                type: float
+                                bounds: [50 , 1350]
+                            angle:
+                                type: angle
+                                bounds: [-180, 180]
             
 
         Perception:
@@ -146,7 +203,7 @@ LTM:
                     default_topic: /mdb/baxter/sensor/left_arm
                     normalize_data:
                         x_min: 100
-                        x_max: 2700
+                        x_max: 1350
                         y_min: 50
                         y_max: 1350
                         angle_min: -180
@@ -158,7 +215,7 @@ LTM:
                     default_msg: simulators_interfaces.msg.Object2DListMsg
                     default_topic: /mdb/baxter/sensor/right_arm
                     normalize_data:
-                        x_min: 100
+                        x_min: 1350
                         x_max: 2700
                         y_min: 50
                         y_max: 1350
@@ -170,7 +227,7 @@ LTM:
                 name: object_in_box_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 0.0
+                    weight: 1.0
                     drive_id: 'object_in_box_drive'
                     purpose_type: 'Mission'
                     terminal: True
@@ -193,7 +250,7 @@ LTM:
                 name: model_creation_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 1.0
+                    weight: 0.0
                     drive_id: 'model_creation_drive'
                     purpose_type: 'Need'
 
@@ -276,18 +333,31 @@ LTM:
                     neighbors: [{"name": "model_creation_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "model_creation_pnode", "node_type": "PNode"}]
 
         UtilityModel:
+            # -
+            #     name: random_exploration
+            #     class_name: cognitive_nodes.utility_model.UtilityModel
+            #     new_executor: True
+            #     threads: 2
+            #     parameters:
+            #         max_iterations: 50
+            #         candidate_actions: 100
+            #         ltm_id: ltm_0
+            #         neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
+            #         softmax_temperature: 0.1
+            #         exploration_process: True
             -
-                name: random_exploration
-                class_name: cognitive_nodes.utility_model.UtilityModel
+                name: novelty_exploration
+                class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
                 new_executor: True
                 threads: 2
                 parameters:
+                    trace_length: 50
                     max_iterations: 50
                     candidate_actions: 100
                     ltm_id: ltm_0
                     neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
+                    softmax_selection: False
                     softmax_temperature: 0.1
-                    exploration_process: True
 
 
 

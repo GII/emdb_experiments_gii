@@ -89,6 +89,7 @@ LTM:
                     epochs: 20
                     output_activation: "sigmoid"
                     max_antitraces: 5
+                    evaluation_method: "exponential"
         -
             data: Policy
             default_class: cognitive_nodes.policy.PolicyBlocking
@@ -121,10 +122,10 @@ LTM:
                         ball:
                             x:
                                 type: float
-                                bounds: [100 , 2400]
+                                bounds: [100 , 2700]
                             y:
                                 type: float
-                                bounds: [50 , 800]
+                                bounds: [50 , 1350]
                         ball_in_left_hand:
                             data:
                                 type: bool
@@ -134,29 +135,29 @@ LTM:
                         box:
                             x:
                                 type: float
-                                bounds: [100 , 2400]
+                                bounds: [100 , 2700]
                             y:
                                 type: float
-                                bounds: [50 , 800]
+                                bounds: [50 , 1350]
                         left_arm:
                             x:
                                 type: float
-                                bounds: [100 , 2400]
+                                bounds: [100 , 1350]
                             y:
                                 type: float
-                                bounds: [50 , 800]
+                                bounds: [50 , 1350]
                             angle:
-                                type: float
+                                type: angle
                                 bounds: [-180, 180]
                         right_arm:
                             x:
                                 type: float
-                                bounds: [100 , 2400]
+                                bounds: [1350 , 2700]
                             y:
                                 type: float
-                                bounds: [50 , 800]
+                                bounds: [50 , 1350]
                             angle:
-                                type: float
+                                type: angle
                                 bounds: [-180, 180]
 
 
@@ -203,7 +204,7 @@ LTM:
                     default_topic: /mdb/baxter/sensor/left_arm
                     normalize_data:
                         x_min: 100
-                        x_max: 2700
+                        x_max: 1350
                         y_min: 50
                         y_max: 1350
                         angle_min: -180
@@ -215,7 +216,7 @@ LTM:
                     default_msg: simulators_interfaces.msg.Object2DListMsg
                     default_topic: /mdb/baxter/sensor/right_arm
                     normalize_data:
-                        x_min: 100
+                        x_min: 1350
                         x_max: 2700
                         y_min: 50
                         y_max: 1350
@@ -360,6 +361,7 @@ LTM:
                 new_executor: True
                 threads: 2
                 parameters:
+                    trace_length: 20
                     max_iterations: 10
                     candidate_actions: 100
                     ltm_id: ltm_0

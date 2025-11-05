@@ -74,15 +74,16 @@ LTM:
             data: UtilityModel
             default_class: cognitive_nodes.utility_model.LearnedUtilityModel
             parameters:
-                    max_iterations: 20
-                    candidate_actions: 20
-                    ltm_id: ltm_0
-                    candidate_generation: "latin"
-                    softmax_selection: True
-                    softmax_temperature: 0.1
-                    min_traces: 10
-                    max_traces: 50
-                    max_antitraces: 10
+                trace_length: 20
+                max_iterations: 20
+                candidate_actions: 20
+                ltm_id: ltm_0
+                candidate_generation: "latin"
+                softmax_selection: True
+                softmax_temperature: 0.1
+                min_traces: 10
+                max_traces: 50
+                max_antitraces: 10
         -
             data: Policy
             default_class: cognitive_nodes.policy.PolicyBlocking
@@ -197,7 +198,7 @@ LTM:
                     default_topic: /mdb/baxter/sensor/left_arm
                     normalize_data:
                         x_min: 100
-                        x_max: 2700
+                        x_max: 1350
                         y_min: 50
                         y_max: 1350
                         angle_min: -180
@@ -209,7 +210,7 @@ LTM:
                     default_msg: simulators_interfaces.msg.Object2DListMsg
                     default_topic: /mdb/baxter/sensor/right_arm
                     normalize_data:
-                        x_min: 100
+                        x_min: 1350
                         x_max: 2700
                         y_min: 50
                         y_max: 1350
