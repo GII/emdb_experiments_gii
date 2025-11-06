@@ -386,6 +386,47 @@ LTM:
                     max_traces: 50
                     max_antitraces: 10
                     model_file: /home/efallash/ros2_ws/src/MDB/tfm_scripts/results/utility_model_exponential_online_grasped_ball_goal.keras
+                    perception_config:
+                        ball:
+                            x:
+                                type: float
+                                bounds: [100 , 2700]
+                            y:
+                                type: float
+                                bounds: [50 , 1350]
+                        ball_in_left_hand:
+                            data:
+                                type: bool
+                        ball_in_right_hand:
+                            data:
+                                type: bool
+                        box:
+                            x:
+                                type: float
+                                bounds: [100 , 2700]
+                            y:
+                                type: float
+                                bounds: [50 , 1350]
+                        left_arm:
+                            x:
+                                type: float
+                                bounds: [100 , 1350]
+                            y:
+                                type: float
+                                bounds: [50 , 1350]
+                            angle:
+                                type: angle
+                                bounds: [-180, 180]
+                        right_arm:
+                            x:
+                                type: float
+                                bounds: [1350 , 2700]
+                            y:
+                                type: float
+                                bounds: [50 , 1350]
+                            angle:
+                                type: angle
+                                bounds: [-180, 180]
 
             # -
             #     name: random_action
