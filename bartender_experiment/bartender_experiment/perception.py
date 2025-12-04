@@ -110,7 +110,6 @@ class BartenderFilterPerception(Perception):
         return dict(
             distance=(p.distance - self._distance_min) / self._distance_range,
             angle=(p.angle - self._angle_min) / self._angle_range,
-            state=self._normalize_and_clamp(p.state, self._state_divisor),
             id=p.id / self._id_divisor
         )
 
