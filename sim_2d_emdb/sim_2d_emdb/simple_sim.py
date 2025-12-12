@@ -109,6 +109,17 @@ class Sim2DSimple(Node):
         else:
             self.perceptions["grasped_ball"].data = 0.0
 
+        # Distances and angles between objects
+        self.perceptions["dist_left_arm_ball"].data[0].distance = self.sim.get_distance(left_arm, ball)
+        self.perceptions["dist_left_arm_ball"].data[0].angle = left_angle - self.sim.get_relative_angle(left_arm, ball)
+        self.perceptions["dist_right_arm_ball"].data[0].distance = self.sim.get_distance(right_arm, ball)
+        self.perceptions["dist_right_arm_ball"].data[0].angle = right_angle - self.sim.get_relative_angle(right_arm, ball)
+        self.perceptions["dist_ball_box"].data[0].distance = self.sim.get_distance(ball, box)
+        self.perceptions["dist_ball_box"].data[0].angle = self.sim.get_relative_angle(ball, box)
+        # Angle is the x position relative to the center of the environment
+        self.perceptions["box_angle"].data = box[0]-((self.sim.x_bounds[1]-self.sim.x_bounds[0])/2+self.sim.x_bounds[0])
+        self.perceptions["ball_angle"].data = ball[0]-((self.sim.x_bounds[1]-self.sim.x_bounds[0])/2+self.sim.x_bounds[0])
+
         self.get_logger().debug(f"DEBUG - Objects in box= {[obj.name for obj in self.sim.box1.contents]}")
 
     def reset_world(self):
@@ -183,22 +194,25 @@ class Sim2DSimple(Node):
                 self.changed_grippers=True
                 self.get_logger().info(f"DEBUG - Change from right to left gripper")
             
-        if not grippers_close: #Check if objects are close to the grippers
+        else: #Check if objects are close to the grippers
+            left_to_ball = np.linalg.norm(np.array(self.sim.robots[0].get_pos()) - np.array(self.sim.objects[0].get_pos()))
+            right_to_ball = np.linalg.norm(np.array(self.sim.robots[1].get_pos()) - np.array(self.sim.objects[0].get_pos()))
             self.get_logger().info(f"DEBUG - Checking if objects are close to gripper")
+            self.get_logger().info(f"DEBUG - Left to ball: {left_to_ball}, Right to ball: {right_to_ball}")
             if not self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=300), EntityType.ROBOT):
                 self.changed_grippers = False
-            close_l_obj = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=50), EntityType.BALL)
-            close_r_obj = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[1], threshold=50), EntityType.BALL)
-            if close_l_obj:
+            close_l_obj = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=self.sim.grasp_range), EntityType.BALL)
+            close_r_obj = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[1], threshold=self.sim.grasp_range), EntityType.BALL)
+            if close_l_obj and not self.changed_grippers:
                 self.get_logger().info(f"DEBUG - Objects {[obj.name for obj in close_l_obj]} detected close to left gripper")
                 self.gripper_l = True
-            if close_r_obj:
+            if close_r_obj and not self.changed_grippers:
                 self.get_logger().info(f"DEBUG - Objects {[obj.name for obj in close_r_obj]} detected close to right gripper")
                 self.gripper_r = True
         
             #RELEASE OBJECT IF OVER BOX
-            left_over_box = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=50), EntityType.BOX)
-            right_over_box = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[1], threshold=50), EntityType.BOX)
+            left_over_box = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=self.sim.place_range), EntityType.BOX)
+            right_over_box = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[1], threshold=self.sim.place_range), EntityType.BOX)
             left_to_box = np.linalg.norm(np.array(self.sim.robots[0].get_pos()) - np.array(self.sim.box1.get_pos()))
             right_to_box = np.linalg.norm(np.array(self.sim.robots[1].get_pos()) - np.array(self.sim.box1.get_pos()))
             self.get_logger().info(f"DEBUG - RIGHT GRIPPER TO BOX: {right_to_box} LEFT GRIPPER TO BOX: {left_to_box}")
