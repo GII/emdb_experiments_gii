@@ -40,6 +40,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
         package="sim_2d_emdb",
         executable="simple_sim",
         output="screen",
+        arguments=["--ros-args", "--log-level", logger],
         parameters=[
             {
                 "random_seed": random_seed,
