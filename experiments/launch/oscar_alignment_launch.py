@@ -80,8 +80,8 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
 
     shutdown_on_exit = RegisterEventHandler(
         OnProcessExit(
-            target_action=core_node,  # Nodo que supervisar
-            on_exit=[Shutdown()],  # Acción: Cerrar todos los nodos
+            target_action=core_node,
+            on_exit=[Shutdown()],
         )
     )
 

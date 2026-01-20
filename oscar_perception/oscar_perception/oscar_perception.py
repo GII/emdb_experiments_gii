@@ -12,6 +12,7 @@ from ros2_numpy import numpify
 
 # Interfaces
 from geometry_msgs.msg import PoseStamped, Point
+
 from oscar_emdb_interfaces.srv import PerceptionMultiObj as PerceptionSrv
 from oscar_emdb_interfaces.msg import PerceptionMultiObj as PerceptionMsg
 from oscar_emdb_interfaces.msg import ObjectPerception
@@ -524,6 +525,13 @@ class OscarPerception(Node):
     def get_hand_position_world(self, hand_frame="right_arm_gripper_link", reference_frame="world"):
         """
         Get the position of the robot hand in the reference frame (default world).
+
+        :param hand_frame: The TF frame of the robot hand.
+        :type hand_frame: str
+        :param reference_frame: The TF reference frame.
+        :type reference_frame: str
+        :return: x and y position of the robot hand in the reference frame.
+        :rtype: tuple
         """
         try:
             trans = self.tf_buffer.lookup_transform(reference_frame, hand_frame, rclpy.time.Time())
@@ -537,6 +545,9 @@ class OscarPerception(Node):
     def update_hand_position_perceptions(self):
         """
         Updates the robot hand position in the perceptions.
+
+        :return: x and y position of the robot hand in the world frame.
+        :rtype: tuple
         """
         robot_hand_x_position, robot_hand_y_position = self.get_hand_position_world()
         return robot_hand_x_position, robot_hand_y_position
@@ -544,12 +555,20 @@ class OscarPerception(Node):
     def model_states_callback(self, msg):
         """
         Callback to get the model states from Gazebo.
+
+        :param msg: ModelStates message from Gazebo.
+        :type msg: gazebo_msgs.msg.ModelStates  
         """
         self.model_states = msg
 
     def get_sim_object_pose(self, object_name):
         """
         Get the position of a simulated object in Gazebo.
+
+        :param object_name: Name of the object in Gazebo.
+        :type object_name: str
+        :return: x and y position of the object in the world frame.
+        :rtype: tuple
         """
         if self.model_states is None:
             return 0.0, 0.0

@@ -898,7 +898,6 @@ class OscarMDB_LLM(OscarMDB):
         :type msg: cognitive_processes_interfaces.msg.Perception
         """
         self.get_logger().debug("DEBUG - Publishing perceptions")
-        # Convert perceptions to distance, angle
         # Assign perceptions to MDB messages
         self.perceptions["object1"].data[0].label = self.perception.object1.label
         self.perceptions["object1"].data[0].x_position = self.perception.object1.x_position
