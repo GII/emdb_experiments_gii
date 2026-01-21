@@ -735,7 +735,7 @@ class OscarMDB(Node):
         Method that publishes the current perceptions and the reward value in the appropriate topics.
 
         :param msg: Perception message with the latest perceptions.
-        :type msg: cognitive_processes_interfaces.msg.Perception
+        :type msg: cognitive_node_interfaces.msg.Perception
         """
         self.get_logger().debug("DEBUG - Publishing perceptions")
         # Convert perceptions to distance, angle

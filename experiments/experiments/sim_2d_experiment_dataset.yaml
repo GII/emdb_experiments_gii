@@ -4,11 +4,11 @@ Experiment:
     new_executor: False
     threads: 1
     parameters: 
-        iterations: 10000
-        trials: 25
+        iterations: 2000
+        trials: 5
         softmax_selection: False
         softmax_temperature: 0.3
-        kill_on_finish: False
+        kill_on_finish: True
 Control:
     id: ltm_simulator
     control_topic: /main_loop/control
@@ -50,6 +50,8 @@ LTM:
         -
             data: Space
             default_class: cognitive_nodes.space.ANNSpace
+            parameters:
+                size: 50000
         -
             data: Perception
             default_class: cognitive_nodes.perception.Perception
@@ -78,18 +80,15 @@ LTM:
             data: UtilityModel
             default_class: cognitive_nodes.utility_model.LearnedUtilityModel
             parameters:
-                    max_iterations: 10
-                    candidate_actions: 500
+                    max_iterations: 50
+                    candidate_actions: 100
                     ltm_id: ltm_0
                     candidate_generation: "latin"
-                    softmax_selection: False
+                    softmax_selection: True
                     softmax_temperature: 0.1
                     min_traces: 50
                     max_traces: 100
-                    epochs: 20
-                    output_activation: "sigmoid"
-                    max_antitraces: 5
-                    evaluation_method: "exponential"
+                    max_antitraces: 15
         -
             data: Policy
             default_class: cognitive_nodes.policy.PolicyBlocking
@@ -98,7 +97,7 @@ LTM:
         WorldModel:
             -
                 name: GRIPPER_AND_LOW_FRICTION
-                #class_name: cognitive_nodes.world_model.WorldModelLearned
+                # class_name: cognitive_nodes.world_model.WorldModel
                 class_name: cognitive_nodes.world_model.Sim2DWorldModel
                 parameters:
                     episodes_topic: /main_loop/episodes
@@ -159,7 +158,7 @@ LTM:
                             angle:
                                 type: angle
                                 bounds: [-180, 180]
-
+            
 
         Perception:
             -
@@ -228,7 +227,7 @@ LTM:
                 name: object_in_box_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 0.0
+                    weight: 1.0
                     drive_id: 'object_in_box_drive'
                     purpose_type: 'Mission'
                     terminal: True
@@ -239,8 +238,7 @@ LTM:
                     weight: 1.0
                     drive_id: 'grasped_ball_drive'
                     purpose_type: 'Mission'
-                    terminal: True
-
+                    terminal: False
             - 
                 name: novelty_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
@@ -252,7 +250,7 @@ LTM:
                 name: model_creation_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 1.0
+                    weight: 0.0
                     drive_id: 'model_creation_drive'
                     purpose_type: 'Need'
 
@@ -273,6 +271,7 @@ LTM:
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
                     neighbors: [{"name": "grasped_ball_need", "node_type": "RobotPurpose"}]
+
             -
                 name: novelty_drive
                 class_name: cognitive_nodes.novelty.DriveNovelty
@@ -290,16 +289,16 @@ LTM:
                     model_creation_policy: model_creation_policy
 
         Goal:
-            # -
-            #     name: object_in_box_goal
-            #     class_name: cognitive_nodes.goal.GoalMotiven
-            #     parameters:
-            #         neighbors: [{"name": "object_in_box_drive", "node_type": "Drive"}]
-            # -
-            #     name: grasped_ball_goal
-            #     class_name: cognitive_nodes.goal.GoalMotiven
-            #     parameters:
-            #         neighbors: [{"name": "grasped_ball_drive", "node_type": "Drive"}]
+            -
+                name: object_in_box_goal
+                class_name: cognitive_nodes.goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "object_in_box_drive", "node_type": "Drive"}]
+            -
+                name: grasped_ball_goal
+                class_name: cognitive_nodes.goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "grasped_ball_drive", "node_type": "Drive"}]
             -
                 name: novelty_goal
                 class_name: dummy_nodes.dummy_goal.GoalDummy
@@ -332,61 +331,33 @@ LTM:
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "model_creation_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "model_creation_pnode", "node_type": "PNode"}]
-            # -
-            #     name: object_in_box_cnode
-            #     class_name: cognitive_nodes.cnode.CNode
-            #     parameters:
-            #         neighbors: [{"name": "object_in_box_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}]
-            # -
-            #     name: grasped_ball_cnode
-            #     class_name: cognitive_nodes.cnode.CNode
-            #     parameters:
-            #         neighbors: [{"name": "grasped_ball_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}]
-
-        Policy:
-            -
-                name: model_creation_policy
-                class_name: cognitive_nodes.model_creation.ModelCreationPolicy
-                parameters:
-                    neighbors: [{"name": "model_creation_cnode", "node_type": "CNode"}]
-                    LTM_id: ltm_0
-                    max_iterations: 20
-                    episodes_topic: /main_loop/episodes
-                    episodes_msg: cognitive_node_interfaces.msg.Episode
 
         UtilityModel:
+            # -
+            #     name: random_exploration
+            #     class_name: cognitive_nodes.utility_model.UtilityModel
+            #     new_executor: True
+            #     threads: 2
+            #     parameters:
+            #         max_iterations: 50
+            #         candidate_actions: 100
+            #         ltm_id: ltm_0
+            #         neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
+            #         softmax_temperature: 0.1
+            #         exploration_process: True
             -
                 name: novelty_exploration
                 class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
                 new_executor: True
                 threads: 2
                 parameters:
-                    trace_length: 20
-                    max_iterations: 10
+                    trace_length: 50
+                    max_iterations: 50
                     candidate_actions: 100
                     ltm_id: ltm_0
                     neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
                     softmax_selection: False
                     softmax_temperature: 0.1
-
-            # -
-            #     name: pick_ball
-            #     # class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
-            #     class_name: cognitive_nodes.utility_model.HardCodedUtilityModel
-            #     # class_name: cognitive_nodes.utility_model.LearnedUtilityModel
-            #     new_executor: False
-            #     threads: 1
-            #     parameters:
-            #         max_iterations: 20
-            #         candidate_actions: 20
-            #         ltm_id: ltm_0
-            #         neighbors: [{"name": "grasped_ball_cnode", "node_type": "CNode"}]
-            #         candidate_generation: "latin"
-            #         softmax_selection: True
-            #         softmax_temperature: 0.1
-            #         min_traces: 10
-            #         max_traces: 50
-            #         max_antitraces: 10
 
 
 
