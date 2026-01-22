@@ -1,8 +1,7 @@
 from launch import LaunchDescription, LaunchContext
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-from launch.event_handlers import OnProcessExit
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction, RegisterEventHandler, Shutdown
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction
 from launch.substitutions import (
     LaunchConfiguration,
     FindExecutable,
@@ -15,7 +14,6 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
 
     logger = LaunchConfiguration("log_level")
     random_seed = LaunchConfiguration("random_seed")
-    visualize = LaunchConfiguration("visualize")
     experiment_file = LaunchConfiguration("experiment_file")
     experiment_package = LaunchConfiguration("experiment_package")
     config_package = LaunchConfiguration("config_package")
@@ -46,7 +44,6 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
                 "config_file": PathJoinSubstitution(
                     [FindPackageShare(experiment_package), "experiments", experiment_file]
                 ),
-                "visualize": visualize,
             }
         ],
     )
@@ -73,14 +70,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
         shell=True,
     )
 
-    shutdown_on_exit = RegisterEventHandler(
-        OnProcessExit(
-            target_action=core_node,  # Nodo que supervisar
-            on_exit=[Shutdown()],  # Acción: Cerrar todos los nodos
-        )
-    )
-
-    nodes_to_start = [config_service_call, core_node, ltm_node, simulator_node, shutdown_on_exit]
+    nodes_to_start = [config_service_call, core_node, ltm_node, simulator_node]
 
     return nodes_to_start
 
@@ -116,7 +106,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "config_file",
-            default_value="commander_threaded.yaml",
+            default_value="commander.yaml",
             description="The file that loads the commander config",
         )
     )
@@ -134,14 +124,6 @@ def generate_launch_description():
             "experiment_package",
             default_value="experiments",
             description="Package where the experiment file is located",
-        )
-    )
-
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "visualize",
-            default_value="True",
-            description="Whether to visualize the simulation or not",
         )
     )
 

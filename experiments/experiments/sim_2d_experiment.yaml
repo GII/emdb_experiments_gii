@@ -1,30 +1,26 @@
 Experiment:
     name: main_loop
-    class_name: cognitive_processes.main_loop.MainLoopLight
-    new_executor: False
-    threads: 1
+    class_name: cognitive_processes.main_loop.MainLoop
+    new_executor: True
+    threads: 2
     parameters: 
-        iterations: 10000
-        trials: 25
+        iterations: 60000
+        trials: 500
+        subgoals: False
         softmax_selection: False
         softmax_temperature: 0.3
-        kill_on_finish: False
+        kill_on_finish: True
 Control:
     id: ltm_simulator
     control_topic: /main_loop/control
     control_msg: cognitive_processes_interfaces.msg.ControlMsg
     episodes_topic: /main_loop/episodes
-    episodes_msg: cognitive_node_interfaces.msg.Episode
+    episodes_msg: cognitive_processes_interfaces.msg.Episode
     executed_action_service: /mdb/baxter/executed_action
     executed_action_msg: cognitive_node_interfaces.srv.Action
     world_reset_service: /mdb/baxter/world_reset
     world_reset_msg: cognitive_processes_interfaces.srv.WorldReset
 LTM:
-    Globals:
-        actuation_config:
-            left_arm: ["dist", "angle"]
-            right_arm: ["dist", "angle"]
-
     Files:
         -
             id: goodness
@@ -42,10 +38,6 @@ LTM:
             id: trials
             class: core.file.FileTrialsSuccess
             file: trials.txt
-        -
-            id: dataset
-            class: core.file.FileEpisodesDataset
-            file: dataset.csv
     Connectors:
         -
             data: Space
@@ -55,41 +47,16 @@ LTM:
             default_class: cognitive_nodes.perception.Perception
         -
             data: PNode
-            default_class: cognitive_nodes.pnode.PNode
-
+            default_class: dummy_nodes.dummy_pnodes.NonActivatedDummyPNode
         -
             data: CNode
             default_class: cognitive_nodes.cnode.CNode
         -
             data: Goal
-            default_class: cognitive_nodes.goal.GoalMotiven
-            parameters:
-                space_class: cognitive_nodes.space.ANNSpace
-                history_size: 300  
-                min_confidence: 0.94  
-                ltm_id: ltm_0
+            default_class: cognitive_nodes.goal.Goal
         -
             data: WorldModel
-            default_class: cognitive_nodes.world_model.WorldModelLearned
-            parameters:
-                episodes_topic: /main_loop/episodes
-                prediction_srv_type: cognitive_node_interfaces.srv.Predict
-        -
-            data: UtilityModel
-            default_class: cognitive_nodes.utility_model.LearnedUtilityModel
-            parameters:
-                    max_iterations: 10
-                    candidate_actions: 500
-                    ltm_id: ltm_0
-                    candidate_generation: "latin"
-                    softmax_selection: False
-                    softmax_temperature: 0.1
-                    min_traces: 50
-                    max_traces: 100
-                    epochs: 20
-                    output_activation: "sigmoid"
-                    max_antitraces: 5
-                    evaluation_method: "exponential"
+            default_class: cognitive_nodes.world_model.WorldModel
         -
             data: Policy
             default_class: cognitive_nodes.policy.PolicyBlocking
@@ -98,34 +65,31 @@ LTM:
         WorldModel:
             -
                 name: GRIPPER_AND_LOW_FRICTION
-                #class_name: cognitive_nodes.world_model.WorldModelLearned
                 class_name: cognitive_nodes.world_model.Sim2DWorldModel
                 parameters:
-                    episodes_topic: /main_loop/episodes
-                    prediction_srv_type: cognitive_node_interfaces.srv.Predict
-                    wm_actuation_config:
-                        left_arm:
-                            dist:
-                                type: float
-                                bounds: [0 , 150]
-                            angle:
-                                type: float
-                                bounds: [-120 , 120]
-                        right_arm:
-                            dist:
-                                type: float
-                                bounds: [0 , 150]
-                            angle:
-                                type: float
-                                bounds: [-120 , 120]
-                    wm_perception_config:
+                    actuation_config:
+                            left_arm:
+                                dist:
+                                    type: float
+                                    bounds: [0 , 60]
+                                angle:
+                                    type: float
+                                    bounds: [-90 , 90]
+                            right_arm:
+                                dist:
+                                    type: float
+                                    bounds: [0 , 60]
+                                angle:
+                                    type: float
+                                    bounds: [-90 , 90]
+                    perception_config:
                         ball:
                             x:
                                 type: float
-                                bounds: [100 , 2700]
+                                bounds: [100 , 2400]
                             y:
                                 type: float
-                                bounds: [50 , 1350]
+                                bounds: [50 , 800]
                         ball_in_left_hand:
                             data:
                                 type: bool
@@ -135,29 +99,29 @@ LTM:
                         box:
                             x:
                                 type: float
-                                bounds: [100 , 2700]
+                                bounds: [100 , 2400]
                             y:
                                 type: float
-                                bounds: [50 , 1350]
+                                bounds: [50 , 800]
                         left_arm:
                             x:
                                 type: float
-                                bounds: [100 , 1350]
+                                bounds: [100 , 1250]
                             y:
                                 type: float
-                                bounds: [50 , 1350]
+                                bounds: [50 , 800]
                             angle:
-                                type: angle
+                                type: float
                                 bounds: [-180, 180]
                         right_arm:
                             x:
                                 type: float
-                                bounds: [1350 , 2700]
+                                bounds: [1050 , 2400]
                             y:
                                 type: float
-                                bounds: [50 , 1350]
+                                bounds: [50 , 800]
                             angle:
-                                type: angle
+                                type: float
                                 bounds: [-180, 180]
 
 
@@ -170,9 +134,9 @@ LTM:
                     default_topic: /mdb/baxter/sensor/ball
                     normalize_data:
                         x_min: 100
-                        x_max: 2700
+                        x_max: 2400
                         y_min: 50
-                        y_max: 1350
+                        y_max: 800
             -
                 name: ball_in_left_hand
                 class_name: cognitive_nodes.perception.Sim2DPerception
@@ -193,9 +157,9 @@ LTM:
                     default_topic: /mdb/baxter/sensor/box
                     normalize_data:
                         x_min: 100
-                        x_max: 2700
+                        x_max: 2400
                         y_min: 50
-                        y_max: 1350
+                        y_max: 800
             -
                 name: left_arm
                 class_name: cognitive_nodes.perception.Sim2DPerception
@@ -204,9 +168,9 @@ LTM:
                     default_topic: /mdb/baxter/sensor/left_arm
                     normalize_data:
                         x_min: 100
-                        x_max: 1350
+                        x_max: 1250
                         y_min: 50
-                        y_max: 1350
+                        y_max: 800
                         angle_min: -180
                         angle_max: 180
             -
@@ -216,31 +180,23 @@ LTM:
                     default_msg: simulators_interfaces.msg.Object2DListMsg
                     default_topic: /mdb/baxter/sensor/right_arm
                     normalize_data:
-                        x_min: 1350
-                        x_max: 2700
+                        x_min: 1050
+                        x_max: 2400
                         y_min: 50
-                        y_max: 1350
+                        y_max: 800
                         angle_min: -180
                         angle_max: 180
             
+
         RobotPurpose: 
             -
                 name: object_in_box_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 0.0
+                    weight: 1.0
                     drive_id: 'object_in_box_drive'
                     purpose_type: 'Mission'
                     terminal: True
-            -
-                name: grasped_ball_need
-                class_name: cognitive_nodes.robot_purpose.RobotPurpose
-                parameters:
-                    weight: 1.0
-                    drive_id: 'grasped_ball_drive'
-                    purpose_type: 'Mission'
-                    terminal: True
-
             - 
                 name: novelty_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
@@ -248,76 +204,35 @@ LTM:
                     weight: 0.2
                     drive_id: 'novelty_drive'
                     purpose_type: 'Need'
-            - 
-                name: model_creation_need
-                class_name: cognitive_nodes.robot_purpose.RobotPurpose
-                parameters:
-                    weight: 1.0
-                    drive_id: 'model_creation_drive'
-                    purpose_type: 'Need'
-
         Drive:
             -
                 name: object_in_box_drive
                 class_name: cognitive_nodes.drive.DriveExponential
                 parameters:
-                    input_topic: /mdb/baxter/sensor/ball_in_box
+                    input_topic: /mdb/baxter/sensor/progress
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
                     neighbors: [{"name": "object_in_box_need", "node_type": "RobotPurpose"}]
-            -
-                name: grasped_ball_drive
-                class_name: cognitive_nodes.drive.DriveExponential
-                parameters:
-                    input_topic: /mdb/baxter/sensor/grasped_ball
-                    input_msg: std_msgs.msg.Float32
-                    min_eval: 0.8 
-                    neighbors: [{"name": "grasped_ball_need", "node_type": "RobotPurpose"}]
+
             -
                 name: novelty_drive
                 class_name: cognitive_nodes.novelty.DriveNovelty
                 parameters:
                     neighbors: [{"name": "novelty_need", "node_type": "RobotPurpose"}]
-            -
-                name: model_creation_drive
-                class_name: cognitive_nodes.model_creation.ModelCreationDrive
-                parameters:
-                    neighbors: [{"name": "model_creation_need", "node_type": "RobotPurpose"}]
-                    LTM_id: ltm_0
-                    max_iterations: 20
-                    episodes_topic: /main_loop/episodes
-                    episodes_msg: cognitive_node_interfaces.msg.Episode
-                    model_creation_policy: model_creation_policy
-
         Goal:
-            # -
-            #     name: object_in_box_goal
-            #     class_name: cognitive_nodes.goal.GoalMotiven
-            #     parameters:
-            #         neighbors: [{"name": "object_in_box_drive", "node_type": "Drive"}]
-            # -
-            #     name: grasped_ball_goal
-            #     class_name: cognitive_nodes.goal.GoalMotiven
-            #     parameters:
-            #         neighbors: [{"name": "grasped_ball_drive", "node_type": "Drive"}]
+            -
+                name: object_in_box_goal
+                class_name: cognitive_nodes.goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "object_in_box_drive", "node_type": "Drive"}]
             -
                 name: novelty_goal
-                class_name: dummy_nodes.dummy_goal.GoalDummy
+                class_name: cognitive_nodes.goal.GoalMotiven
                 parameters:
                     neighbors: [{"name": "novelty_drive", "node_type": "Drive"}]
-            -
-                name: model_creation_goal
-                class_name: dummy_nodes.dummy_goal.GoalDummy
-                parameters:
-                    neighbors: [{"name": "model_creation_drive", "node_type": "Drive"}]
         PNode:
             -
                 name: novelty_pnode
-                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
-                parameters:
-                    space_class: cognitive_nodes.space.ActivatedDummySpace
-            -
-                name: model_creation_pnode
                 class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
                 parameters:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
@@ -327,89 +242,77 @@ LTM:
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
-            -
-                name: model_creation_cnode
-                class_name: cognitive_nodes.cnode.CNode
-                parameters:
-                    neighbors: [{"name": "model_creation_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "model_creation_pnode", "node_type": "PNode"}]
-            # -
-            #     name: object_in_box_cnode
-            #     class_name: cognitive_nodes.cnode.CNode
-            #     parameters:
-            #         neighbors: [{"name": "object_in_box_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}]
-            # -
-            #     name: grasped_ball_cnode
-            #     class_name: cognitive_nodes.cnode.CNode
-            #     parameters:
-            #         neighbors: [{"name": "grasped_ball_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}]
 
         Policy:
             -
-                name: model_creation_policy
-                class_name: cognitive_nodes.model_creation.ModelCreationPolicy
+                name: random_action
+                class_name: cognitive_nodes.novelty.PolicyRandomAction
                 parameters:
-                    neighbors: [{"name": "model_creation_cnode", "node_type": "CNode"}]
-                    LTM_id: ltm_0
-                    max_iterations: 20
-                    episodes_topic: /main_loop/episodes
-                    episodes_msg: cognitive_node_interfaces.msg.Episode
-
-        UtilityModel:
-            -
-                name: novelty_exploration
-                class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
-                new_executor: True
-                threads: 2
-                parameters:
-                    trace_length: 20
-                    max_iterations: 10
-                    candidate_actions: 100
-                    ltm_id: ltm_0
+                    service_msg: cognitive_node_interfaces.srv.Action
+                    service_name: /mdb/baxter/executed_action 
                     neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
-                    softmax_selection: False
-                    softmax_temperature: 0.1
-
-            # -
-            #     name: pick_ball
-            #     # class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
-            #     class_name: cognitive_nodes.utility_model.HardCodedUtilityModel
-            #     # class_name: cognitive_nodes.utility_model.LearnedUtilityModel
-            #     new_executor: False
-            #     threads: 1
-            #     parameters:
-            #         max_iterations: 20
-            #         candidate_actions: 20
-            #         ltm_id: ltm_0
-            #         neighbors: [{"name": "grasped_ball_cnode", "node_type": "CNode"}]
-            #         candidate_generation: "latin"
-            #         softmax_selection: True
-            #         softmax_temperature: 0.1
-            #         min_traces: 10
-            #         max_traces: 50
-            #         max_antitraces: 10
-
-
+                    actuation_config:
+                        left_arm:
+                            dist:
+                                type: float
+                                bounds: [0 , 60]
+                            angle:
+                                type: float
+                                bounds: [-90 , 90]
+                        right_arm:
+                            dist:
+                                type: float
+                                bounds: [0 , 60]
+                            angle:
+                                type: float
+                                bounds: [-90 , 90]
+                    perception_config:
+                        ball:
+                            x:
+                                type: float
+                                bounds: [100 , 2400]
+                            y:
+                                type: float
+                                bounds: [50 , 800]
+                        ball_in_left_hand:
+                            data:
+                                type: bool
+                        ball_in_right_hand:
+                            data:
+                                type: bool
+                        box:
+                            x:
+                                type: float
+                                bounds: [100 , 2400]
+                            y:
+                                type: float
+                                bounds: [50 , 800]
+                        left_arm:
+                            x:
+                                type: float
+                                bounds: [100 , 1250]
+                            y:
+                                type: float
+                                bounds: [50 , 800]
+                            angle:
+                                type: float
+                                bounds: [-180, 180]
+                        right_arm:
+                            x:
+                                type: float
+                                bounds: [1050 , 2400]
+                            y:
+                                type: float
+                                bounds: [50 , 800]
+                            angle:
+                                type: float
+                                bounds: [-180, 180]
 
         
 
                         
 
 SimulatedBaxter:
-    Actuation:
-        left_arm:
-            dist:
-                type: float
-                bounds: [0 , 150]
-            angle:
-                type: float
-                bounds: [-120 , 120]
-        right_arm:
-            dist:
-                type: float
-                bounds: [0 , 150]
-            angle:
-                type: float
-                bounds: [-120 , 120]
     Perceptions:
         -
             name: ball
@@ -437,9 +340,5 @@ SimulatedBaxter:
             perception_msg: simulators_interfaces.msg.Object2DListMsg
         -
             name: ball_in_box
-            perception_topic: /mdb/baxter/sensor/ball_in_box
-            perception_msg: std_msgs.msg.Float32
-        -
-            name: grasped_ball
-            perception_topic: /mdb/baxter/sensor/grasped_ball
+            perception_topic: /mdb/baxter/sensor/progress
             perception_msg: std_msgs.msg.Float32

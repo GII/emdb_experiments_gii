@@ -6,6 +6,7 @@ Experiment:
     parameters: 
         iterations: 5000
         trials: 20
+        subgoals: False
         softmax_selection: True
         softmax_temperature: 0.3
         kill_on_finish: True
@@ -14,7 +15,7 @@ Control:
     control_topic: /main_loop/control
     control_msg: cognitive_processes_interfaces.msg.ControlMsg
     episodes_topic: /main_loop/episodes
-    episodes_msg: cognitive_node_interfaces.msg.Episode
+    episodes_msg: cognitive_processes_interfaces.msg.Episode
     executed_policy_service: /emdb/simulator/executed_policy
     executed_policy_msg: cognitive_node_interfaces.srv.PolicyParametrized
     world_reset_service: /emdb/simulator/world_reset
