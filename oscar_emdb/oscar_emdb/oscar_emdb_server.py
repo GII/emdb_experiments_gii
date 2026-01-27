@@ -806,7 +806,7 @@ class OscarMDB(Node):
         )
         obj_msg = SetEntityState.Request()
 
-        obj_msg.state.name = "object"
+        obj_msg.state.name = "red_cylinder"
         obj_msg.state.pose = object_pose
         obj_msg.state.reference_frame = "world"
 
@@ -852,7 +852,7 @@ class OscarMDB(Node):
         bskt_msg.state.pose = basket_pose
         bskt_msg.state.reference_frame = "world"
 
-        obj_msg.state.name = "object"
+        obj_msg.state.name = "red_cylinder"
         obj_msg.state.pose = object_pose
         obj_msg.state.reference_frame = "world"
 

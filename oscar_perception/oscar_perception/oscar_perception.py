@@ -157,7 +157,7 @@ class OscarPerception(Node):
         self.get_logger().info("Processing perception...")
         found, obj, bskt, left, right = self.process_perception()
         robot_hand_x_position, robot_hand_y_position = self.update_hand_position_perceptions()
-        sim_obj_x_position, sim_obj_y_position = self.get_sim_object_pose("object")
+        sim_obj_x_position, sim_obj_y_position = self.get_sim_object_pose("red_cylinder")
         sim_basket_x_position, sim_basket_y_position = self.get_sim_object_pose("basket")
         self.get_logger().info("Perception processing completed")
         response.success = found
@@ -202,7 +202,7 @@ class OscarPerception(Node):
         msg = PerceptionMsg()
         found, obj, bskt, left, right = self.process_perception()
         robot_hand_x_position, robot_hand_y_position = self.update_hand_position_perceptions()
-        sim_obj_x_position, sim_obj_y_position = self.get_sim_object_pose("object")
+        sim_obj_x_position, sim_obj_y_position = self.get_sim_object_pose("red_cylinder")
         sim_basket_x_position, sim_basket_y_position = self.get_sim_object_pose("basket")
 
         if found:
