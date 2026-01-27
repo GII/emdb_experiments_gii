@@ -116,7 +116,9 @@ LTM:
                     max_antitraces: 5
                     evaluation_method: "exponential"
                     epochs: 100
-                    output_activation: "relu"
+                    batch_size: 16
+                    learning_rate: 0.0005
+                    output_activation: "linear"
                     hidden_layers: [256, 128]
         -
             data: Policy
