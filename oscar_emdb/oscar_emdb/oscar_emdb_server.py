@@ -17,8 +17,8 @@ from rclpy.task import Future
 from rcl_interfaces.msg import ParameterDescriptor
 from trajectory_msgs.msg import JointTrajectoryPoint
 from oscar_interfaces.srv import ArmControl, GripperControl
-from oscar_emdb_interfaces.srv import Perception as PerceptionSrv
-from oscar_emdb_interfaces.msg import Perception as PerceptionMsg
+from oscar_emdb_interfaces.srv import PerceptionMultiObj as PerceptionSrv
+from oscar_emdb_interfaces.msg import PerceptionMultiObj
 from gazebo_msgs.srv import GetEntityState, SetEntityState
 from geometry_msgs.msg import Pose, Quaternion, Point
 from core_interfaces.srv import LoadConfig
@@ -103,6 +103,13 @@ class OscarMDB(Node):
         self.reward_pub = self.create_publisher(
             Float32, "mdb/reward", 1
         )  # TODO: Implement dedicated interface
+
+        self.x_object_close_limits = [0.2575, 0.3625]
+        self.y_object_close_limits = [-0.458, 0.458]
+        self.x_object_limits = [0.1125, 0.7375]
+        self.y_object_limits = [-0.7415, 0.7415]
+        self.x_basket_limits = [0.25, 0.35]
+        self.y_basket_limits = [-0.55, 0.55]
 
     def load_configuration(self):
         """
@@ -200,11 +207,11 @@ class OscarMDB(Node):
             self.get_logger().info("Creating perception publisher timer... ")
             # Subscriber for the redescribed perceptions
             self.sensors_subs = self.create_subscription(
-                PerceptionMsg,
-                "/oscar/redescribed_sensors",
-                self.publish_perceptions_callback,
-                0,
-            )
+            PerceptionMultiObj,
+            "/oscar/redescribed_sensors",
+            self.publish_perceptions_callback,
+            1)
+
         if service_world_reset:
             classname= simulation["executed_policy_msg"]
             self.message_world_reset = class_from_classname(simulation["world_reset_msg"])
@@ -597,6 +604,9 @@ class OscarMDB(Node):
             trials += 1
             if trials == 20:
                 return None
+        self.get_logger().info(
+            f"Perception updated: {self.perception.object1.label} at ({self.perception.object1.x_position}, {self.perception.object1.y_position})"
+        )
 
     def update_reward_sensor(self):
         """
@@ -720,7 +730,7 @@ class OscarMDB(Node):
         self.publish_perceptions(self.perceptions)
         self.publish_reward()
 
-    def publish_perceptions_callback(self, msg: PerceptionMsg):
+    def publish_perceptions_callback(self, msg: PerceptionMultiObj):
         """
         Method that publishes the current perceptions and the reward value in the appropriate topics.
 
@@ -776,15 +786,15 @@ class OscarMDB(Node):
         basket_x = self.perception.basket.x
         basket_y = self.perception.basket.y
 
-        object_x = np.random.uniform(low=0.2575, high=0.3625)
-        object_y = np.random.uniform(low=-0.458, high=0.458)
+        object_x = np.random.uniform(low=self.x_object_close_limits[0], high=self.x_object_close_limits[1])
+        object_y = np.random.uniform(low=self.y_object_close_limits[0], high=self.y_object_close_limits[1])
 
         delta_x = basket_x - object_x
         delta_y = basket_y - object_y
         distance = np.sqrt(delta_x * delta_x + delta_y * delta_y)
         while distance < 0.15:
-            object_x = np.random.uniform(low=0.2575, high=0.3625)
-            object_y = np.random.uniform(low=-0.458, high=0.458)
+            object_x = np.random.uniform(low=self.x_object_close_limits[0], high=self.x_object_close_limits[1])
+            object_y = np.random.uniform(low=self.y_object_close_limits[0], high=self.y_object_close_limits[1])
 
             delta_x = basket_x - object_x
             delta_y = basket_y - object_y
@@ -796,7 +806,7 @@ class OscarMDB(Node):
         )
         obj_msg = SetEntityState.Request()
 
-        obj_msg.state.name = "object"
+        obj_msg.state.name = "red_cylinder"
         obj_msg.state.pose = object_pose
         obj_msg.state.reference_frame = "world"
 
@@ -809,18 +819,18 @@ class OscarMDB(Node):
         This method randomly places the basket and the object so that
         they are not coliding.
         """
-        basket_x = np.random.uniform(low=0.25, high=0.35)
-        basket_y = np.random.uniform(low=-0.55, high=0.55)
+        basket_x = np.random.uniform(low=self.x_basket_limits[0], high=self.x_basket_limits[1])
+        basket_y = np.random.uniform(low=self.y_basket_limits[0], high=self.y_basket_limits[1])
 
-        object_x = np.random.uniform(low=0.1125, high=0.7375)
-        object_y = np.random.uniform(low=-0.7415, high=0.7415)
+        object_x = np.random.uniform(low=self.x_object_limits[0], high=self.x_object_limits[1])
+        object_y = np.random.uniform(low=self.y_object_limits[0], high=self.y_object_limits[1])
 
         delta_x = basket_x - object_x
         delta_y = basket_y - object_y
         distance = np.sqrt(delta_x * delta_x + delta_y * delta_y)
         while distance < 0.15:
-            object_x = np.random.uniform(low=0.1125, high=0.7375)
-            object_y = np.random.uniform(low=-0.7415, high=0.7415)
+            object_x = np.random.uniform(low=self.x_object_limits[0], high=self.x_object_limits[1])
+            object_y = np.random.uniform(low=self.y_object_limits[0], high=self.y_object_limits[1])
 
             delta_x = basket_x - object_x
             delta_y = basket_y - object_y
@@ -842,7 +852,7 @@ class OscarMDB(Node):
         bskt_msg.state.pose = basket_pose
         bskt_msg.state.reference_frame = "world"
 
-        obj_msg.state.name = "object"
+        obj_msg.state.name = "red_cylinder"
         obj_msg.state.pose = object_pose
         obj_msg.state.reference_frame = "world"
 
@@ -865,12 +875,66 @@ class OscarMDB(Node):
         distance = np.sqrt(point.x * point.x + point.y * point.y)
         angle = np.arctan2(point.y, point.x)
         return distance, angle
+    
+class OscarMDB_LLM(OscarMDB):
+    """
+    Child class of OscarMDB that implements the LLM alignment experiment.
+    """
+    def __init__(self):
+        super().__init__()
+        self.x_object_close_limits = [0.2575, 0.3625]
+        self.y_object_close_limits = [-0.458, 0.0]
+        self.x_object_limits = [0.1125, 0.7375]
+        self.y_object_limits = [-0.7415, 0.0]
+        self.x_basket_limits = [0.25, 0.35]
+        self.y_basket_limits = [-0.55, 0.0]
 
 
-def main():
+    def publish_perceptions_callback(self, msg: PerceptionMultiObj):
+        """
+        Method that publishes the current perceptions and the reward value in the appropriate topics.
+
+        :param msg: Perception message with the latest perceptions.
+        :type msg: cognitive_processes_interfaces.msg.Perception
+        """
+        self.get_logger().debug("DEBUG - Publishing perceptions")
+        # Assign perceptions to MDB messages
+        self.perceptions["object1"].data[0].label = self.perception.object1.label
+        self.perceptions["object1"].data[0].x_position = self.perception.object1.x_position
+        self.perceptions["object1"].data[0].y_position = self.perception.object1.y_position
+        self.perceptions["object1"].data[0].diameter = 0.025
+        self.perceptions["object1"].data[0].color = self.perception.object1.color
+        self.perceptions["object1"].data[0].state = self.perception.object1.state
+
+        self.perceptions["object2"].data[0].label = self.perception.object2.label
+        self.perceptions["object2"].data[0].x_position = self.perception.object2.x_position
+        self.perceptions["object2"].data[0].y_position = self.perception.object2.y_position
+        self.perceptions["object2"].data[0].diameter = 0.1
+        self.perceptions["object2"].data[0].color = self.perception.object2.color
+        self.perceptions["object2"].data[0].state = self.perception.object2.state
+
+        self.perceptions["robot_hand"].data[0].state = self.perception.robot_hand.state
+        self.perceptions["robot_hand"].data[0].x_position = self.perception.robot_hand.x_position
+        self.perceptions["robot_hand"].data[0].y_position = self.perception.robot_hand.y_position
+
+        self.publish_perceptions(self.perceptions)
+        
+
+
+def oscar_experiment():
     rclpy.init()
 
     oscar_server = OscarMDB()
+    oscar_server.load_configuration()
+    try:
+        rclpy.spin(oscar_server)
+    except KeyboardInterrupt:
+        oscar_server.destroy_node()
+
+def oscar_alignment_experiment():
+    rclpy.init()
+
+    oscar_server = OscarMDB_LLM()
     oscar_server.load_configuration()
     try:
         rclpy.spin(oscar_server)

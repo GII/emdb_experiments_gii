@@ -1,10 +1,10 @@
 Experiment:
     name: main_loop
     class_name: cognitive_processes.main_loop.MainLoopLight
-    new_executor: True
-    threads: 2
+    new_executor: False
+    threads: 1
     parameters: 
-        iterations: 2000
+        iterations: 200
         trials: 5
         softmax_selection: False
         softmax_temperature: 0.3
@@ -34,12 +34,10 @@ LTM:
         #     id: pnodes_success
         #     class: core.file.FilePNodesSuccess
         #     file: pnodes_success.txt
-        -
-            id: pnodes_content
-            class: core.file.FilePNodesContent
-            file: pnodes_content.txt
-            parameters:
-                save_interval: 0
+        # -
+        #     id: pnodes_content
+        #     class: core.file.FilePNodesContent
+        #     file: pnodes_content.txt
         -
             id: trials
             class: core.file.FileTrialsSuccess
@@ -48,17 +46,6 @@ LTM:
             id: dataset
             class: core.file.FileEpisodesDataset
             file: dataset.csv
-        -
-            id: world_model_success
-            class: core.file.FileWorldModelSuccess
-            file: world_model_success.txt
-        -
-            id: save_models
-            class: core.file.FileSaveModels
-            file: models_save
-            parameters:
-                save_interval: 0
-
     Connectors:
         -
             data: Space
@@ -69,9 +56,7 @@ LTM:
         -
             data: PNode
             default_class: cognitive_nodes.pnode.PNode
-            parameters:
-                space_class: cognitive_nodes.space.ANNSpace
-                history_size: 500      
+
         -
             data: CNode
             default_class: cognitive_nodes.cnode.CNode
@@ -89,72 +74,40 @@ LTM:
             parameters:
                 episodes_topic: /main_loop/episodes
                 prediction_srv_type: cognitive_node_interfaces.srv.Predict
-                main_size: 2000
-                train_sample: 200
-                train_split: 0.8
-                validation_split: 0.1
-                secondary_size: 50
-                retrain: True
         -
             data: UtilityModel
-            default_class: cognitive_nodes.utility_model.QUtilityModel
+            default_class: cognitive_nodes.utility_model.LearnedUtilityModel
             parameters:
-                    max_iterations: 50
-                    candidate_actions: 100
-                    ltm_id: ltm_0
-                    candidate_generation: "latin"
-                    softmax_selection: True
-                    softmax_temperature: 0.01
-                    trace_length: 20
-                    min_traces: 20
-                    max_traces: 200
-                    train_traces: 10
-                    train_every: 5
-                    replace_every: 5
-                    discount_factor: 0.9
-                    reward_factor: 10.0
-                    max_antitraces: 5
-                    evaluation_method: "exponential"
-                    epochs: 100
-                    batch_size: 16
-                    learning_rate: 0.0005
-                    output_activation: "linear"
-                    hidden_layers: [256, 128]
+                trace_length: 50
+                max_iterations: 50
+                candidate_actions: 100
+                ltm_id: ltm_0
+                candidate_generation: "latin"
+                softmax_selection: True
+                softmax_temperature: 0.1
+                min_traces: 50
+                max_traces: 100
+                max_antitraces: 15
         -
             data: Policy
             default_class: cognitive_nodes.policy.PolicyBlocking
 
     Nodes:
+        WorldModel:
+            -
+                name: GRIPPER_AND_LOW_FRICTION
+                # class_name: cognitive_nodes.world_model.WorldModel
+                class_name: cognitive_nodes.world_model.WorldModelLearned
+                # class_name: cognitive_nodes.world_model.Sim2DWorldModel
+                parameters:
+                    episodes_topic: /main_loop/episodes
+                    prediction_srv_type: cognitive_node_interfaces.srv.Predict
+                    retrain: False
+                    learner_params:
+                        model_file: /home/efallash/ros2_ws/src/MDB/tfm_scripts/results/world_model_online_torch.pth
+
+
         Perception:
-            -
-                name: ball_angle
-                class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
-                parameters:
-                    default_msg: std_msgs.msg.Float32
-                    default_topic: /mdb/baxter/sensor/ball_angle
-                    normalize_data:
-                        min_value: -1300
-                        max_value: 1300
-            -
-                name: box_angle
-                class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
-                parameters:
-                    default_msg: std_msgs.msg.Float32
-                    default_topic: /mdb/baxter/sensor/box_angle
-                    normalize_data:
-                        min_value: -1300
-                        max_value: 1300
-            -
-                name: dist_ball_box
-                class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
-                parameters:
-                    default_msg: simulators_interfaces.msg.ObjectListMsg
-                    default_topic: /mdb/baxter/sensor/dist_ball_box
-                    normalize_data:
-                        distance_min: 0
-                        distance_max: 3000
-                        angle_min: -180
-                        angle_max: 180
             -
                 name: dist_left_arm_ball
                 class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
@@ -177,11 +130,39 @@ LTM:
                         distance_max: 3000
                         angle_min: -180
                         angle_max: 180
-
+            -
+                name: dist_ball_box
+                class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.ObjectListMsg
+                    default_topic: /mdb/baxter/sensor/dist_ball_box
+                    normalize_data:
+                        distance_min: 0
+                        distance_max: 3000
+                        angle_min: -180
+                        angle_max: 180
+            -
+                name: box_angle
+                class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
+                parameters:
+                    default_msg: std_msgs.msg.Float32
+                    default_topic: /mdb/baxter/sensor/box_angle
+                    normalize_data:
+                        min_value: -1300
+                        max_value: 1300
+            -
+                name: ball_angle
+                class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
+                parameters:
+                    default_msg: std_msgs.msg.Float32
+                    default_topic: /mdb/baxter/sensor/ball_angle
+                    normalize_data:
+                        min_value: -1300
+                        max_value: 1300
             
         RobotPurpose: 
             -
-                name: object_in_box_need
+                name: object_in_box_mission
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
@@ -189,32 +170,26 @@ LTM:
                     purpose_type: 'Mission'
                     terminal: True
             -
-                name: grasped_ball_need
+                name: grasped_ball_mission
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 0.8
+                    weight: 1.0
                     drive_id: 'grasped_ball_drive'
                     purpose_type: 'Mission'
-                    terminal: False
+                    terminal: True
+
             - 
                 name: novelty_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 0.1
+                    weight: 0.2
                     drive_id: 'novelty_drive'
-                    purpose_type: 'Need'
-            - 
-                name: effectance_need
-                class_name: cognitive_nodes.robot_purpose.RobotPurpose
-                parameters:
-                    weight: 0.25
-                    drive_id: 'effectance_drive'
                     purpose_type: 'Need'
             - 
                 name: model_creation_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 1.0
+                    weight: 0.0
                     drive_id: 'model_creation_drive'
                     purpose_type: 'Need'
 
@@ -226,7 +201,7 @@ LTM:
                     input_topic: /mdb/baxter/sensor/ball_in_box
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
-                    neighbors: [{"name": "object_in_box_need", "node_type": "RobotPurpose"}]
+                    neighbors: [{"name": "object_in_box_mission", "node_type": "RobotPurpose"}]
             -
                 name: grasped_ball_drive
                 class_name: cognitive_nodes.drive.DriveExponential
@@ -234,20 +209,12 @@ LTM:
                     input_topic: /mdb/baxter/sensor/grasped_ball
                     input_msg: std_msgs.msg.Float32
                     min_eval: 0.8 
-                    neighbors: [{"name": "grasped_ball_need", "node_type": "RobotPurpose"}]
+                    neighbors: [{"name": "grasped_ball_mission", "node_type": "RobotPurpose"}]
             -
                 name: novelty_drive
                 class_name: cognitive_nodes.novelty.DriveNovelty
                 parameters:
                     neighbors: [{"name": "novelty_need", "node_type": "RobotPurpose"}]
-            -
-                name: effectance_drive
-                class_name: cognitive_nodes.effectance.DriveEffectanceInternal
-                parameters:
-                    ltm_id: ltm_0
-                    min_confidence: 0.84
-                    limit_depth: False
-                    neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
             -
                 name: model_creation_drive
                 class_name: cognitive_nodes.model_creation.ModelCreationDrive
@@ -260,26 +227,21 @@ LTM:
                     model_creation_policy: model_creation_policy
 
         Goal:
-            # -
-            #     name: object_in_box_goal
-            #     class_name: cognitive_nodes.goal.GoalMotiven
-            #     parameters:
-            #         neighbors: [{"name": "object_in_box_drive", "node_type": "Drive"}]
-            # -
-            #     name: grasped_ball_goal
-            #     class_name: cognitive_nodes.goal.GoalMotiven
-            #     parameters:
-            #         neighbors: [{"name": "grasped_ball_drive", "node_type": "Drive"}]
+            -
+                name: object_in_box_goal
+                class_name: cognitive_nodes.goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "object_in_box_drive", "node_type": "Drive"}]
+            -
+                name: grasped_ball_goal
+                class_name: cognitive_nodes.goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "grasped_ball_drive", "node_type": "Drive"}]
             -
                 name: novelty_goal
                 class_name: dummy_nodes.dummy_goal.GoalDummy
                 parameters:
                     neighbors: [{"name": "novelty_drive", "node_type": "Drive"}]
-            -
-                name: effectance_goal
-                class_name: dummy_nodes.dummy_goal.GoalDummy
-                parameters:
-                    neighbors: [{"name": "effectance_drive", "node_type": "Drive"}]
             -
                 name: model_creation_goal
                 class_name: dummy_nodes.dummy_goal.GoalDummy
@@ -292,7 +254,12 @@ LTM:
                 parameters:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
             -
-                name: effectance_pnode
+                name: object_in_box_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: grasped_ball_pnode
                 class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
                 parameters:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
@@ -306,28 +273,22 @@ LTM:
                 name: novelty_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "novelty_pnode", "node_type": "PNode"}]
+                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
             -
                 name: model_creation_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "model_creation_goal", "node_type": "Goal"}, {"name": "model_creation_pnode", "node_type": "PNode"}]
+                    neighbors: [{"name": "model_creation_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "model_creation_pnode", "node_type": "PNode"}]
             -
-                name: effectance_cnode
+                name: object_in_box_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "effectance_pnode", "node_type": "PNode"}]
-            
-            # -
-            #     name: object_in_box_cnode
-            #     class_name: cognitive_nodes.cnode.CNode
-            #     parameters:
-            #         neighbors: [{"name": "object_in_box_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}]
-            # -
-            #     name: grasped_ball_cnode
-            #     class_name: cognitive_nodes.cnode.CNode
-            #     parameters:
-            #         neighbors: [{"name": "grasped_ball_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}]
+                    neighbors: [{"name": "object_in_box_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "object_in_box_pnode", "node_type": "PNode"}]
+            -
+                name: grasped_ball_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "grasped_ball_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "grasped_ball_pnode", "node_type": "PNode"}]
 
         Policy:
             -
@@ -339,56 +300,31 @@ LTM:
                     max_iterations: 20
                     episodes_topic: /main_loop/episodes
                     episodes_msg: cognitive_node_interfaces.msg.Episode
-            -
-                name: effectance_policy
-                class_name: cognitive_nodes.effectance.PolicyEffectanceInternal
-                parameters:
-                    goal_class: cognitive_nodes.effectance.GoalActivatePNode
-                    neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
-                    confidence: 0.5
-                    threshold_delta: 0.5
-                    limit_depth: False
-                    ltm_id: ltm_0            
 
         UtilityModel:
             -
-                name: novelty_exploration
-                class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
-                new_executor: True
-                threads: 2
+                name: pick_ball
+                # class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
+                # class_name: cognitive_nodes.utility_model.HardCodedUtilityModel
+                class_name: cognitive_nodes.utility_model.LearnedUtilityModel
+                new_executor: False
+                threads: 1
                 parameters:
-                    trace_length: 20
+                    trace_length: 50
                     max_iterations: 50
                     candidate_actions: 100
                     ltm_id: ltm_0
-                    neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
-                    softmax_selection: False
-                    softmax_temperature: 0.1
-
-            # -
-            #     name: pick_ball
-            #     # class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
-            #     class_name: cognitive_nodes.utility_model.HardCodedUtilityModel
-            #     # class_name: cognitive_nodes.utility_model.LearnedUtilityModel
-            #     new_executor: False
-            #     threads: 1
-            #     parameters:
-            #         max_iterations: 20
-            #         candidate_actions: 20
-            #         ltm_id: ltm_0
-            #         neighbors: [{"name": "grasped_ball_cnode", "node_type": "CNode"}]
-            #         candidate_generation: "latin"
-            #         softmax_selection: True
-            #         softmax_temperature: 0.1
-            #         min_traces: 10
-            #         max_traces: 50
-            #         max_antitraces: 10
+                    # neighbors: [{"name": "object_in_box_cnode", "node_type": "CNode"}]
+                    neighbors: [{"name": "grasped_ball_cnode", "node_type": "CNode"}]
+                    candidate_generation: "latin"
+                    softmax_selection: True
+                    softmax_temperature: 0.01
+                    min_traces: .inf
+                    max_traces: 50
+                    max_antitraces: 10
+                    model_file: /home/efallash/ros2_ws/src/MDB/tfm_scripts/results/utility_model_exponential_online_grasped_ball_goal.pth
 
 
-
-        
-
-                        
 
 SimulatedBaxter:
     Actuation:

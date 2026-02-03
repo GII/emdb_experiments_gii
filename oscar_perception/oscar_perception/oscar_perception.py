@@ -12,8 +12,10 @@ from ros2_numpy import numpify
 
 # Interfaces
 from geometry_msgs.msg import PoseStamped, Point
-from oscar_emdb_interfaces.srv import Perception as PerceptionSrv
-from oscar_emdb_interfaces.msg import Perception as PerceptionMsg
+
+from oscar_emdb_interfaces.srv import PerceptionMultiObj as PerceptionSrv
+from oscar_emdb_interfaces.msg import PerceptionMultiObj as PerceptionMsg
+from oscar_emdb_interfaces.msg import ObjectPerception
 from sensor_msgs.msg import Image
 from control_msgs.msg import JointTrajectoryControllerState
 from trajectory_msgs.msg import JointTrajectoryPoint
@@ -24,6 +26,12 @@ import cv2
 from cv_bridge import CvBridge
 from skimage.measure import regionprops, label
 import cameratransform as ct
+
+# Used for the robots's hand position
+from tf2_ros import Buffer, TransformListener
+from geometry_msgs.msg import PointStamped
+
+from gazebo_msgs.msg import ModelStates
 
 
 class OscarPerception(Node):
@@ -92,6 +100,20 @@ class OscarPerception(Node):
 
         self.configure_camera()
 
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+
+        self.model_states = None
+        self.create_subscription(
+            ModelStates,
+            '/gazebo/model_states',
+            self.model_states_callback,
+            10
+            )
+        
+        self.object_last_diameter = 0.0
+        self.bskt_last_diameter = 0.0
+
         self.get_logger().info("OSCAR perception services ready")
 
     def image_process_callback(self, msg):
@@ -134,12 +156,40 @@ class OscarPerception(Node):
         """
         self.get_logger().info("Processing perception...")
         found, obj, bskt, left, right = self.process_perception()
+        robot_hand_x_position, robot_hand_y_position = self.update_hand_position_perceptions()
+        sim_obj_x_position, sim_obj_y_position = self.get_sim_object_pose("red_cylinder")
+        sim_basket_x_position, sim_basket_y_position = self.get_sim_object_pose("basket")
         self.get_logger().info("Perception processing completed")
         response.success = found
         response.red_object = obj
         response.basket = bskt
         response.obj_in_left_hand = left
         response.obj_in_right_hand = right
+
+        object1 = ObjectPerception()
+        object1.label = 1#"cylinder"
+        object1.x_position = obj.x
+        object1.y_position = obj.y
+        object1.color = 1 #"red"
+        object1.diameter = self.object_last_diameter
+        object1.state = 0
+        response.object1 = object1
+
+        object2 = ObjectPerception()
+        object2.label = 0 #"basket"
+        object2.x_position = bskt.x
+        object2.y_position = bskt.y
+        object2.color = 0 #"blue"
+        object2.diameter = self.bskt_last_diameter
+        object2.state = 0
+        response.object2 = object2
+
+        robot_hand = ObjectPerception()
+        robot_hand.x_position = robot_hand_x_position
+        robot_hand.y_position = robot_hand_y_position
+        robot_hand.state = right
+        response.robot_hand = robot_hand
+
 
         return response
 
@@ -151,6 +201,9 @@ class OscarPerception(Node):
         self.get_logger().debug("DEBUG - Publishing redescribed sensors")
         msg = PerceptionMsg()
         found, obj, bskt, left, right = self.process_perception()
+        robot_hand_x_position, robot_hand_y_position = self.update_hand_position_perceptions()
+        sim_obj_x_position, sim_obj_y_position = self.get_sim_object_pose("red_cylinder")
+        sim_basket_x_position, sim_basket_y_position = self.get_sim_object_pose("basket")
 
         if found:
             self.pub_trials = 0
@@ -164,6 +217,30 @@ class OscarPerception(Node):
             msg.obj_in_left_hand = left
             msg.obj_in_right_hand = right
 
+            object1 = ObjectPerception()
+            object1.label = 1 #"red_cylinder"
+            object1.x_position = obj.x
+            object1.y_position = obj.y
+            object1.color = 1 #"red"
+            object1.diameter = self.object_last_diameter
+            object1.state = 0
+            msg.object1 = object1
+            
+            object2 = ObjectPerception()
+            object2.label = 0 #"basket"
+            object2.x_position = bskt.x
+            object2.y_position = bskt.y
+            object2.color = 0 #"blue"
+            object2.diameter = self.bskt_last_diameter
+            object2.state = 0
+            msg.object2 = object2
+
+            robot_hand = ObjectPerception()
+            robot_hand.x_position = robot_hand_x_position
+            robot_hand.y_position = robot_hand_y_position
+            robot_hand.state = 0
+            msg.robot_hand = robot_hand
+
             self.sensor_publisher.publish(msg)
 
     def process_perception(self):
@@ -175,6 +252,7 @@ class OscarPerception(Node):
         """
 
         # Wait for data flags and acquire semaphores to avoid overwriting of data during processing
+        self.image_flag.clear()
         self.image_flag.wait()
         for arm in self.gripper_flags.values():
             arm.wait()
@@ -254,8 +332,8 @@ class OscarPerception(Node):
         bskt_bin = self.color_segment_hsv(im_hsv, self.bskt_h, self.s, self.v)
 
         # Find object in image
-        obj_find = self.find_centroid(obj_bin, "red_box")
-        bskt_find = self.find_centroid(bskt_bin, "basket")
+        obj_find, obj_area = self.find_centroid(obj_bin, "red_box")
+        bskt_find, bskt_area = self.find_centroid(bskt_bin, "basket")
 
         # Get object poses in the image frame (Centered in the table, y pointing forward, x pointing right)
 
@@ -264,6 +342,8 @@ class OscarPerception(Node):
             obj_pose_img = self.cam.spaceFromImage(
                 [obj_find[1][0], obj_find[1][1]], Z=self.object_z
             )
+            obj_diameter_px = 2 * np.sqrt(obj_area / np.pi)
+            self.object_last_diameter = obj_diameter_px / self.image_size[0] 
         else:
             found = False
             obj_pose_img = [
@@ -277,6 +357,8 @@ class OscarPerception(Node):
             bskt_pose_img = self.cam.spaceFromImage(
                 [bskt_find[1][0], bskt_find[1][1]], Z=self.object_z
             )
+            bskt_diameter_px = 2 * np.sqrt(bskt_area / np.pi)
+            self.bskt_last_diameter = bskt_diameter_px / self.image_size[0] 
         else:
             found = False
             bskt_pose_img = [
@@ -291,7 +373,6 @@ class OscarPerception(Node):
         obj.x = obj_pose_img[1] + 0.425  # Translate 425mm
         obj.y = obj_pose_img[0] * -1  # Invert direction
         obj.z = 0.8  # Pick Height
-
         # Basket
         bskt.x = bskt_pose_img[1] + 0.425  # Translate 425mm
         bskt.y = bskt_pose_img[0] * -1  # Invert direction
@@ -421,12 +502,13 @@ class OscarPerception(Node):
         if len(region) == 1:
             if region[0].area > 1500:
                 position = region[0].centroid
-                return True, (
+                area = region[0].area
+                return [True, (
                     position[1],
                     position[0],
-                )  # Returns flag and image centroid
+                )], area  # Returns flag and image centroid
             else:
-                small_region = True
+                small_region = True         
 
         # Show warnings if object not found
         if num_region == 0:
@@ -438,7 +520,65 @@ class OscarPerception(Node):
         else:
             self.get_logger().error(f"Object {info_string}: Multiple regions found.")
 
-        return False, (0, 0)
+        return [False, (0, 0)], 0.0
+    
+    def get_hand_position_world(self, hand_frame="right_arm_gripper_link", reference_frame="world"):
+        """
+        Get the position of the robot hand in the reference frame (default world).
+
+        :param hand_frame: The TF frame of the robot hand.
+        :type hand_frame: str
+        :param reference_frame: The TF reference frame.
+        :type reference_frame: str
+        :return: x and y position of the robot hand in the reference frame.
+        :rtype: tuple
+        """
+        try:
+            trans = self.tf_buffer.lookup_transform(reference_frame, hand_frame, rclpy.time.Time())
+            x = trans.transform.translation.x
+            y = trans.transform.translation.y
+            return x, y
+        except Exception as e:
+            self.get_logger().error(f"TF transform failed: {e}")
+            return 0, 0
+        
+    def update_hand_position_perceptions(self):
+        """
+        Updates the robot hand position in the perceptions.
+
+        :return: x and y position of the robot hand in the world frame.
+        :rtype: tuple
+        """
+        robot_hand_x_position, robot_hand_y_position = self.get_hand_position_world()
+        return robot_hand_x_position, robot_hand_y_position
+
+    def model_states_callback(self, msg):
+        """
+        Callback to get the model states from Gazebo.
+
+        :param msg: ModelStates message from Gazebo.
+        :type msg: gazebo_msgs.msg.ModelStates  
+        """
+        self.model_states = msg
+
+    def get_sim_object_pose(self, object_name):
+        """
+        Get the position of a simulated object in Gazebo.
+
+        :param object_name: Name of the object in Gazebo.
+        :type object_name: str
+        :return: x and y position of the object in the world frame.
+        :rtype: tuple
+        """
+        if self.model_states is None:
+            return 0.0, 0.0
+        try:
+            idx = self.model_states.name.index(object_name)
+            pose = self.model_states.pose[idx]
+            return pose.position.x, pose.position.y
+        except ValueError:
+            self.get_logger().warn(f"Modelo {object_name} no encontrado en /gazebo/model_states")
+            return 0.0, 0.0
 
 
 def main():

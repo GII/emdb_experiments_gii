@@ -4,8 +4,9 @@ import os.path
 import math
 import yaml
 import yamlloader
-import numpy
+import numpy as np
 import rclpy
+from copy import deepcopy
 from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rcl_interfaces.msg import ParameterDescriptor
@@ -56,6 +57,7 @@ class Sim2DSimple(Node):
         self.sim_publishers = {}
         self.perceptions = {}
         self.base_messages = {}
+        self.service_world_reset = False
 
         self.load_client=ServiceClient(LoadConfig, 'commander/load_experiment')
 
@@ -96,13 +98,29 @@ class Sim2DSimple(Node):
         self.perceptions["ball"].data[0].x = float(ball[0])
         self.perceptions["ball"].data[0].y = float(ball[1])
 
-        #Drive input
+        #Drive inputs
         if self.sim.box1.contents:
             self.perceptions["ball_in_box"].data = 1.0
         else:
             self.perceptions["ball_in_box"].data = 0.0
-        
-        self.get_logger().info(f"DEBUG - Objects in box= {[obj.name for obj in self.sim.box1.contents]}")
+
+        if left_gripper or right_gripper:
+            self.perceptions["grasped_ball"].data = 1.0
+        else:
+            self.perceptions["grasped_ball"].data = 0.0
+
+        # Distances and angles between objects
+        self.perceptions["dist_left_arm_ball"].data[0].distance = self.sim.get_distance(left_arm, ball)
+        self.perceptions["dist_left_arm_ball"].data[0].angle = left_angle - self.sim.get_relative_angle(left_arm, ball)
+        self.perceptions["dist_right_arm_ball"].data[0].distance = self.sim.get_distance(right_arm, ball)
+        self.perceptions["dist_right_arm_ball"].data[0].angle = right_angle - self.sim.get_relative_angle(right_arm, ball)
+        self.perceptions["dist_ball_box"].data[0].distance = self.sim.get_distance(ball, box)
+        self.perceptions["dist_ball_box"].data[0].angle = self.sim.get_relative_angle(ball, box)
+        # Angle is the x position relative to the center of the environment
+        self.perceptions["box_angle"].data = box[0]-((self.sim.x_bounds[1]-self.sim.x_bounds[0])/2+self.sim.x_bounds[0])
+        self.perceptions["ball_angle"].data = ball[0]-((self.sim.x_bounds[1]-self.sim.x_bounds[0])/2+self.sim.x_bounds[0])
+
+        self.get_logger().debug(f"DEBUG - Objects in box= {[obj.name for obj in self.sim.box1.contents]}")
 
     def reset_world(self):
         """
@@ -112,6 +130,26 @@ class Sim2DSimple(Node):
         self.gripper_l=False
         self.gripper_r=False
 
+    def denormalize_actuation(self, actuation, actuation_config):
+        """
+        Denormalizes the actuation values.
+
+        :param actuation: Actuation values to denormalize.
+        :type actuation: dict
+        :param actuation_config: Actuation configuration.
+        :type actuation_config: dict
+        :return: Denormalized actuation.
+        :rtype: dict
+        """        
+        act=deepcopy(actuation)
+        for actuator in act:
+            for param in act[actuator][0]:
+                if actuation_config[actuator][param]["type"]=="float":
+                    bounds=actuation_config[actuator][param]["bounds"]
+                    value=act[actuator][0][param]
+                    act[actuator][0][param]=bounds[0]+(value*(bounds[1]-bounds[0]))
+        return act
+
     def execute_action(self, action):
         """
         Execute an action in the simulation.
@@ -119,6 +157,9 @@ class Sim2DSimple(Node):
         :param action: The action to be executed.
         :type action: dict
         """
+
+        action = self.denormalize_actuation(action, self.actuation_config)
+
         vel_l=action["left_arm"][0]["dist"]
         angle_l=action["left_arm"][0]["angle"]
         #gripper_l=action["left_arm"][0]["gripper"]
@@ -130,43 +171,51 @@ class Sim2DSimple(Node):
         self.sim.apply_action(angle_l, angle_r, vel_l, vel_r, self.gripper_l, self.gripper_r)
 
         #GRASP OBJECT IF GRIPPER IS CLOSE
-        grippers_close = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=50), EntityType.ROBOT)
-        self.get_logger().info(f"DEBUG - {[ent.name for ent in grippers_close]}")
-        if grippers_close and not self.changed_grippers: #If grippers are close, change hands
+        grippers_close = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=250), EntityType.ROBOT)
+        if grippers_close and not self.changed_grippers and (self.sim.robots[0].catched_object or self.sim.robots[1].catched_object): #If grippers are close, change hands
             self.get_logger().info(f"DEBUG - Checking if changing grippers is possible")
             #Ball in left gripper
             if self.sim.robots[0].catched_object and not self.sim.robots[1].catched_object:
                 self.gripper_l=False
                 self.sim.apply_action(gripper_left=self.gripper_l, gripper_right=self.gripper_r)
+                self.sim.objects[0].set_pos(*self.sim.robots[1].get_pos()) #Move the ball to the right gripper
                 self.gripper_r=True
                 self.sim.apply_action(gripper_left=self.gripper_l, gripper_right=self.gripper_r)
                 self.changed_grippers=True
                 self.get_logger().info(f"DEBUG - Change from left to right gripper")
 
             #Ball in right gripper
-            if self.sim.robots[1].catched_object and not self.sim.robots[0].catched_object:
+            elif self.sim.robots[1].catched_object and not self.sim.robots[0].catched_object:
                 self.gripper_r=False
                 self.sim.apply_action(gripper_left=self.gripper_l, gripper_right=self.gripper_r)
+                self.sim.objects[0].set_pos(*self.sim.robots[0].get_pos()) #Move the ball to the left gripper
                 self.gripper_l=True
                 self.sim.apply_action(gripper_left=self.gripper_l, gripper_right=self.gripper_r)
                 self.changed_grippers=True
                 self.get_logger().info(f"DEBUG - Change from right to left gripper")
             
-        if not grippers_close: #Check if objects are close to the grippers
+        else: #Check if objects are close to the grippers
+            left_to_ball = np.linalg.norm(np.array(self.sim.robots[0].get_pos()) - np.array(self.sim.objects[0].get_pos()))
+            right_to_ball = np.linalg.norm(np.array(self.sim.robots[1].get_pos()) - np.array(self.sim.objects[0].get_pos()))
             self.get_logger().info(f"DEBUG - Checking if objects are close to gripper")
-            self.changed_grippers=False
-            close_l_obj = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=50), EntityType.BALL)
-            close_r_obj = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[1], threshold=50), EntityType.BALL)
-            if close_l_obj:
+            self.get_logger().info(f"DEBUG - Left to ball: {left_to_ball}, Right to ball: {right_to_ball}")
+            if not self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=300), EntityType.ROBOT):
+                self.changed_grippers = False
+            close_l_obj = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=self.sim.grasp_range), EntityType.BALL)
+            close_r_obj = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[1], threshold=self.sim.grasp_range), EntityType.BALL)
+            if close_l_obj and not self.changed_grippers:
                 self.get_logger().info(f"DEBUG - Objects {[obj.name for obj in close_l_obj]} detected close to left gripper")
                 self.gripper_l = True
-            if close_r_obj:
+            if close_r_obj and not self.changed_grippers:
                 self.get_logger().info(f"DEBUG - Objects {[obj.name for obj in close_r_obj]} detected close to right gripper")
                 self.gripper_r = True
         
             #RELEASE OBJECT IF OVER BOX
-            left_over_box = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=50), EntityType.BOX)
-            right_over_box = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[1], threshold=50), EntityType.BOX)
+            left_over_box = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[0], threshold=self.sim.place_range), EntityType.BOX)
+            right_over_box = self.sim.filter_entities(self.sim.get_close_entities(self.sim.robots[1], threshold=self.sim.place_range), EntityType.BOX)
+            left_to_box = np.linalg.norm(np.array(self.sim.robots[0].get_pos()) - np.array(self.sim.box1.get_pos()))
+            right_to_box = np.linalg.norm(np.array(self.sim.robots[1].get_pos()) - np.array(self.sim.box1.get_pos()))
+            self.get_logger().info(f"DEBUG - RIGHT GRIPPER TO BOX: {right_to_box} LEFT GRIPPER TO BOX: {left_to_box}")
             if left_over_box:
                 self.get_logger().info(f"DEBUG - Boxes {[box.name for box in left_over_box]} detected close to left gripper")
                 self.gripper_l = False
@@ -205,7 +254,8 @@ class Sim2DSimple(Node):
         """
         self.get_logger().debug(f"Command received... ITERATION: {data.iteration}")
         if data.command == "reset_world":
-            self.reset_world(data)
+            if not self.service_world_reset:
+                self.reset_world()
         elif data.command == "end":
             self.get_logger().info("Ending simulator as requested by LTM...")
             rclpy.shutdown()
@@ -246,7 +296,7 @@ class Sim2DSimple(Node):
         """
         loaded = self.load_client.send_request(file = self.config_file)
         return loaded
-
+ 
     def load_configuration(self):
         """
         Load configuration from a file.
@@ -265,14 +315,15 @@ class Sim2DSimple(Node):
                     Loader=yamlloader.ordereddict.CLoader,
                 )
                 self.setup_perceptions(config["SimulatedBaxter"]["Perceptions"])
+                self.actuation_config = config["SimulatedBaxter"]["Actuation"]
                 # Be ware, we can not subscribe to control channel before creating all sensor publishers.
                 self.setup_control_channel(config["Control"])
         if self.random_seed:
-            self.rng = numpy.random.default_rng(self.random_seed)
+            self.rng = np.random.default_rng(self.random_seed)
             self.get_logger().info(f"Setting random number generator with seed {self.random_seed}")
         else:
-            self.rng = numpy.random.default_rng()
-        
+            self.rng = np.random.default_rng()
+
         self.load_experiment_file_in_commander()
 
     def setup_control_channel(self, simulation):
@@ -302,6 +353,7 @@ class Sim2DSimple(Node):
             self.get_logger().info("Creating perception publisher timer... ")
             self.perceptions_timer = self.create_timer(0.01, self.publish_perceptions, callback_group=self.cbgroup_server)
         if service_world_reset:
+            self.service_world_reset = True
             classname= simulation["world_reset_msg"]
             self.message_world_reset = class_from_classname(classname)
             self.create_service(self.message_world_reset, service_world_reset, self.world_reset_service_callback, callback_group=self.cbgroup_server)

@@ -16,10 +16,14 @@ find_package(geometry_msgs REQUIRED)
 
 set(srv_files
   "srv/Perception.srv"
+  "srv/PerceptionMultiObj.srv"
 )
 
 set(msg_files
   "msg/Perception.msg"
+  "msg/ObjectPerception.msg"
+  "msg/ObjectPerceptionList.msg"
+  "msg/PerceptionMultiObj.msg"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}
