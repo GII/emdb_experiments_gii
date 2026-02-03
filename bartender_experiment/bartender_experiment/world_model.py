@@ -4,7 +4,7 @@ from rclpy.time import Time
 from rclpy.qos import QoSProfile, qos_profile_sensor_data, ReliabilityPolicy, HistoryPolicy
 from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
 
-from cognitive_nodes.generic_model import GenericModel, Learner  # (si usas)
+from cognitive_nodes.world_model import WorldModel
 from simulators.scenarios_2D import SimpleScenario, EntityType    # (si usas)
 from cognitive_nodes.world_model import WorldModel
 from bartender_experiment_interfaces.srv import KnowClient
