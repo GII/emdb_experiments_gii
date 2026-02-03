@@ -116,8 +116,7 @@ LTM:
                     max_antitraces: 5
                     evaluation_method: "exponential"
                     epochs: 100
-                    batch_size: 16
-                    learning_rate: 0.0005
+                    learning_rate: 0.001
                     output_activation: "linear"
                     hidden_layers: [256, 128]
         -
@@ -135,26 +134,6 @@ LTM:
                     normalize_data:
                         min_value: -1300
                         max_value: 1300
-            -
-                name: box_angle
-                class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
-                parameters:
-                    default_msg: std_msgs.msg.Float32
-                    default_topic: /mdb/baxter/sensor/box_angle
-                    normalize_data:
-                        min_value: -1300
-                        max_value: 1300
-            -
-                name: dist_ball_box
-                class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
-                parameters:
-                    default_msg: simulators_interfaces.msg.ObjectListMsg
-                    default_topic: /mdb/baxter/sensor/dist_ball_box
-                    normalize_data:
-                        distance_min: 0
-                        distance_max: 3000
-                        angle_min: -180
-                        angle_max: 180
             -
                 name: dist_left_arm_ball
                 class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
@@ -184,7 +163,7 @@ LTM:
                 name: object_in_box_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 1.0
+                    weight: 0.0
                     drive_id: 'object_in_box_drive'
                     purpose_type: 'Mission'
                     terminal: True
@@ -192,10 +171,10 @@ LTM:
                 name: grasped_ball_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 0.8
+                    weight: 1.0
                     drive_id: 'grasped_ball_drive'
                     purpose_type: 'Mission'
-                    terminal: False
+                    terminal: True
             - 
                 name: novelty_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
@@ -260,16 +239,6 @@ LTM:
                     model_creation_policy: model_creation_policy
 
         Goal:
-            # -
-            #     name: object_in_box_goal
-            #     class_name: cognitive_nodes.goal.GoalMotiven
-            #     parameters:
-            #         neighbors: [{"name": "object_in_box_drive", "node_type": "Drive"}]
-            # -
-            #     name: grasped_ball_goal
-            #     class_name: cognitive_nodes.goal.GoalMotiven
-            #     parameters:
-            #         neighbors: [{"name": "grasped_ball_drive", "node_type": "Drive"}]
             -
                 name: novelty_goal
                 class_name: dummy_nodes.dummy_goal.GoalDummy
@@ -317,17 +286,7 @@ LTM:
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "effectance_pnode", "node_type": "PNode"}]
-            
-            # -
-            #     name: object_in_box_cnode
-            #     class_name: cognitive_nodes.cnode.CNode
-            #     parameters:
-            #         neighbors: [{"name": "object_in_box_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}]
-            # -
-            #     name: grasped_ball_cnode
-            #     class_name: cognitive_nodes.cnode.CNode
-            #     parameters:
-            #         neighbors: [{"name": "grasped_ball_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}]
+
 
         Policy:
             -
@@ -365,30 +324,8 @@ LTM:
                     softmax_selection: False
                     softmax_temperature: 0.1
 
-            # -
-            #     name: pick_ball
-            #     # class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
-            #     class_name: cognitive_nodes.utility_model.HardCodedUtilityModel
-            #     # class_name: cognitive_nodes.utility_model.LearnedUtilityModel
-            #     new_executor: False
-            #     threads: 1
-            #     parameters:
-            #         max_iterations: 20
-            #         candidate_actions: 20
-            #         ltm_id: ltm_0
-            #         neighbors: [{"name": "grasped_ball_cnode", "node_type": "CNode"}]
-            #         candidate_generation: "latin"
-            #         softmax_selection: True
-            #         softmax_temperature: 0.1
-            #         min_traces: 10
-            #         max_traces: 50
-            #         max_antitraces: 10
 
-
-
-        
-
-                        
+    
 
 SimulatedBaxter:
     Actuation:
