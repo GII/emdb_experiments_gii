@@ -56,8 +56,9 @@ class BartenderPerception(Perception):
             for p in data:
                 value.append(dict(
                     distance=(p.distance - self._distance_min) / self._distance_range,
-                    angle=(p.angle - self._angle_min) / self._angle_range,
-                    state=self._normalize_and_clamp(p.state, self._state_divisor)
+                    # angle=(p.angle - self._angle_min) / self._angle_range,
+                    state=p.state,
+                    was_used=p.was_used
                 ))
 
         elif "client" in self.name and isinstance(data, list):
@@ -108,8 +109,8 @@ class BartenderFilterPerception(Perception):
 
     def _normalize_bottle(self, p):
         return dict(
-            distance=(p.distance - self._distance_min) / self._distance_range,
-            angle=(p.angle - self._angle_min) / self._angle_range,
+            # distance=(p.distance - self._distance_min) / self._distance_range,
+            # angle=(p.angle - self._angle_min) / self._angle_range,
             id=p.id / self._id_divisor
         )
 

@@ -61,7 +61,7 @@ LTM:
     Connectors:
         -
             data: Space
-            default_class: cognitive_nodes.space.ANNSpace
+            default_class: cognitive_nodes.space.PyTorchANNSpace
         -
             data: Perception
             default_class: cognitive_nodes.perception.Perception
@@ -92,14 +92,14 @@ LTM:
                     normalize_data:
                         n_ids: 4
                         n_preferences: 4
-            - 
-                name: last_bottle
-                class_name: bartender_experiment.perception.BartenderPerception
-                parameters:
-                    default_msg: std_msgs.msg.Int8
-                    default_topic: /emdb/simulator/sensor/last_bottle
-                    normalize_data:
-                        n_ids: 4
+            # - 
+            #     name: last_bottle
+            #     class_name: bartender_experiment.perception.BartenderPerception
+            #     parameters:
+            #         default_msg: std_msgs.msg.Int8
+            #         default_topic: /emdb/simulator/sensor/last_bottle
+            #         normalize_data:
+            #             n_ids: 4
             - 
                 name: robot_position
                 class_name: bartender_experiment.perception.BartenderPerception
@@ -163,7 +163,7 @@ LTM:
                 name: get_response_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 0.1
+                    weight: 0.5
                     drive_id: 'get_response_drive'
                     purpose_type: 'Need'  
             -
@@ -185,7 +185,7 @@ LTM:
                 name: client_present_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 0.1
+                    weight: 0.5
                     drive_id: 'client_present_drive'
                     purpose_type: 'Need'
         Drive:
@@ -282,17 +282,17 @@ LTM:
                     service_msg: cognitive_node_interfaces.srv.Policy
                     service_name: /emdb/simulator/executed_policy
             -
-                name: place_glass_serving
+                name: place_glass
                 class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
                     service_msg: cognitive_node_interfaces.srv.Policy
                     service_name: /emdb/simulator/executed_policy
-            -
-                name: place_glass_return
-                class_name: cognitive_nodes.policy.PolicyBlocking
-                parameters:
-                    service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /emdb/simulator/executed_policy
+            # -
+            #     name: place_glass_return
+            #     class_name: cognitive_nodes.policy.PolicyBlocking
+            #     parameters:
+            #         service_msg: cognitive_node_interfaces.srv.Policy
+            #         service_name: /emdb/simulator/executed_policy
             -
                 name: prepare_drink
                 class_name: cognitive_nodes.policy.PolicyBlocking

@@ -268,3 +268,7 @@ class ClientInBar(WorldModel):
             # OPT: reutiliza el mensaje
             self._last_bottle_msg.data = float(self.preference)
             self.publish_last_bottle.publish(self._last_bottle_msg)
+        else:
+            # OPT: publica -1.0 para indicar "ninguno"
+            self._last_bottle_msg.data = -1.0
+            self.publish_last_bottle.publish(self._last_bottle_msg)

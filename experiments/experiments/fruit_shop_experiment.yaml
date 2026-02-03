@@ -61,7 +61,7 @@ LTM:
     Connectors:
         -
             data: Space
-            default_class: cognitive_nodes.space.ANNSpace
+            default_class: cognitive_nodes.space.PyTorchOnlineSGDSpace
         -
             data: Perception
             default_class: cognitive_nodes.perception.Perception
@@ -360,7 +360,7 @@ LTM:
                 parameters:
                     drive_name: external_effects_drive
                     goal_class: cognitive_nodes.effectance.GoalRecreateEffect
-                    space_class: cognitive_nodes.space.ANNSpace
+                    space_class: cognitive_nodes.space.PyTorchOnlineSGDSpace
                     neighbors: [{"name": "external_effects_cnode", "node_type": "CNode"}]
                     ltm_id: ltm_0
             -
