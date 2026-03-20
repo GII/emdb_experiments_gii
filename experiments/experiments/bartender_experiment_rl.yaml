@@ -4,8 +4,8 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 10000
-        trials: 20
+        iterations: 40000
+        trials: 40
         subgoals: True
         softmax_selection: True
         softmax_temperature: 0.1
@@ -106,6 +106,18 @@ LTM:
                 parameters:
                     default_msg: std_msgs.msg.Float32
                     default_topic: /emdb/simulator/sensor/robot_position
+            -
+                name: at_serv_with_glass
+                class_name: bartender_experiment.perception.BartenderPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /emdb/simulator/sensor/at_serv_with_glass
+            -
+                name: at_prep_with_used_glass
+                class_name: bartender_experiment.perception.BartenderPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /emdb/simulator/sensor/at_prep_with_used_glass
             -   
                 name: glass
                 class_name: bartender_experiment.perception.BartenderPerception
@@ -154,6 +166,31 @@ LTM:
                 parameters:
                     default_msg: std_msgs.msg.Bool
                     default_topic: /emdb/simulator/sensor/bottle_in_right_hand
+            # History + state-disambiguation features
+            -
+                name: policy_pair
+                class_name: bartender_experiment.perception.BartenderPerception
+                parameters:
+                    default_msg: std_msgs.msg.Float32
+                    default_topic: /emdb/simulator/sensor/policy_pair
+            -
+                name: glass_at_serving
+                class_name: bartender_experiment.perception.BartenderPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /emdb/simulator/sensor/glass_at_serving
+            -
+                name: preference_known
+                class_name: bartender_experiment.perception.BartenderPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /emdb/simulator/sensor/preference_known
+            -
+                name: drink_matches_preference
+                class_name: bartender_experiment.perception.BartenderPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /emdb/simulator/sensor/drink_matches_preference
 
         WorldModel:
             -
@@ -481,6 +518,31 @@ DiscreteEventSimulator:
             name: robot_position
             perception_topic: /emdb/simulator/sensor/robot_position
             perception_msg: std_msgs.msg.Float32    
+        -
+            name: at_serv_with_glass
+            perception_topic: /emdb/simulator/sensor/at_serv_with_glass
+            perception_msg: std_msgs.msg.Bool
+        -
+            name: at_prep_with_used_glass
+            perception_topic: /emdb/simulator/sensor/at_prep_with_used_glass
+            perception_msg: std_msgs.msg.Bool
+        # History + state-disambiguation features
+        -
+            name: policy_pair
+            perception_topic: /emdb/simulator/sensor/policy_pair
+            perception_msg: std_msgs.msg.Float32
+        -
+            name: glass_at_serving
+            perception_topic: /emdb/simulator/sensor/glass_at_serving
+            perception_msg: std_msgs.msg.Bool
+        -
+            name: preference_known
+            perception_topic: /emdb/simulator/sensor/preference_known
+            perception_msg: std_msgs.msg.Bool
+        -
+            name: drink_matches_preference
+            perception_topic: /emdb/simulator/sensor/drink_matches_preference
+            perception_msg: std_msgs.msg.Bool
         -   
             name: left_the_glass_goal
             perception_topic: /emdb/simulator/sensor/left_the_glass
@@ -494,6 +556,8 @@ DiscreteEventSimulator:
             perception_topic: /emdb/simulator/sensor/return_the_glass
             perception_msg: std_msgs.msg.Float32
 
+        
+
     Stages:
-        stage0: 200
-        stage1: 500
+        stage0: 2000
+        stage1: 3000

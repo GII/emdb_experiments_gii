@@ -34,6 +34,7 @@ class BartenderPerception(Perception):
             self._preference_divisor = max(1, normalize_data.get("n_preferences", 2) - 1)
             self._state_divisor = max(1, normalize_data.get("n_states", 2) - 1)
 
+
     def _normalize_and_clamp(self, raw_value, divisor):
         n = raw_value / divisor
         return 0.98 if n >= 1.0 else max(0.0, n)
@@ -58,7 +59,8 @@ class BartenderPerception(Perception):
                     distance=(p.distance - self._distance_min) / self._distance_range,
                     # angle=(p.angle - self._angle_min) / self._angle_range,
                     state=p.state,
-                    was_used=p.was_used
+                    was_used=p.was_used,
+                    drink_type=self._normalize_and_clamp(p.drink_type, self._preference_divisor)
                 ))
 
         elif "client" in self.name and isinstance(data, list):
