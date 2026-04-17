@@ -7,7 +7,7 @@ The task consists in placing an object in a box. These elements are placed in ra
 
 <div style="width:100%; margin:auto; text-align:center;">
 
-![Baxter robot](images/simulator_2D.png)
+![Simulated 2D environment](images/simulator_2D.png)
 
 *Simulated 2D environment*
 </div>
