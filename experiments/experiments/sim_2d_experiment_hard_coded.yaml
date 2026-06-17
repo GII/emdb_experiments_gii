@@ -14,7 +14,7 @@ Control:
     control_topic: /main_loop/control
     control_msg: cognitive_processes_interfaces.msg.ControlMsg
     episodes_topic: /main_loop/episodes
-    episodes_msg: cognitive_node_interfaces.msg.Episode
+    episodes_msg: core_interfaces.msg.Container
     executed_action_service: /mdb/baxter/executed_action
     executed_action_msg: cognitive_node_interfaces.srv.Action
     world_reset_service: /mdb/baxter/world_reset
@@ -30,14 +30,6 @@ LTM:
             id: goodness
             class: core.file.FileGoodness
             file: goodness.txt
-        # -
-        #     id: pnodes_success
-        #     class: core.file.FilePNodesSuccess
-        #     file: pnodes_success.txt
-        # -
-        #     id: pnodes_content
-        #     class: core.file.FilePNodesContent
-        #     file: pnodes_content.txt
         -
             id: trials
             class: core.file.FileTrialsSuccess
@@ -73,7 +65,7 @@ LTM:
             default_class: cognitive_nodes.world_model.WorldModelLearned
             parameters:
                 episodes_topic: /main_loop/episodes
-                prediction_srv_type: cognitive_node_interfaces.srv.Predict
+                prediction_srv_type: core_interfaces.msg.Container
         -
             data: UtilityModel
             default_class: cognitive_nodes.utility_model.LearnedUtilityModel
@@ -101,7 +93,7 @@ LTM:
                 # class_name: cognitive_nodes.world_model.Sim2DWorldModel
                 parameters:
                     episodes_topic: /main_loop/episodes
-                    prediction_srv_type: cognitive_node_interfaces.srv.Predict
+                    prediction_srv_type: core_interfaces.msg.Container
                     retrain: False
                     learner_params:
                         model_file: /home/efallash/ros2_ws/src/MDB/tfm_scripts/results/world_model_online_torch.pth
@@ -223,7 +215,7 @@ LTM:
                     LTM_id: ltm_0
                     max_iterations: 20
                     episodes_topic: /main_loop/episodes
-                    episodes_msg: cognitive_node_interfaces.msg.Episode
+                    episodes_msg: core_interfaces.msg.Container
                     model_creation_policy: model_creation_policy
 
         Goal:
@@ -299,7 +291,7 @@ LTM:
                     LTM_id: ltm_0
                     max_iterations: 20
                     episodes_topic: /main_loop/episodes
-                    episodes_msg: cognitive_node_interfaces.msg.Episode
+                    episodes_msg: core_interfaces.msg.Container
 
         UtilityModel:
             -

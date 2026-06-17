@@ -189,7 +189,7 @@ LTM:
                     drive_id: 'object_in_box_drive'
                     purpose_type: 'Mission'
                     terminal: True
-            -
+            -    episodes_msg: cognitive_node_interfaces.msg.Episode
                 name: grasped_ball_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
@@ -386,10 +386,6 @@ LTM:
             #         max_antitraces: 10
 
 
-
-        
-
-                        
 
 SimulatedBaxter:
     Actuation:

@@ -1,7 +1,8 @@
+import numpy as np
 from math import cos, sin, pi
 
 from cognitive_nodes.perception import Perception
-from core.utils import perception_dict_to_msg
+from core.container import Container
 
 class Sim2DPerception(Perception):
     """
@@ -29,8 +30,6 @@ class Sim2DPerception(Perception):
         """
         Method that processes the sensor values received.
         """
-        sensor = {}
-        value = []
         if isinstance(self.reading.data, list):
             for perception in self.reading.data:
                 x = (
@@ -58,31 +57,27 @@ class Sim2DPerception(Perception):
                     # normalize from [-1, 1] to [0, 1] and clip to avoid tiny numerical drift
                     angle_cos = min(max((angle_cos_raw + 1.0) / 2.0, 0.0), 1.0)
                     angle_sin = min(max((angle_sin_raw + 1.0) / 2.0, 0.0), 1.0)
+                    labels = ["x", "y", "angle_cos", "angle_sin"]
+                    data = np.array([x, y, angle_cos, angle_sin])
                     
-                    value.append(
-                        dict(
-                            x=x,
-                            y=y,
-                            angle_cos=angle_cos,
-                            angle_sin=angle_sin
-                        )
-                    )
-                else:
-                    value.append(
-                        dict(
-                            x=x,
-                            y=y,
-                        )
-                    )
-        else:
-            value.append(dict(data=self.reading.data))
+                    break # Only the first perception is processed. Legacy code used perceptions as lists with dictionaries. Now, the perception message is a labeled DataArray.
 
-        sensor[self.name] = value
-        self.get_logger().debug("Publishing normalized " + self.name + " = " + str(sensor))
-        sensor_msg = perception_dict_to_msg(sensor)
-        self.publish_msg.perception=sensor_msg
-        self.publish_msg.timestamp=self.get_clock().now().to_msg()
-        self.perception_publisher.publish(self.publish_msg)
+                else:
+                    labels = ["x", "y"]
+                    data = np.array([x, y])
+                    break # Only the first perception is processed. Legacy code used perceptions as lists with dictionaries. Now, the perception message is a labeled DataArray.
+        else:
+            labels = ["data"]
+            data = np.array([self.reading.data])
+
+        if self.container is None:
+            self.container = Container(self.name, max_size=1, container_type="perception", labels=labels)
+        self.container.push(data, labels, timestamps=self.get_clock().now().nanoseconds)
+
+        self.get_logger().debug("Publishing normalized " + self.name + " = " + str(self.container))
+        sensor_msg = self.container.to_msg()
+        self.perception_publisher.publish(sensor_msg)
+
 
 class Sim2DDistancesPerception(Perception):
     """
@@ -110,8 +105,6 @@ class Sim2DDistancesPerception(Perception):
         """
         Method that processes the sensor values received.
         """
-        sensor = {}
-        value = []
         if isinstance(self.reading.data, list):
             for perception in self.reading.data:
                 distance = (
@@ -133,33 +126,28 @@ class Sim2DDistancesPerception(Perception):
                     # normalize from [-1, 1] to [0, 1] and clip to avoid tiny numerical drift
                     angle_cos = min(max((angle_cos_raw + 1.0) / 2.0, 0.0), 1.0)
                     angle_sin = min(max((angle_sin_raw + 1.0) / 2.0, 0.0), 1.0)
-                    
-                    value.append(
-                        dict(
-                            distance=distance,
-                            angle_cos=angle_cos,
-                            angle_sin=angle_sin
-                        )
-                    )
+                    labels = ["distance", "angle_cos", "angle_sin"]
+                    data = np.array([distance, angle_cos, angle_sin])
+                    break # Only the first perception is processed. Legacy code used perceptions as lists with dictionaries. Now, the perception message is a labeled DataArray.
                 else:
-                    value.append(
-                        dict(
-                            distance=distance,
-                        )
-                    )
+                    labels = ["distance"]
+                    data = np.array([distance])
+                    break # Only the first perception is processed. Legacy code used perceptions as lists with dictionaries. Now, the perception message is a labeled DataArray.
         else:
-            data=self.reading.data
+            reading=self.reading.data
             normalized_value = (
-                data - self.normalize_values["min_value"]
+                reading - self.normalize_values["min_value"]
             ) / (
                 self.normalize_values["max_value"]
                 - self.normalize_values["min_value"]
             )
-            value.append(dict(data=normalized_value))
+            labels = ["data"]
+            data = np.array([normalized_value])
 
-        sensor[self.name] = value
-        self.get_logger().debug("Publishing normalized " + self.name + " = " + str(sensor))
-        sensor_msg = perception_dict_to_msg(sensor)
-        self.publish_msg.perception=sensor_msg
-        self.publish_msg.timestamp=self.get_clock().now().to_msg()
-        self.perception_publisher.publish(self.publish_msg)
+        if self.container is None:
+            self.container = Container(self.name, max_size=1, container_type="perception", labels=labels)
+        self.container.push(data, labels, timestamps=self.get_clock().now().nanoseconds)
+
+        self.get_logger().debug("Publishing normalized " + self.name + " = " + str(self.container))
+        sensor_msg = self.container.to_msg()
+        self.perception_publisher.publish(sensor_msg)
