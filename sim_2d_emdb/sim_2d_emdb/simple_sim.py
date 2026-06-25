@@ -13,7 +13,8 @@ from rcl_interfaces.msg import ParameterDescriptor
 from core.service_client import ServiceClient
 
 from core_interfaces.srv import LoadConfig
-from core.utils import class_from_classname, actuation_msg_to_dict
+from core.container import Container
+from core.utils import class_from_classname
 
 from simulators.scenarios_2D import SimpleScenario, EntityType
 
@@ -130,25 +131,27 @@ class Sim2DSimple(Node):
         self.gripper_l=False
         self.gripper_r=False
 
-    def denormalize_actuation(self, actuation, actuation_config):
+    def denormalize_actuation(self, action: Container, actuation_config):
         """
         Denormalizes the actuation values.
 
-        :param actuation: Actuation values to denormalize.
-        :type actuation: dict
+        :param action: Action values to denormalize.
+        :type action: core.container.Container
         :param actuation_config: Actuation configuration.
         :type actuation_config: dict
         :return: Denormalized actuation.
-        :rtype: dict
-        """        
-        act=deepcopy(actuation)
-        for actuator in act:
-            for param in act[actuator][0]:
-                if actuation_config[actuator][param]["type"]=="float":
-                    bounds=actuation_config[actuator][param]["bounds"]
-                    value=act[actuator][0][param]
-                    act[actuator][0][param]=bounds[0]+(value*(bounds[1]-bounds[0]))
-        return act
+        :rtype: xarray.DataArray
+        """
+        action_dims = action.feature_labels
+        data = action.read()
+
+        for dim in action_dims:
+            actuator, param = dim.split(":", 1)
+            if actuation_config[actuator][param]["type"]=="float":
+                bounds=actuation_config[actuator][param]["bounds"]
+                value=data.sel(features=dim).values
+                data.loc[{"features": dim}]=bounds[0]+(value*(bounds[1]-bounds[0]))
+        return data
 
     def execute_action(self, action):
         """
@@ -158,15 +161,13 @@ class Sim2DSimple(Node):
         :type action: dict
         """
 
-        action = self.denormalize_actuation(action, self.actuation_config)
+        action_vector = self.denormalize_actuation(action, self.actuation_config)
 
-        vel_l=action["left_arm"][0]["dist"]
-        angle_l=action["left_arm"][0]["angle"]
-        #gripper_l=action["left_arm"][0]["gripper"]
+        vel_l=float(action_vector.sel(features="left_arm:dist").values)
+        angle_l=float(action_vector.sel(features="left_arm:angle").values)
 
-        vel_r=action["right_arm"][0]["dist"]
-        angle_r=action["right_arm"][0]["angle"]
-        #gripper_r=action["right_arm"][0]["gripper"]
+        vel_r=float(action_vector.sel(features="right_arm:dist").values)
+        angle_r=float(action_vector.sel(features="right_arm:angle").values)
 
         self.sim.apply_action(angle_l, angle_r, vel_l, vel_r, self.gripper_l, self.gripper_r)
 
@@ -253,9 +254,8 @@ class Sim2DSimple(Node):
         :type data: ROS msg defined in setup_control_channel
         """
         self.get_logger().debug(f"Command received... ITERATION: {data.iteration}")
-        if data.command == "reset_world":
-            if not self.service_world_reset:
-                self.reset_world()
+        if data.command == "reset_world" and not self.service_world_reset:
+            self.reset_world()
         elif data.command == "end":
             self.get_logger().info("Ending simulator as requested by LTM...")
             rclpy.shutdown()
@@ -272,7 +272,7 @@ class Sim2DSimple(Node):
         :return: Response indicating the success of the action execution.
         :rtype: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Policy.Response
         """
-        action=actuation_msg_to_dict(request.action)
+        action=Container.from_msg(request.action)
         self.get_logger().info("Executing action " + str(action))
         self.execute_action(action)
         return response
