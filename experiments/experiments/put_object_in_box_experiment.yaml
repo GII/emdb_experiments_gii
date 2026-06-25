@@ -68,7 +68,7 @@ LTM:
             data: PNode
             default_class: cognitive_nodes.pnode.PNode
             parameters:
-                space_class: cognitive_nodes.space.NormalCentroidPointBasedSpace
+                space_class: cognitive_nodes.space.ANNSpace
                 history_size: 50
                 space_parameters:
                     size: 15000
@@ -79,7 +79,7 @@ LTM:
             data: Goal
             default_class: cognitive_nodes.goal.GoalLearnedSpace
             parameters:
-                space_class: cognitive_nodes.space.NormalCentroidPointBasedSpace
+                space_class: cognitive_nodes.space.ANNSpace
                 space_size: 15000
                 history_size: 100  
                 min_confidence: 0.94  
