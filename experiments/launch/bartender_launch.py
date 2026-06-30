@@ -37,7 +37,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
 
     simulator_node = Node(
         package="simulators",
-        executable="bartender_simulator",
+        executable="bartender_rl_simulator",
         output="screen",
         parameters=[
             {

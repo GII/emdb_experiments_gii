@@ -8,7 +8,7 @@ from copy import deepcopy
 from std_msgs.msg import Float32
 from cognitive_nodes.perception import Perception
 from cognitive_node_interfaces.msg import PerceptionStamped
-from core.utils import perception_dict_to_msg
+from core.utils import perception_dict_to_msg, class_from_classname
 
 
 # ================================================================
@@ -33,6 +33,7 @@ class BartenderPerception(Perception):
             self._id_divisor = max(1, normalize_data.get("n_ids", 2) - 1)
             self._preference_divisor = max(1, normalize_data.get("n_preferences", 2) - 1)
             self._state_divisor = max(1, normalize_data.get("n_states", 2) - 1)
+        
 
 
     def _normalize_and_clamp(self, raw_value, divisor):
@@ -87,6 +88,8 @@ class BartenderFilterPerception(Perception):
                  default_msg=None, default_topic=None, normalize_data=None, **params):
         super().__init__(name, class_name, default_msg, default_topic, normalize_data, **params)
 
+        # Subscribe to the world_model's last_bottle by default (Float32)
+        # while the base class already subscribes to `default_topic` for bottles.
         self.extra_subscription = self.create_subscription(
             Float32,
             'cognitive_node/world_model/last_bottle',
@@ -102,6 +105,10 @@ class BartenderFilterPerception(Perception):
             self._distance_range = max(1e-6, normalize_data.get("distance_max", 1.0) - self._distance_min)
             self._angle_min = normalize_data.get("angle_min", -1.0)
             self._angle_range = max(1e-6, normalize_data.get("angle_max", 1.0) - self._angle_min)
+            self._x_min = normalize_data.get("x_min", 0.0)
+            self._x_range = max(1e-6, normalize_data.get("x_max", 1.5) - self._x_min)
+            self._y_min = normalize_data.get("y_min", 0.0)
+            self._y_range = max(1e-6, normalize_data.get("y_max", 1.5) - self._y_min)
             self._id_divisor = max(1, normalize_data.get("n_ids", 2) - 1)
             self._state_divisor = max(1, normalize_data.get("n_states", 2) - 1)
 
@@ -111,39 +118,79 @@ class BartenderFilterPerception(Perception):
 
     def _normalize_bottle(self, p):
         return dict(
-            # distance=(p.distance - self._distance_min) / self._distance_range,
-            # angle=(p.angle - self._angle_min) / self._angle_range,
-            id=p.id / self._id_divisor
+            distance=(p.distance - self._distance_min) / self._distance_range,
+            angle=(p.angle - self._angle_min) / self._angle_range,
+            id=p.id / self._id_divisor,
+            x=(getattr(p, "x", 0.0) - self._x_min) / self._x_range,
+            y=(getattr(p, "y", 0.0) - self._y_min) / self._y_range,
         )
 
+    def _as_bottle_list(self, data):
+        if data is None:
+            return []
+        if isinstance(data, list):
+            return data
+        return [data]
+
+    def _select_bottle(self, bottles):
+        selected = None
+        if self._last_bottle_id is not None:
+            for bottle in bottles:
+                if isclose(bottle.id, self._last_bottle_id, abs_tol=1e-3):
+                    selected = bottle
+                    break
+        if selected is None and bottles:
+            selected = bottles[0]
+        return selected
+
     def process_and_send_reading(self):
-        data = getattr(self.reading, "data", None)
+        # `BottleMsg` does not have a `.data` field, so work with the message
+        # object directly and also accept list-style containers from other
+        # bottle perceptions.
+        data = self.reading
         value = []
 
-        if "bottles" in self.name and isinstance(data, list):
+        if "last_bottle" in self.name:
+            bottles = self._as_bottle_list(data)
             selected = None
-            if self._last_bottle_id is not None:
-                for p in data:
-                    if isclose(p.id, self._last_bottle_id, abs_tol=1e-3):
-                        selected = p
-                        break
-            if selected is None and data:
-                selected = data[0]
-            if selected:
-                value.append(self._normalize_bottle(selected))
 
-        elif "last_bottle" in self.name:
-            raw = data
-            if isinstance(raw, list):
-                raw = raw[0].data if raw else 0.0
-            value.append(dict(data=self._normalize_and_clamp(raw, self._id_divisor)))
-            self._last_bottle_id = raw
+            if bottles:
+                selected = self._select_bottle(bottles)
+
+            if selected is not None:
+                self._last_bottle_id = getattr(selected, "id", None)
+                value.append(self._normalize_bottle(selected))
+            else:
+                raw = self._last_bottle_id
+                if raw is None:
+                    raw = getattr(data, "id", None)
+                if raw is None:
+                    raw = -1
+                value.append(dict(id=self._normalize_and_clamp(raw, self._id_divisor)))
+
         else:
-            value.append(dict(data=data))
+            bottles = self._as_bottle_list(data)
+            if bottles:
+                selected = self._select_bottle(bottles)
+                if selected is not None:
+                    value.append(self._normalize_bottle(selected))
+            if not value:
+                value.append(dict(data=data))
 
         self._msg_cache.perception = perception_dict_to_msg({self.name: value})
         self._msg_cache.timestamp = self.get_clock().now().to_msg()
         self.perception_publisher.publish(self._msg_cache)
 
-    def filter_callback(self, msg: Float32):
-        self._last_bottle_id = msg.data
+    def filter_callback(self, msg):
+        # Accept whatever message type is configured for the perception topic
+        # (e.g., std_msgs.msg.Int8 from the simulator or std_msgs.msg.Float32
+        # from the world_model). Extract numeric value in a tolerant way.
+        try:
+            val = msg.data
+        except Exception:
+            # Fallback: if message wraps list or nested structure
+            try:
+                val = float(msg)
+            except Exception:
+                val = None
+        self._last_bottle_id = val

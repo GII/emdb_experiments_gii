@@ -1,5 +1,6 @@
 Experiment:
     name: main_loop
+    ablation_mode: "NA"
     class_name: cognitive_processes.main_loop.MainLoop
     new_executor: True
     threads: 2
@@ -10,6 +11,8 @@ Experiment:
         softmax_selection: True
         softmax_temperature: 0.1
         kill_on_finish: True
+        use_pnode_lookup: True
+        unique_pnode_per_point: True
 Control:
     id: ltm_simulator
     control_topic: /main_loop/control
@@ -47,6 +50,14 @@ LTM:
             class: core.file.FileLastIterationGoalsContent
             file: goals_content_last_ite.txt
         -
+            id: cnodes_content
+            class: core.file.FileCNodesContent
+            file: cnodes_content.txt
+        -
+            id: cnodes_content_last_iteration
+            class: core.file.FileLastIterationCNodesContent
+            file: cnodes_content_last_ite.txt
+        -
             id: trials
             class: core.file.FileTrialsSuccess
             file: trials.txt
@@ -67,7 +78,7 @@ LTM:
             default_class: cognitive_nodes.perception.Perception
         -
             data: PNode
-            default_class: cognitive_nodes.pnode.PNode
+            default_class: bartender_experiment.pnodes.PNodeSinglePoint
         -
             data: CNode
             default_class: cognitive_nodes.cnode.CNode
@@ -92,14 +103,18 @@ LTM:
                     normalize_data:
                         n_ids: 4
                         n_preferences: 4
-            # - 
-            #     name: last_bottle
-            #     class_name: bartender_experiment.perception.BartenderPerception
-            #     parameters:
-            #         default_msg: std_msgs.msg.Int8
-            #         default_topic: /emdb/simulator/sensor/last_bottle
-            #         normalize_data:
-            #             n_ids: 4
+            - 
+                name: last_bottle
+                class_name: bartender_experiment.perception.BartenderFilterPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.BottleMsg
+                    default_topic: /emdb/simulator/sensor/last_bottle
+                    normalize_data:
+                        n_ids: 4
+                        x_min: 0.0
+                        x_max: 1.5
+                        y_min: 0.0
+                        y_max: 1.5
             - 
                 name: robot_position
                 class_name: bartender_experiment.perception.BartenderPerception
@@ -497,7 +512,7 @@ DiscreteEventSimulator:
         -
             name: last_bottle
             perception_topic: /emdb/simulator/sensor/last_bottle
-            perception_msg: std_msgs.msg.Int8
+            perception_msg: simulators_interfaces.msg.BottleMsg
         -
             name: bottles
             perception_topic: /emdb/simulator/sensor/bottles
