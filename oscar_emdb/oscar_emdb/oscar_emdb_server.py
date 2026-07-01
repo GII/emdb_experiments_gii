@@ -26,7 +26,7 @@ from std_msgs.msg import Float32
 
 # Utils
 from core.service_client import ServiceClient, ServiceClientAsync
-from core.utils import class_from_classname
+from core.utils import class_from_classname, resolve_seed
 
 
 class OscarMDB(Node):
@@ -129,13 +129,11 @@ class OscarMDB(Node):
                 self.setup_perceptions(config["OSCAR"]["Perceptions"])
                 # Be ware, we can not subscribe to control channel before creating all sensor publishers.
                 self.setup_control_channel(config["Control"])
-        if self.random_seed:
-            self.rng = np.random.default_rng(self.random_seed)
-            self.get_logger().info(
-                f"Setting random number generator with seed {self.random_seed}"
-            )
-        else:
-            self.rng = np.random.default_rng()
+        self.random_seed = resolve_seed(self.random_seed)
+        self.rng = np.random.default_rng(self.random_seed)
+        self.get_logger().info(
+            f"Setting random number generator with seed {self.random_seed}"
+        )
 
         self.load_experiment_file_in_commander()
 
@@ -776,15 +774,15 @@ class OscarMDB(Node):
         basket_x = self.perception.basket.x
         basket_y = self.perception.basket.y
 
-        object_x = np.random.uniform(low=0.2575, high=0.3625)
-        object_y = np.random.uniform(low=-0.458, high=0.458)
+        object_x = self.rng.uniform(low=0.2575, high=0.3625)
+        object_y = self.rng.uniform(low=-0.458, high=0.458)
 
         delta_x = basket_x - object_x
         delta_y = basket_y - object_y
         distance = np.sqrt(delta_x * delta_x + delta_y * delta_y)
         while distance < 0.15:
-            object_x = np.random.uniform(low=0.2575, high=0.3625)
-            object_y = np.random.uniform(low=-0.458, high=0.458)
+            object_x = self.rng.uniform(low=0.2575, high=0.3625)
+            object_y = self.rng.uniform(low=-0.458, high=0.458)
 
             delta_x = basket_x - object_x
             delta_y = basket_y - object_y
@@ -809,18 +807,18 @@ class OscarMDB(Node):
         This method randomly places the basket and the object so that
         they are not coliding.
         """
-        basket_x = np.random.uniform(low=0.25, high=0.35)
-        basket_y = np.random.uniform(low=-0.55, high=0.55)
+        basket_x = self.rng.uniform(low=0.25, high=0.35)
+        basket_y = self.rng.uniform(low=-0.55, high=0.55)
 
-        object_x = np.random.uniform(low=0.1125, high=0.7375)
-        object_y = np.random.uniform(low=-0.7415, high=0.7415)
+        object_x = self.rng.uniform(low=0.1125, high=0.7375)
+        object_y = self.rng.uniform(low=-0.7415, high=0.7415)
 
         delta_x = basket_x - object_x
         delta_y = basket_y - object_y
         distance = np.sqrt(delta_x * delta_x + delta_y * delta_y)
         while distance < 0.15:
-            object_x = np.random.uniform(low=0.1125, high=0.7375)
-            object_y = np.random.uniform(low=-0.7415, high=0.7415)
+            object_x = self.rng.uniform(low=0.1125, high=0.7375)
+            object_y = self.rng.uniform(low=-0.7415, high=0.7415)
 
             delta_x = basket_x - object_x
             delta_y = basket_y - object_y
