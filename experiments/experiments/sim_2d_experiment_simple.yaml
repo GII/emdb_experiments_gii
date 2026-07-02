@@ -42,10 +42,10 @@ LTM:
             id: trials
             class: core.file.FileTrialsSuccess
             file: trials.txt
-        # -
-        #     id: dataset
-        #     class: core.file.FileEpisodesDataset
-        #     file: dataset.csv
+        -
+            id: dataset
+            class: core.file.FileEpisodesDataset
+            file: dataset.csv
         -
             id: world_model_success
             class: core.file.FileWorldModelSuccess

@@ -24,7 +24,7 @@ class Sim2DPerception(Perception):
         :param normalize_data: Values in order to normalize values.
         :type normalize_data: dict
         """
-        super().__init__(name, class_name, default_msg, default_topic, normalize_data, **params)
+        super().__init__(name, class_name, default_msg=default_msg, default_topic=default_topic, normalize_data=normalize_data, **params)
      
     def process_and_send_reading(self):
         """
@@ -99,7 +99,7 @@ class Sim2DDistancesPerception(Perception):
         :param normalize_data: Values in order to normalize values.
         :type normalize_data: dict
         """
-        super().__init__(name, class_name, default_msg, default_topic, normalize_data, **params)
+        super().__init__(name, class_name, default_msg=default_msg, default_topic=default_topic, normalize_data=normalize_data, **params)
      
     def process_and_send_reading(self):
         """
