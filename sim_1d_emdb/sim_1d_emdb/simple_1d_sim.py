@@ -14,7 +14,7 @@ from rcl_interfaces.msg import ParameterDescriptor
 from core.service_client import ServiceClient
 
 from core_interfaces.srv import LoadConfig
-from core.utils import class_from_classname, actuation_msg_to_dict
+from core.utils import class_from_classname, actuation_msg_to_dict, resolve_seed
 
 
 class Slider1DScenario:
@@ -272,13 +272,11 @@ class Sim1DSlider(Node):
         self.actuation_config = config["Simulator1D"]["Actuation"]
         self.setup_control_channel(config["Control"])
 
-        if self.random_seed:
-            self.rng = np.random.default_rng(self.random_seed)
-            self.get_logger().info(
-                f"Setting random number generator with seed {self.random_seed}"
-            )
-        else:
-            self.rng = np.random.default_rng()
+        self.random_seed = resolve_seed(self.random_seed)
+        self.rng = np.random.default_rng(self.random_seed)
+        self.get_logger().info(
+            f"Setting random number generator with seed {self.random_seed}"
+        )
 
         # Randomise the scenario before the first episode
         self.scenario.reset(self.rng)
