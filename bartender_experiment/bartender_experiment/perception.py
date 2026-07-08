@@ -58,17 +58,19 @@ class BartenderPerception(Perception):
             for p in data:
                 value.append(dict(
                     distance=(p.distance - self._distance_min) / self._distance_range,
-                    # angle=(p.angle - self._angle_min) / self._angle_range,
+                    angle=(p.angle - self._angle_min) / self._angle_range,
                     state=p.state,
                     was_used=p.was_used,
-                    drink_type=self._normalize_and_clamp(p.drink_type, self._preference_divisor)
+                    drink_type=self._normalize_and_clamp(p.drink_type, self._preference_divisor),
+                    is_shaken=p.is_shaken
                 ))
 
         elif "client" in self.name and isinstance(data, list):
             for p in data:
                 value.append(dict(
                     id=self._normalize_and_clamp(p.id, self._id_divisor),
-                    preference=self._normalize_and_clamp(p.preference, self._preference_divisor)
+                    preference=self._normalize_and_clamp(p.preference, self._preference_divisor),
+                    likes_shake=self._normalize_and_clamp(p.likes_shake, self._state_divisor)
                 ))
         else:
             value.append(dict(data=data))

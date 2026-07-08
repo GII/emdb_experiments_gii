@@ -5,7 +5,7 @@ Experiment:
     threads: 2
     parameters: 
         iterations: 40000
-        trials: 40
+        trials: 20
         subgoals: True
         softmax_selection: True
         softmax_temperature: 0.1
@@ -92,6 +92,7 @@ LTM:
                     normalize_data:
                         n_ids: 4
                         n_preferences: 4
+                        n_states: 2
             # - 
             #     name: last_bottle
             #     class_name: bartender_experiment.perception.BartenderPerception
@@ -407,6 +408,13 @@ LTM:
                     neighbors: [{"name": "get_response_goal", "node_type": "Goal"}, {"name": "BARTENDER", "node_type": "WorldModel"}, {"name": "get_response_pnode", "node_type": "PNode"}]
         Policy:
             -
+                name: shake_glass
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+
+            -
                 name: pick_glass
                 class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
@@ -559,5 +567,5 @@ DiscreteEventSimulator:
         
 
     Stages:
-        stage0: 2000
-        stage1: 3000
+        stage0: 20
+        stage1: 30

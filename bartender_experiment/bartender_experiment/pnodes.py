@@ -1,13 +1,15 @@
 import hashlib
 import json
 import hashlib
-
 from cognitive_nodes.pnode import PNode
 from core.service_client import ServiceClient
 from core_interfaces.srv import CreateNode, GetNodeFromLTM
-from cognitive_node_interfaces.srv import AddPoint
-from core.utils import perception_msg_to_dict, perception_dict_to_msg
-
+from core.utils import perception_msg_to_dict, perception_dict_to_msg, separate_perceptions
+from collections import deque
+from core.cognitive_node import CognitiveNode
+from cognitive_nodes.space import PointBasedSpace
+from cognitive_node_interfaces.srv import AddPoint, SendSpace, ContainsSpace
+from cognitive_node_interfaces.msg import Perception, PerceptionStamped, SuccessRate
 
 class PNodeBartenderClient(PNode):
     """
@@ -42,96 +44,6 @@ class PNodeBartenderClient(PNode):
         self.activation.timestamp = self.get_clock().now().to_msg()
         return self.activation
 
-
-class PNodeSinglePoint(PNode):
-    """
-    PNode that keeps one point per node.
-    Distinct points are routed into sibling nodes with deterministic names.
-    """
-
-    def __init__(self, name='single_point', class_name='cognitive_nodes.pnode.PNode',
-                 space_class=None, space=None, history_size=100, **params):
-        super().__init__(name, class_name, space_class, space, history_size, **params)
-        self.stored_point_signature = None
-        self.ltm_client = ServiceClient(GetNodeFromLTM, 'ltm_0/get_node')
-
-    def _normalize_point(self, point):
-        if not isinstance(point, dict):
-            point = perception_msg_to_dict(point)
-        return json.dumps(point, sort_keys=True, separators=(',', ':'), ensure_ascii=True)
-
-    def _point_node_name(self, point):
-        signature = self._normalize_point(point)
-        digest = hashlib.sha1(signature.encode('utf-8')).hexdigest()[:10]
-        return f'{self.name}_{digest}'
-
-    def _point_exists(self, point_node_name):
-        response = self.ltm_client.send_request(name=point_node_name)
-        return response is not None and bool(response.data)
-
-    def _space_class_name(self):
-        if getattr(self, 'space_class', None):
-            return self.space_class
-        space_class = self.spaces[0].__class__
-        return f'{space_class.__module__}.{space_class.__name__}'
-
-    def _create_sibling_for_point(self, point, confidence):
-        if not isinstance(point, dict):
-            point = perception_msg_to_dict(point)
-        point_node_name = self._point_node_name(point)
-        if self._point_exists(point_node_name):
-            self.get_logger().info(f'{self.name}: exact point already represented by {point_node_name}')
-            return True
-
-        # Creation of sibling PNodes has been removed from PNodeSinglePoint.
-        # Higher-level logic (MainLoop) is responsible for creating new PNodes
-        # when no existing PNode represents the point.
-        self.get_logger().info(f'{self.name}: would create sibling {point_node_name}, but creation is delegated to MainLoop')
-        return False
-
-    def _point_to_msg(self, point):
-        if isinstance(point, dict):
-            return perception_dict_to_msg(point)
-        return point
-
-    def _handle_point(self, point, confidence):
-        point_dict = point if isinstance(point, dict) else perception_msg_to_dict(point)
-        point_signature = self._normalize_point(point_dict)
-
-        if self.stored_point_signature is None:
-            self.stored_point_signature = point_signature
-            super().add_point(point_dict, confidence)
-            return True
-
-        if point_signature == self.stored_point_signature:
-            self.get_logger().debug(f'{self.name}: exact point already stored in this node')
-            return True
-
-        # If this node already has a different point, ignore the new one.
-        # Sibling creation is delegated to higher-level logic (MainLoop)
-        # so here we simply do not add the point.
-        self.get_logger().info(f'{self.name}: point differs from stored point, ignoring (no sibling creation)')
-        return False
-
-    def _has_point(self):
-        return self.stored_point_signature is not None or self.added_point or (self.space is not None and getattr(self.space, 'size', 0) > 0)
-
-    def add_point_callback(self, request, response):
-        """
-        Accepts one point per node and creates a sibling node for distinct points.
-        """
-        self.point_msg = request.point
-        confidence = request.confidence
-        point = request.point
-        response.added = self._handle_point(point, confidence)
-        self.get_logger().info('Adding point: ' + str(point) + 'Confidence: ' + str(confidence))
-        return response
-
-    def add_point(self, point, confidence):
-        """
-        Adds the first point locally. Distinct points create sibling nodes.
-        """
-        return self._handle_point(point, confidence)
 
 
 class PNodeClientPresent(PNode):
@@ -204,3 +116,250 @@ class PNodeClientPresent(PNode):
         """
         self.known_world_models.add(world_model_name)
         self.get_logger().info(f'PNodeClientPresent: Marked {world_model_name} as known in cache')
+
+class LookupSpaceAdapter:
+    """
+    Space-like adapter for exact-match point storage.
+
+    It preserves the minimal interface expected by PNode and related services,
+    but internally behaves as a deterministic lookup table rather than a
+    clustering / generalization space.
+    """
+
+    def __init__(self, ident='lookup_space', random_seed=None):
+        self.ident = ident
+        self.random_seed = random_seed
+        self.members = []
+        self.memberships = []
+        self.size = 0
+        self._signatures = set()
+
+    def _normalize_point(self, point):
+        return json.dumps(point, sort_keys=True, separators=(',', ':'), ensure_ascii=True)
+
+    def _flatten_point(self, point):
+        row = []
+        for _, values in point.items():
+            row.extend(values)
+        return row
+
+    def add_point(self, point, confidence):
+        signature = self._normalize_point(point)
+        row = self._flatten_point(point)
+
+        if signature in self._signatures:
+            for i, existing in enumerate(self.members):
+                if existing == row:
+                    self.memberships[i] = max(self.memberships[i], confidence)
+                    return False
+            return False
+
+        self.members.append(row)
+        self.memberships.append(confidence)
+        self._signatures.add(signature)
+        self.size += 1
+        return True
+
+    def get_probability(self, point):
+        signature = self._normalize_point(point)
+        if signature not in self._signatures:
+            return 0.0
+
+        row = self._flatten_point(point)
+        for i, existing in enumerate(self.members):
+            if existing == row:
+                return max(0.0, self.memberships[i])
+        return 0.0
+
+    def same_sensors(self, other_space):
+        return True
+
+    def contains(self, compare_space):
+        own_rows = {tuple(row) for row in self.members[0:self.size]}
+        compare_rows = {tuple(row) for row in compare_space.members[0:compare_space.size]}
+        return compare_rows.issubset(own_rows)
+
+    def learnable(self):
+        return True
+
+
+class PNodeLookup(PNode):
+    """
+    Ablation version of PNode.
+
+    Same public methods and services as the real PNode, but internally uses
+    exact-match lookup-table storage instead of clustering/generalization.
+    """
+
+    def __init__(self, name='pnode_lookup',
+                 class_name='cognitive_nodes.pnode_lookup.PNodeLookup',
+                 space_class=None, space=None, history_size=100, **params):
+        super().__init__(name, class_name, space_class, space, history_size, **params)
+
+        lookup_space = LookupSpaceAdapter(
+            ident=name + " space",
+            random_seed=getattr(self, 'random_seed', None)
+        )
+        self.spaces = [lookup_space]
+        self.space = None
+        self.point_table = {}
+
+    def _normalize_point(self, point):
+        if not isinstance(point, dict):
+            point = perception_msg_to_dict(point)
+        return json.dumps(point, sort_keys=True, separators=(',', ':'), ensure_ascii=True)
+
+    def has_point(self, point):
+        return self._normalize_point(point) in self.point_table
+
+    def point_count(self):
+        return len(self.point_table)
+
+    def add_point_callback(self, request, response):
+        """
+        Callback method for adding a point (or anti-point) to this P-Node.
+        """
+        self.point_msg = request.point
+        confidence = request.confidence
+        point = perception_msg_to_dict(self.point_msg)
+        response.added = self.add_point(point, confidence)
+        self.get_logger().info('Adding point: ' + str(point) + 'Confidence: ' + str(confidence))
+        return response
+
+    def add_point(self, point, confidence):
+        """
+        Add a new point (or anti-point) to the lookup-table P-Node.
+
+        Returns True only if at least one new exact point was inserted.
+        Repeated exact points update metadata but are not counted as newly added.
+        """
+        points = separate_perceptions(point)
+        added_any = False
+
+        for point in points:
+            self.space = self.spaces[0]
+            if not self.space:
+                self.space = LookupSpaceAdapter(
+                    ident=self.name + " space",
+                    random_seed=getattr(self, 'random_seed', None)
+                )
+                self.spaces = [self.space]
+
+            signature = self._normalize_point(point)
+
+            if signature in self.point_table:
+                entry = self.point_table[signature]
+                entry["count"] += 1
+                entry["confidence"] = max(entry["confidence"], confidence)
+            else:
+                self.point_table[signature] = {
+                    "point": point,
+                    "confidence": confidence,
+                    "count": 1
+                }
+                added_any = True
+
+            self.space.add_point(point, confidence)
+
+        self.added_point = self.added_point or added_any
+        self.update_history(confidence)
+        self.publish_success_rate()
+        return added_any
+
+    def calculate_activation(self, perception=None, activation_list=None):
+        """
+        Calculate activation using exact-match lookup instead of learned probability.
+        """
+        if activation_list is not None:
+            perception = {}
+            for sensor in activation_list:
+                activation_list[sensor]['updated'] = False
+                perception[sensor] = activation_list[sensor]['data']
+
+        if perception:
+            activations = []
+            perceptions = separate_perceptions(perception)
+
+            for perception_line in perceptions:
+                if self.spaces[0] and self.added_point:
+                    signature = self._normalize_point(perception_line)
+                    if signature in self.point_table:
+                        activation_value = max(0.0, self.point_table[signature]["confidence"])
+                    else:
+                        activation_value = 0.0
+                    self.get_logger().debug(
+                        f'PNODE LOOKUP DEBUG: Perception: {perception_line} Activation: {activation_value}'
+                    )
+                else:
+                    activation_value = 0.0
+
+                activations.append(activation_value)
+
+            self.activation.activation = (
+                activations[0] if len(activations) == 1 else float(max(activations))
+            )
+            self.activation.timestamp = self.get_clock().now().to_msg()
+
+        return self.activation
+
+    def get_space(self, perception):
+        """
+        Return the compatible space with perception.
+
+        Kept for interface compatibility with the real PNode.
+        """
+        temp_space = LookupSpaceAdapter(random_seed=getattr(self, 'random_seed', None))
+        temp_space.add_point(perception, 1.0)
+        for space in self.spaces:
+            if (not space.size) or space.same_sensors(temp_space):
+                return space
+        return None
+
+    def send_pnode_space_callback(self, request, response):
+        """
+        Callback that sends the space of the P-Node in the same flattened format
+        expected by external callers.
+        """
+        if self.space:
+            if not self.data_labels and hasattr(self, 'point_msg'):
+                self.configure_labels()
+            response.labels = self.data_labels
+
+            data = []
+            for perception in self.space.members[0:self.space.size]:
+                for value in perception:
+                    data.append(value)
+            response.data = data
+
+            confidences = list(self.space.memberships[0:self.space.size])
+            response.confidences = confidences
+
+        return response
+
+    def contains_space_callback(self, request, response):
+        """
+        Callback that checks if the lookup-table space contains a given space.
+        """
+        labels = request.labels
+        data = request.data
+        confidences = request.confidences
+
+        compare_space = PointBasedSpace(len(confidences))
+        compare_space.populate_space(labels, data, confidences)
+
+        if self.space:
+            response.contained = self.space.contains(compare_space)
+        else:
+            response.contained = False
+        return response
+
+    def update_history(self, confidence):
+        """
+        Updates the history of the P-Node with the new confidence value.
+        Kept structurally aligned with the real PNode.
+        """
+        if confidence > 0 and self.spaces[0].learnable():
+            self.history.appendleft(True)
+        else:
+            self.history.appendleft(False)
+        self.success_rate = sum(self.history) / self.history.maxlen
