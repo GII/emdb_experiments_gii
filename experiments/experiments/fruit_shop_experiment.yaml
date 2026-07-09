@@ -75,6 +75,9 @@ LTM:
         -
             data: CNode
             default_class: cognitive_nodes.cnode.CNode
+            parameters:
+                history_size: 40
+                track_competence: True
         -
             data: Goal
             default_class: cognitive_nodes.goal.GoalLearnedSpace
@@ -188,6 +191,15 @@ LTM:
                     weight: 1.0
                     drive_id: 'prospection_drive'
                     purpose_type: 'Need'
+            -
+                name: competence_need
+                class_name: cognitive_nodes.competence.Competence
+                parameters:
+                    weight: 0.5
+                    purpose_type: 'Need'
+                    min_activation: 0.15
+                    ltm_id: ltm_0
+
         Drive:
             -
                 name: classify_fruit_drive
@@ -282,21 +294,25 @@ LTM:
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
+                    track_competence: False
             -
                 name: effectance_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "effectance_pnode", "node_type": "PNode"}]
+                    track_competence: False
             -
                 name: external_effects_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "external_effects_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "external_effects_pnode", "node_type": "PNode"}]
+                    track_competence: False
             -
                 name: prospection_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "prospection_goal", "node_type": "Goal"}, {"name": "FRUIT_SHOP", "node_type": "WorldModel"}, {"name": "prospection_pnode", "node_type": "PNode"}]
+                    track_competence: False
 
         Policy:
             -
@@ -371,6 +387,9 @@ LTM:
                     drive_name: external_effects_drive
                     goal_class: cognitive_nodes.effectance.GoalRecreateEffect
                     space_class: cognitive_nodes.space.ANNSpace
+                    goal_params:
+                        history_size: 40
+                        min_confidence: 0.9
                     neighbors: [{"name": "external_effects_cnode", "node_type": "CNode"}]
                     ltm_id: ltm_0
             -
@@ -414,5 +433,5 @@ DiscreteEventSimulator:
 
     Stages:
         stage0: 1000
-        stage1: 3000
-        stage2: 4000
+        stage1: 2000
+        stage2: 2500
