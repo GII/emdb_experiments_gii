@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'sim_2d_emdb'
+package_name = 'sim_1d_emdb'
 
 setup(
     name=package_name,
@@ -15,12 +15,12 @@ setup(
     zip_safe=True,
     maintainer='efallash',
     maintainer_email='efallashdez@gmail.com',
-    description='TODO: Package description',
+    description='1-D slider simulator for e-MDB experiments',
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'simple_sim = sim_2d_emdb.simple_sim:main',
+            'simple_1d_sim = sim_1d_emdb.simple_1d_sim:main',
         ],
     },
 )

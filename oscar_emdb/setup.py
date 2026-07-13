@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'oscar_emdb_server = oscar_emdb.oscar_emdb_server:main'
+            'oscar_emdb_server = oscar_emdb.oscar_emdb_server:oscar_experiment',
+            'oscar_emdb_alignment_server = oscar_emdb.oscar_emdb_server:oscar_alignment_experiment'
         ],
     },
 )

@@ -111,3 +111,14 @@ The experiment file can be selected from the ones available in the experiments p
 - fruit_shop_top_down_experiment.yaml: Uses only the Top-Down subgoal generation approach.
 
 Configuration parameters can be adjusted through the corresponding YAML configuration file to modify learning parameters, curriculum timing, and neural network architectures.
+
+## Results
+
+The following video shows a demonstration of the different phases of the fruit shop experiment. 
+
+
+```{raw} html
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/RURlFe7e9AQ?si=TNg_jRT4PGWrihw3" title="Fruit Shop Experiment Demonstration" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+```

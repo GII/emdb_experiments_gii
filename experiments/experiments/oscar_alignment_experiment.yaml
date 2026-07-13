@@ -4,20 +4,21 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 10000
-        trials: 50
+        iterations: 1000
+        trials: 10
+        subgoals: False
         softmax_selection: False
+        softmax_temperature: 0.3
         kill_on_finish: True
-
 Control:
-    id: ltm_simulator
+    id: mdb_oscar
     control_topic: /main_loop/control
     control_msg: cognitive_processes_interfaces.msg.ControlMsg
     episodes_topic: /main_loop/episodes
-    episodes_msg: core_interfaces.msg.Container
-    executed_policy_service: /mdb/baxter/executed_policy
+    episodes_msg: cognitive_node_interfaces.msg.Episode
+    executed_policy_service: /mdb/oscar/executed_policy
     executed_policy_msg: cognitive_node_interfaces.srv.Policy
-    world_reset_service: /mdb/baxter/world_reset
+    world_reset_service: /emdb/simulator/world_reset
     world_reset_msg: cognitive_processes_interfaces.srv.WorldReset
 LTM:
     Files:
@@ -57,6 +58,11 @@ LTM:
             id: neighbors_full
             class: core.file.FileNeighborsFull
             file: neighbors_full.txt
+        -
+            id: drives_perceptions
+            class: core.file.FileDrivesPerceptions
+            file: drives_perceptions.txt
+
     Connectors:
         -
             data: Space
@@ -69,19 +75,16 @@ LTM:
             default_class: cognitive_nodes.pnode.PNode
             parameters:
                 space_class: cognitive_nodes.space.ANNSpace
-                history_size: 50
-                space_parameters:
-                    size: 15000
+                history_size: 500      
         -
             data: CNode
             default_class: cognitive_nodes.cnode.CNode
         -
             data: Goal
-            default_class: cognitive_nodes.goal.GoalLearnedSpace
+            default_class: cognitive_nodes.goal.GoalMotiven
             parameters:
                 space_class: cognitive_nodes.space.ANNSpace
-                space_size: 15000
-                history_size: 100  
+                history_size: 300  
                 min_confidence: 0.94  
                 ltm_id: ltm_0
         -
@@ -91,65 +94,64 @@ LTM:
             data: Policy
             default_class: cognitive_nodes.policy.PolicyBlocking
 
-
     Nodes:
         Perception:
             -
-                name: ball_in_left_hand
-                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
+                name: object1
+                class_name: cognitive_nodes.perception.OscarLLMPerception
                 parameters:
-                    default_msg: std_msgs.msg.Bool
-                    default_topic: /mdb/baxter/sensor/ball_in_left_hand
-            -
-                name: ball_in_right_hand
-                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
-                parameters:
-                    default_msg: std_msgs.msg.Bool
-                    default_topic: /mdb/baxter/sensor/ball_in_right_hand
-            -
-                name: boxes
-                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
-                parameters:
-                    default_msg: simulators_interfaces.msg.ObjectListMsg
-                    default_topic: /mdb/baxter/sensor/boxes
+                    default_msg: oscar_emdb_interfaces.msg.ObjectPerceptionList
+                    default_topic: /mdb/oscar/sensor/object1
                     normalize_data:
-                        distance_min: 0.2
-                        distance_max: 1.9
-                        angle_min: -1.4
-                        angle_max: 1.4
+                        x_max: 0.75405
+                        x_min: 0
+                        y_max: -0.75405
+                        y_min: 0
                         diameter_min: 0.0
                         diameter_max: 0.15
             -
-                name: cylinders
-                class_name: cognitive_nodes.perception.DiscreteEventSimulatorPerception
+                name: object2
+                class_name: cognitive_nodes.perception.OscarLLMPerception
                 parameters:
-                    default_msg: simulators_interfaces.msg.ObjectListMsg
-                    default_topic: /mdb/baxter/sensor/cylinders
+                    default_msg: oscar_emdb_interfaces.msg.ObjectPerceptionList
+                    default_topic: /mdb/oscar/sensor/object2
                     normalize_data:
-                        distance_min: 0.2
-                        distance_max: 1.9
-                        angle_min: -1.4
-                        angle_max: 1.4
+                        x_max: 0.75405
+                        x_min: 0
+                        y_max: -0.75405
+                        y_min: 0
                         diameter_min: 0.0
                         diameter_max: 0.15
+            -
+                name: robot_hand
+                class_name: cognitive_nodes.perception.OscarLLMPerception
+                parameters:
+                    default_msg: oscar_emdb_interfaces.msg.ObjectPerceptionList
+                    default_topic: /mdb/oscar/sensor/robot_hand
+                    normalize_data:
+                        x_max: 0.75405
+                        x_min: 0
+                        y_max: -0.75405
+                        y_min: 0
+
+
         WorldModel:
             -
                 name: GRIPPER_AND_LOW_FRICTION
                 class_name: cognitive_nodes.world_model.WorldModel
         RobotPurpose: 
             -
-                name: object_in_box_mission
+                name: alignment_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
                     weight: 1.0
-                    drive_id: 'object_in_box_drive'
-                    purpose_type: 'Mission'
-                    terminal: True
+                    drive_id: 'alignment_drive'
+                    purpose_type: 'Need'
             - 
                 name: novelty_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 0.2
+                    weight: 0.1
                     drive_id: 'novelty_drive'
                     purpose_type: 'Need'
             - 
@@ -170,39 +172,35 @@ LTM:
                 name: prospection_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 1.0
+                    weight: 0.8
                     drive_id: 'prospection_drive'
                     purpose_type: 'Need'
         Drive:
             -
-                name: object_in_box_drive
-                class_name: cognitive_nodes.drive.DriveExponential
+                name: alignment_drive
+                class_name: cognitive_nodes.alignment.DriveAlignment
                 parameters:
-                    input_topic: /mdb/baxter/sensor/progress
-                    input_msg: std_msgs.msg.Float32
-                    min_eval: 0.8 
-                    neighbors: [{"name": "object_in_box_mission", "node_type": "RobotPurpose"}]
-
+                    neighbors: [{"name": "alignment_need", "node_type": "Need"}]
             -
                 name: novelty_drive
                 class_name: cognitive_nodes.novelty.DriveNovelty
                 parameters:
-                    neighbors: [{"name": "novelty_need", "node_type": "RobotPurpose"}]
+                    neighbors: [{"name": "novelty_need", "node_type": "Need"}]
             -
                 name: effectance_drive
                 class_name: cognitive_nodes.effectance.DriveEffectanceInternal
                 parameters:
                     ltm_id: ltm_0
                     min_confidence: 0.84
-                    limit_depth: False
-                    neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
+                    limit_depth: True
+                    neighbors: [{"name": "effectance_need", "node_type": "Need"}]
             -
                 name: external_effects_drive
                 class_name: cognitive_nodes.effectance.DriveEffectanceExternal
                 parameters:
                     episodes_topic: /main_loop/episodes
-                    episodes_msg: core_interfaces.msg.Container
-                    neighbors: [{"name": "external_effects_need", "node_type": "RobotPurpose"}]
+                    episodes_msg: cognitive_node_interfaces.msg.Episode
+                    neighbors: [{"name": "external_effects_need", "node_type": "Need"}]
             -
                 name: prospection_drive
                 class_name: cognitive_nodes.prospection.ProspectionDrive
@@ -210,9 +208,13 @@ LTM:
                     ltm_id: ltm_0
                     min_pnode_rate: 0.85
                     min_goal_rate: 0.95
-                    neighbors: [{"name": "prospection_need", "node_type": "RobotPurpose"}]
-
+                    neighbors: [{"name": "prospection_need", "node_type": "Need"}]
         Goal:
+            -
+                name: alignment_goal
+                class_name: cognitive_nodes.goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "alignment_drive", "node_type": "Drive"}]
             -
                 name: novelty_goal
                 class_name: cognitive_nodes.goal.GoalMotiven
@@ -235,6 +237,11 @@ LTM:
                     neighbors: [{"name": "prospection_drive", "node_type": "Drive"}]
         PNode:
             -
+                name: alignment_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
                 name: novelty_pnode
                 class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
                 parameters:
@@ -256,11 +263,15 @@ LTM:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
         CNode:
             -
+                name: alignment_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "alignment_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "alignment_pnode", "node_type": "PNode"}]
+            -
                 name: novelty_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
-
             -
                 name: effectance_cnode
                 class_name: cognitive_nodes.cnode.CNode
@@ -276,61 +287,36 @@ LTM:
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "prospection_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "prospection_pnode", "node_type": "PNode"}]
-
         Policy:
             -
-                name: grasp_object
-                class_name: cognitive_nodes.policy.PolicyBlocking
+                name: alignment_policy
+                class_name: cognitive_nodes.alignment.PolicyAlignment
                 parameters:
-                    service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy
+                    prompts_file: prompts.yaml
+                    neighbors: [{"name": "alignment_need", "node_type": "RobotPurpose"}] 
             -
-                name: grasp_with_two_hands
+                name: grasp_right
                 class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
                     service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy 
+                    service_name: /mdb/oscar/executed_policy 
             -
-                name: change_hands
+                name: press_button
                 class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
                     service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy 
+                    service_name: /mdb/oscar/executed_policy 
             -
-                name: sweep_object
+                name: place_object_right
                 class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
                     service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy  
-            -
-                name: put_object_in_box
-                class_name: cognitive_nodes.policy.PolicyBlocking
-                parameters:
-                    service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy   
-            -
-                name: put_object_with_robot
-                class_name: cognitive_nodes.policy.PolicyBlocking
-                parameters:
-                    service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy  
-            -
-                name: throw
-                class_name: cognitive_nodes.policy.PolicyBlocking
-                parameters:
-                    service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy  
-            -
-                name: ask_nicely
-                class_name: cognitive_nodes.policy.PolicyBlocking
-                parameters:
-                    service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy
+                    service_name: /mdb/oscar/executed_policy  
             -
                 name: novelty_policy
                 class_name: cognitive_nodes.novelty.PolicyNovelty
                 parameters:
-                    exclude_list: ["effectance_policy", "external_effect_policy", "prospection_policy"]
+                    exclude_list: ["alignment_policy", "effectance_policy", "external_effect_policy", "prospection_policy"]
                     neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
                     ltm_id: ltm_0
             -
@@ -341,7 +327,7 @@ LTM:
                     neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
                     confidence: 0.5
                     threshold_delta: 0.5
-                    limit_depth: False
+                    limit_depth: True
                     ltm_id: ltm_0
             -
                 name: external_effect_policy
@@ -358,27 +344,20 @@ LTM:
                 parameters:
                     drive_name: prospection_drive
                     neighbors: [{"name": "prospection_cnode", "node_type": "CNode"}]
-                    ltm_id: ltm_0
+                    ltm_id: ltm_0 
+                        
 
-SimulatedBaxter:
+OSCAR:
     Perceptions:
         -
-            name: cylinders
-            perception_topic: /mdb/baxter/sensor/cylinders
-            perception_msg: simulators_interfaces.msg.ObjectListMsg
+            name: object1
+            perception_topic: /mdb/oscar/sensor/object1
+            perception_msg: oscar_emdb_interfaces.msg.ObjectPerceptionList
         -
-            name: boxes
-            perception_topic: /mdb/baxter/sensor/boxes
-            perception_msg: simulators_interfaces.msg.ObjectListMsg
+            name: object2
+            perception_topic: /mdb/oscar/sensor/object2
+            perception_msg: oscar_emdb_interfaces.msg.ObjectPerceptionList
         -
-            name: ball_in_left_hand
-            perception_topic: /mdb/baxter/sensor/ball_in_left_hand
-            perception_msg: std_msgs.msg.Bool
-        -
-            name: ball_in_right_hand
-            perception_topic: /mdb/baxter/sensor/ball_in_right_hand
-            perception_msg: std_msgs.msg.Bool
-        -
-            name: ball_in_box_goal
-            perception_topic: /mdb/baxter/sensor/progress
-            perception_msg: std_msgs.msg.Float32
+            name: robot_hand
+            perception_topic: /mdb/oscar/sensor/robot_hand
+            perception_msg: oscar_emdb_interfaces.msg.ObjectPerceptionList

@@ -7,19 +7,18 @@ from launch.substitutions import (
     LaunchConfiguration,
     FindExecutable,
     PathJoinSubstitution,
-    Command,
 )
 
 
 def launch_setup(context: LaunchContext, *args, **kwargs):
 
-    logger = LaunchConfiguration("log_level")
-    random_seed = LaunchConfiguration("random_seed")
-    visualize = LaunchConfiguration("visualize")
-    experiment_file = LaunchConfiguration("experiment_file")
+    logger        = LaunchConfiguration("log_level")
+    random_seed   = LaunchConfiguration("random_seed")
+    experiment_file    = LaunchConfiguration("experiment_file")
     experiment_package = LaunchConfiguration("experiment_package")
-    config_package = LaunchConfiguration("config_package")
-    config_file = LaunchConfiguration("config_file")
+    config_package     = LaunchConfiguration("config_package")
+    config_file        = LaunchConfiguration("config_file")
+    visualize          = LaunchConfiguration("visualize")
 
     core_node = Node(
         package="core",
@@ -37,17 +36,17 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
     )
 
     simulator_node = Node(
-        package="sim_2d_emdb",
-        executable="simple_sim",
+        package="sim_1d_emdb",
+        executable="simple_1d_sim",
         output="screen",
         arguments=["--ros-args", "--log-level", logger],
         parameters=[
             {
                 "random_seed": random_seed,
+                "visualize": visualize,
                 "config_file": PathJoinSubstitution(
                     [FindPackageShare(experiment_package), "experiments", experiment_file]
                 ),
-                "visualize": visualize,
             }
         ],
     )
@@ -76,8 +75,8 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
 
     shutdown_on_exit = RegisterEventHandler(
         OnProcessExit(
-            target_action=core_node,  # Nodo que supervisar
-            on_exit=[Shutdown()],  # Acción: Cerrar todos los nodos
+            target_action=core_node,
+            on_exit=[Shutdown()],
         )
     )
 
@@ -109,7 +108,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "experiment_file",
-            default_value="sim_2d_experiment.yaml",
+            default_value="sim_1d_experiment_policy_learning.yaml",
             description="The file that loads the experiment config",
         )
     )
@@ -141,8 +140,8 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "visualize",
-            default_value="True",
-            description="Whether to visualize the simulation or not",
+            default_value="true",
+            description="Show the matplotlib visualization window",
         )
     )
 
