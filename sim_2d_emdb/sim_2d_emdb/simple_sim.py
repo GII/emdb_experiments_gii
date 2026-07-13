@@ -14,7 +14,7 @@ from core.service_client import ServiceClient
 
 from core_interfaces.srv import LoadConfig
 from core.container import Container
-from core.utils import class_from_classname
+from core.utils import class_from_classname, resolve_seed
 
 from simulators.scenarios_2D import SimpleScenario, EntityType
 
@@ -318,11 +318,9 @@ class Sim2DSimple(Node):
                 self.actuation_config = config["SimulatedBaxter"]["Actuation"]
                 # Be ware, we can not subscribe to control channel before creating all sensor publishers.
                 self.setup_control_channel(config["Control"])
-        if self.random_seed:
-            self.rng = np.random.default_rng(self.random_seed)
-            self.get_logger().info(f"Setting random number generator with seed {self.random_seed}")
-        else:
-            self.rng = np.random.default_rng()
+        self.random_seed = resolve_seed(self.random_seed)
+        self.rng = np.random.default_rng(self.random_seed)
+        self.get_logger().info(f"Setting random number generator with seed {self.random_seed}")
 
         self.load_experiment_file_in_commander()
 

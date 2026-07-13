@@ -27,7 +27,7 @@ import tf2_geometry_msgs
 
 # Utils
 from core.service_client import ServiceClient, ServiceClientAsync
-from core.utils import class_from_classname
+from core.utils import class_from_classname, resolve_seed
 
 
 
@@ -188,13 +188,11 @@ class TiagoMDB(Node):
                 self.setup_perceptions(config["DiscreteEventSimulator"]["Perceptions"])
                 # Be ware, we can not subscribe to control channel before creating all sensor publishers.
                 self.setup_control_channel(config["Control"])
-        if self.random_seed:
-            self.rng = np.random.default_rng(self.random_seed)
-            self.get_logger().info(
-                f"Setting random number generator with seed {self.random_seed}"
-            )
-        else:
-            self.rng = np.random.default_rng()
+        self.random_seed = resolve_seed(self.random_seed)
+        self.rng = np.random.default_rng(self.random_seed)
+        self.get_logger().info(
+            f"Setting random number generator with seed {self.random_seed}"
+        )
 
         # self.load_experiment_file_in_commander()
         self.get_logger().fatal("DEBUG : Load experiment file in commander is disabled, please enable it before running the experiment.")
