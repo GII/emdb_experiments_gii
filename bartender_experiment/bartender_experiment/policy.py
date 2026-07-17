@@ -1,7 +1,10 @@
 from cognitive_nodes.policy import Policy
-from core.utils import perception_dict_to_msg, class_from_classname, perception_msg_to_dict
 from core.service_client import ServiceClientAsync
+from core.container import Container
+
 from bartender_experiment_interfaces.srv import KnowClient
+
+
 
 class BartenderClientPolicy(Policy):
     """
@@ -20,7 +23,7 @@ class BartenderClientPolicy(Policy):
         :param service_name: Name of the service that executes the policy.
         :type service_name: str
         """        
-        super().__init__(name, class_name, **params)
+        super().__init__(name=name, class_name=class_name, **params)
         self.know_client_service = None
 
     async def execute_callback(self, request, response):
@@ -29,7 +32,8 @@ class BartenderClientPolicy(Policy):
         """
         try:
             # Extract client ID and preference from perception
-            client_id, client_preference = self.get_client_data(request.perception)
+            perception = Container.from_msg(request.perception)
+            client_id, client_preference = self.get_client_data(perception)
             
             if client_id is not None and client_id != "0_0":
                 client_name = f"client_{client_id}"
@@ -79,22 +83,11 @@ class BartenderClientPolicy(Policy):
         :return: Tuple of (Client ID value (rounded and formatted as string), Client preference)
         """
         try:
-            perception_dict = perception_msg_to_dict(perception)
-
-            if 'client' in perception_dict and perception_dict['client']:
-                client_list = perception_dict['client']
-                if client_list:
-                    client = client_list[0]
-                    client_id = client.get('id', 0.0)
-                    client_preference = client.get('preference', 0.5)
-                    
-                    # Round client ID to 2 decimal places to match PNode behavior
-                    client_id_rounded = round(client_id, 2)
-                    client_id_str = str(client_id_rounded).replace('.', '_')
-                    
-                    return client_id_str, client_preference
-        
-            return "0_0", 0.5
+            client_preference = float(perception.read().sel(features=["client:preference"]).values[-1]) if "client:preference" in perception.feature_labels else 0.0
+            client_id = float(perception.read().sel(features=["client:id"]).values[-1]) if "client:id" in perception.feature_labels else 0.0
+            client_id_rounded = round(client_id, 2)
+            client_id_str = str(client_id_rounded).replace('.', '_')
+            return client_id_str, client_preference
             
         except Exception as e:
             self.get_logger().error(f"Error extracting client data: {e}")

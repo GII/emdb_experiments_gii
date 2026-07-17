@@ -61,7 +61,7 @@ LTM:
     Connectors:
         -
             data: Space
-            default_class: cognitive_nodes.space.PyTorchOnlineSGDSpace
+            default_class: cognitive_nodes.space.ANNSpace
         -
             data: Perception
             default_class: cognitive_nodes.perception.Perception

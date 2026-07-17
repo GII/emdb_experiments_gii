@@ -5,7 +5,7 @@ Experiment:
     threads: 2
     parameters: 
         iterations: 40000
-        trials: 20
+        trials: 40
         subgoals: True
         softmax_selection: True
         softmax_temperature: 0.1
@@ -15,7 +15,7 @@ Control:
     control_topic: /main_loop/control
     control_msg: cognitive_processes_interfaces.msg.ControlMsg
     episodes_topic: /main_loop/episodes
-    episodes_msg: cognitive_processes_interfaces.msg.Episode
+    episodes_msg: core_interfaces.msg.Container
     executed_policy_service: /emdb/simulator/executed_policy
     executed_policy_msg: cognitive_node_interfaces.srv.Policy
     world_reset_service: /emdb/simulator/world_reset
@@ -61,19 +61,32 @@ LTM:
     Connectors:
         -
             data: Space
-            default_class: cognitive_nodes.space.PyTorchOnlineSGDSpace
+            default_class: cognitive_nodes.space.ANNSpace
         -
             data: Perception
             default_class: cognitive_nodes.perception.Perception
         -
             data: PNode
             default_class: cognitive_nodes.pnode.PNode
+            parameters:
+                space_class: cognitive_nodes.space.ANNSpace
+                space_size: 50000
+                history_size: 100
         -
             data: CNode
             default_class: cognitive_nodes.cnode.CNode
+            parameters:
+                history_size: 40
+                track_competence: True
         -
             data: Goal
             default_class: cognitive_nodes.goal.GoalLearnedSpace
+            parameters:
+                space_class: cognitive_nodes.space.ANNSpace
+                space_size: 50000
+                history_size: 300  
+                min_confidence: 0.94  
+                ltm_id: ltm_0
         -
             data: WorldModel
             default_class: cognitive_nodes.world_model.WorldModel
@@ -256,6 +269,14 @@ LTM:
                     weight: 1.0
                     drive_id: 'prospection_drive'
                     purpose_type: 'Need'
+            -
+                name: competence_need
+                class_name: cognitive_nodes.competence.Competence
+                parameters:
+                    weight: 0.5
+                    purpose_type: 'Need'
+                    min_activation: 0.15
+                    ltm_id: ltm_0
         Drive:
             -
                 name: serve_the_drink_drive
@@ -301,7 +322,7 @@ LTM:
                 class_name: cognitive_nodes.effectance.DriveEffectanceExternal
                 parameters:
                     episodes_topic: /main_loop/episodes
-                    episodes_msg: cognitive_processes_interfaces.msg.Episode
+                    episodes_msg: core_interfaces.msg.Container
                     neighbors: [{"name": "external_effects_need", "node_type": "RobotPurpose"}]
             -
                 name: prospection_drive
@@ -381,31 +402,37 @@ LTM:
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "novelty_pnode", "node_type": "PNode"}]
+                    track_competence: False
             -
                 name: effectance_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "effectance_pnode", "node_type": "PNode"}]
+                    track_competence: False
             -
                 name: external_effects_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "external_effects_goal", "node_type": "Goal"}, {"name": "external_effects_pnode", "node_type": "PNode"}]
+                    track_competence: False
             -
                 name: prospection_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "prospection_goal", "node_type": "Goal"}, {"name": "prospection_pnode", "node_type": "PNode"}]
+                    track_competence: False
             -
                 name: client_present_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
-                    neighbors: [{"name": "client_present_goal", "node_type": "Goal"}, {"name": "client_present_pnode", "node_type": "PNode"}]
+                    neighbors: [{"name": "client_present_goal", "node_type": "Goal"}, {"name": "BARTENDER", "node_type": "WorldModel"}, {"name": "client_present_pnode", "node_type": "PNode"}]
+                    track_competence: False
             -
                 name: get_response_cnode
                 class_name: cognitive_nodes.cnode.CNode
                 parameters:
                     neighbors: [{"name": "get_response_goal", "node_type": "Goal"}, {"name": "BARTENDER", "node_type": "WorldModel"}, {"name": "get_response_pnode", "node_type": "PNode"}]
+                    track_competence: False
         Policy:
             -
                 name: shake_glass
@@ -485,7 +512,10 @@ LTM:
                 parameters:
                     drive_name: external_effects_drive
                     goal_class: cognitive_nodes.effectance.GoalRecreateEffect
-                    space_class: cognitive_nodes.space.PyTorchOnlineSGDSpace
+                    space_class: cognitive_nodes.space.ANNSpace
+                    goal_params:
+                        history_size: 40
+                        min_confidence: 0.9
                     neighbors: [{"name": "external_effects_cnode", "node_type": "CNode"}]
                     ltm_id: ltm_0
             -
@@ -567,5 +597,5 @@ DiscreteEventSimulator:
         
 
     Stages:
-        stage0: 20
-        stage1: 30
+        stage0: 2000
+        stage1: 3000

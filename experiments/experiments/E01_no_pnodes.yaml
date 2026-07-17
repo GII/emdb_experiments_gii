@@ -18,7 +18,7 @@ Control:
     control_topic: /main_loop/control
     control_msg: cognitive_processes_interfaces.msg.ControlMsg
     episodes_topic: /main_loop/episodes
-    episodes_msg: cognitive_processes_interfaces.msg.Episode
+    episodes_msg: core_interfaces.msg.Container
     executed_policy_service: /emdb/simulator/executed_policy
     executed_policy_msg: cognitive_node_interfaces.srv.Policy
     world_reset_service: /emdb/simulator/world_reset
@@ -72,19 +72,32 @@ LTM:
     Connectors:
         -
             data: Space
-            default_class: cognitive_nodes.space.PyTorchOnlineSGDSpace
+            default_class: bartender_experiment.pnodes.LookupTableSpace
         -
             data: Perception
             default_class: cognitive_nodes.perception.Perception
         -
             data: PNode
-            default_class: bartender_experiment.pnodes.PNodeSinglePoint
+            default_class: cognitive_nodes.pnode.PNode
+            parameters:
+                space_class: cognitive_nodes.space.LookupTableSpace
+                space_size: 50000
+                history_size: 100
         -
             data: CNode
             default_class: cognitive_nodes.cnode.CNode
+            parameters:
+                history_size: 40
+                track_competence: True
         -
             data: Goal
             default_class: cognitive_nodes.goal.GoalLearnedSpace
+            parameters:
+                space_class: cognitive_nodes.space.LookupTableSpace
+                space_size: 50000
+                history_size: 300  
+                min_confidence: 0.94  
+                ltm_id: ltm_0
         -
             data: WorldModel
             default_class: cognitive_nodes.world_model.WorldModel

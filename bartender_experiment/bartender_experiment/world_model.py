@@ -4,15 +4,14 @@ from rclpy.time import Time
 from rclpy.qos import QoSProfile, qos_profile_sensor_data, ReliabilityPolicy, HistoryPolicy
 from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
 
-from cognitive_nodes.generic_model import GenericModel, Learner  # (si usas)
-from simulators.scenarios_2D import SimpleScenario, EntityType    # (si usas)
+from core.container import Container, consolidate_containers
+
+from core_interfaces.msg import Container as ContainerMsg
 from cognitive_nodes.world_model import WorldModel
 from bartender_experiment_interfaces.srv import KnowClient
 
-from cognitive_node_interfaces.msg import Perception, PerceptionStamped
 from std_msgs.msg import Float32
 
-from core.utils import perception_msg_to_dict
 
 # -----------------------------
 # Helpers
@@ -33,10 +32,9 @@ def _known_key_from_id_legacy(cid: float) -> str:
 
 class BarEmpty(WorldModel):
     """BarEmpty class: activates when no client is present (o cliente no conocido)."""
-    def __init__(self, name='world_model', actuation_config=None, perception_config=None,
-                 class_name='cognitive_nodes.world_model.WorldModel', **params):
+    def __init__(self, name='world_model', class_name='cognitive_nodes.world_model.WorldModel', **params):
 
-        super().__init__(name, class_name, **params)
+        super().__init__(name=name, class_name=class_name, **params)
 
         # LTM segura
         if not hasattr(self, 'ltm') or self.ltm is None:
@@ -54,9 +52,7 @@ class BarEmpty(WorldModel):
         # OPT: callback group dedicado a activación si no necesitas concurrencia
         self.cbgroup_activation = getattr(self, "cbgroup_activation", MutuallyExclusiveCallbackGroup())
 
-        # OPT: logging throttle
-        self._last_empty_warn = 0.0
-        self._log_throttle_s = 2.0
+        self.perception = None  # placeholder for consolidated perception data
 
     def create_activation_input(self, node: dict):
         """Añade suscripciones con QoS de sensor para baja latencia."""
@@ -64,7 +60,7 @@ class BarEmpty(WorldModel):
         node_type = node['node_type']
         if node_type == "Perception":
             sub = self.create_subscription(
-                PerceptionStamped,
+                ContainerMsg,
                 f"perception/{name}/value",
                 self.read_activation_callback,
                 qos_profile_sensor_data,  # OPT: QoS de sensores
@@ -73,39 +69,33 @@ class BarEmpty(WorldModel):
             # OPT: no crear nuevos objetos por callback; usa referencias in-place
             self.activation_inputs[name] = dict(
                 subscriber=sub,
-                data=Perception(),             # placeholder reutilizable
-                updated=False,
-                timestamp=self.get_clock().now()
+                data=None,             # placeholder reutilizable
+                updated=False
             )
 
-    def read_activation_callback(self, msg: PerceptionStamped):
-        """Path rápido y mínimo trabajo por callback."""
-        # OPT: conversión una sola vez
-        pdict = perception_msg_to_dict(msg=msg.perception)
+    def read_activation_callback(self, msg: ContainerMsg):
+        """
+        Callback method that reads a perception and stores it in the activation inputs list.
 
-        if not pdict:
-            now = self.get_clock().now().seconds_nanoseconds()[0]
-            if now - self._last_empty_warn >= self._log_throttle_s:
-                self.get_logger().warn("Empty perception received in P-Node. No activation calculated")
-                self._last_empty_warn = now
-            return
-
-        if len(pdict) > 1:
-            self.get_logger().error(f'{self.name} -- Received perception with multiple sensors: ({pdict.keys()}).')
-            # Aún así intenta despachar el primero (opcional)
-            # return
-
-        # OPT: evita listas/keys temporales
-        # toma el primer par (nombre_sensor, valor)
-        for node_name, value in pdict.items():
-            slot = self.activation_inputs.get(node_name)
-            if slot is None:
-                # Sensor no esperado; ignora sin log para no inundar
-                return
-            slot['data'] = value     # Reemplazo de referencia (evita deepcopy)
-            slot['updated'] = True
-            slot['timestamp'] = Time.from_msg(msg.timestamp)
-            break
+        :param msg: PerceptionStamped message that contains the perception and its timestamp.
+        :type msg: cognitive_node_interfaces.msg.PerceptionStamped
+        """        
+        if msg.max_size>1:
+            self.get_logger().error(f'Received perception with multiple readings: ({msg.name}). Perception messages should (currently) include only one reading!')
+        elif msg.max_size==1:
+            node_name=msg.name
+            if node_name in self.activation_inputs:
+                if self.activation_inputs[node_name]['data'] is None:
+                    self.activation_inputs[node_name]['data']=Container.from_msg(msg)
+                else:
+                    self.activation_inputs[node_name]['data'].push_from_msg(msg)
+                self.activation_inputs[node_name]['updated']=True
+            else:
+                self.get_logger().error(
+                    "Received perception not registered in local perception cache!!!"
+                )
+        else:
+            self.get_logger().warn("Empty perception recieved in P-Node")
 
     def know_client_callback(self, request, response):
         """Marca cliente como conocido en LTM (persistencia simple)."""
@@ -120,25 +110,30 @@ class BarEmpty(WorldModel):
     def calculate_activation(self, perception=None, activation_list=None):
         """Activa si NO hay cliente conocido activo."""
         if activation_list is not None:
-            # OPT: construir dict directo sin temporales extra
-            perception = {s: activation_list[s]['data'] for s in activation_list}
-            for s in activation_list:
-                activation_list[s]['updated'] = False
+            data = [activation_list[sensor]['data'] for sensor in activation_list]
+            if self.perception is None and len(data)>0:
+                self.perception = consolidate_containers(data, name="perception", container_type="perception")
+            elif len(data)==0: # Activation list may be empty when initializing the P-Node.
+                self.activation.activation = 0.0
+                self.activation.timestamp = self.get_clock().now().to_msg()
+                return self.activation
+            else:
+                consolidate_containers(data, write_container=self.perception)
+            perception = self.perception
 
-        activation_value = 1.0
+        activation_value = 1.0 # Activate by default (no client known)
         if perception:
-            client_list = perception.get('client')
-            if client_list:
-                cid = client_list[0].get('id')
-                if cid is not None and cid > 0:
-                    # Si ya tienes LTM con la convención legacy, mantén esta:
-                    key = _known_key_from_id_legacy(cid)
-                    # Alternativa (si migras): key = _client_key_from_id(cid)
-                    if key in self.known_clients:
-                        activation_value = 0.0
+            client_id = float(perception.read().sel(features=["client:id"]).values[-1]) if "client:id" in perception.feature_labels else 0.0
+            if client_id != 0.0:
+                # Si ya tienes LTM con la convención legacy, mantén esta:
+                key = _known_key_from_id_legacy(client_id)
+                # Alternativa (si migras): key = _client_key_from_id(cid)
+                if key in self.known_clients:
+                    activation_value = 0.0
 
+        perception_timestamp = self.perception.data.coords["timestamp"].values[-1]
         self.activation.activation = activation_value
-        self.activation.timestamp = self.get_clock().now().to_msg()
+        self.activation.timestamp = Time(nanoseconds=perception_timestamp).to_msg()
         return self.activation
 
 
@@ -150,7 +145,7 @@ class ClientInBar(WorldModel):
         self.preference = preference
         self.last_published_preference = None
 
-        super().__init__(name, class_name, **params)
+        super().__init__(name=name, class_name=class_name, **params)
 
         # OPT: usa grupos adecuados
         self.timer_cbgroup = ReentrantCallbackGroup()
@@ -163,11 +158,10 @@ class ClientInBar(WorldModel):
             callback_group=self.timer_cbgroup
         )
 
-        # OPT: publisher con QoS sensor (best-effort, depth bajo)
         self.publish_last_bottle = self.create_publisher(
             Float32,
             'cognitive_node/world_model/last_bottle',
-            qos_profile_sensor_data
+            1
         )
         # OPT: mensaje prealocado
         self._last_bottle_msg = Float32()
@@ -176,27 +170,30 @@ class ClientInBar(WorldModel):
         self._last_log_ts = 0.0
         self._log_throttle_s = 2.0
 
+        self.perception = None  # placeholder for consolidated perception data
+
     def calculate_activation(self, perception=None, activation_list=None):
         """Activa cuando el nombre del WM coincide con client_{id} (con _ por .)."""
         self.activation.activation = 0.0
 
         if activation_list is not None:
-            perception = {s: activation_list[s]['data'] for s in activation_list}
-            for s in activation_list:
-                activation_list[s]['updated'] = False
+            data = [activation_list[sensor]['data'] for sensor in activation_list]
+            if self.perception is None and len(data)>0:
+                self.perception = consolidate_containers(data, name="perception", container_type="perception")
+            elif len(data)==0: # Activation list may be empty when initializing the P-Node.
+                self.activation.activation = 0.0
+                self.activation.timestamp = self.get_clock().now().to_msg()
+                return self.activation
+            else:
+                consolidate_containers(data, write_container=self.perception)
+            perception = self.perception
 
         if perception:
             activation_value = 0.0
-            client_id = None
 
             # OPT: busca primera clave que contenga "client" sin crear estructuras extra
-            for key, value in perception.items():
-                if 'client' in key.lower() and value:
-                    # value es lista
-                    cid = value[0].get('id', None)
-                    if cid is not None:
-                        client_id = round(cid, 2)
-                    break
+            cid = float(perception.read().sel(features=["client:id"]).values[-1]) if "client:id" in perception.feature_labels else None
+            client_id = round(cid, 2) if cid is not None else None
 
             if client_id is not None:
                 expected_name = _client_key_from_id(client_id)
@@ -205,7 +202,8 @@ class ClientInBar(WorldModel):
 
             self.activation.activation = activation_value
 
-        self.activation.timestamp = self.get_clock().now().to_msg()
+        perception_timestamp = self.perception.data.coords["timestamp"].values[-1]
+        self.activation.timestamp = Time(nanoseconds=perception_timestamp).to_msg()
         return self.activation
 
     def set_activation_callback(self, request, response):
@@ -215,49 +213,49 @@ class ClientInBar(WorldModel):
         response.set = True
         return response
 
+    # TODO: Refactor common methods in BarEmpty and ClientInBar to avoid code duplication
     def create_activation_input(self, node: dict):
-        """Suscripciones con QoS de sensores y estado in-place."""
+        """Añade suscripciones con QoS de sensor para baja latencia."""
         name = node['name']
         node_type = node['node_type']
         if node_type == "Perception":
             sub = self.create_subscription(
-                PerceptionStamped,
+                ContainerMsg,
                 f"perception/{name}/value",
                 self.read_activation_callback,
-                qos_profile_sensor_data,
+                1,
                 callback_group=self.cbgroup_activation
             )
-            # Reutiliza el slot
+            # OPT: no crear nuevos objetos por callback; usa referencias in-place
             self.activation_inputs[name] = dict(
                 subscriber=sub,
-                data=Perception(),
-                updated=False,
-                timestamp=Time()
+                data=None,             # placeholder reutilizable
+                updated=False
             )
-            self.get_logger().debug(f'{self.name} -- Created activation input: {name} ({node_type})')
 
-    def read_activation_callback(self, msg: PerceptionStamped):
-        """Callback de lectura con path rápido."""
-        pdict = perception_msg_to_dict(msg=msg.perception)
-        if not pdict:
-            # throttle
-            now = self.get_clock().now().seconds_nanoseconds()[0]
-            if now - self._last_log_ts >= self._log_throttle_s:
-                self.get_logger().warn("Empty perception received in P-Node. No activation calculated")
-                self._last_log_ts = now
-            return
+    def read_activation_callback(self, msg: ContainerMsg):
+        """
+        Callback method that reads a perception and stores it in the activation inputs list.
 
-        if len(pdict) > 1:
-            self.get_logger().error(f'{self.name} -- Received perception with multiple sensors: ({pdict.keys()}).')
-
-        for node_name, value in pdict.items():
-            slot = self.activation_inputs.get(node_name)
-            if slot is None:
-                return
-            slot['data'] = value
-            slot['updated'] = True
-            slot['timestamp'] = Time.from_msg(msg.timestamp)
-            break
+        :param msg: PerceptionStamped message that contains the perception and its timestamp.
+        :type msg: cognitive_node_interfaces.msg.PerceptionStamped
+        """        
+        if msg.max_size>1:
+            self.get_logger().error(f'Received perception with multiple readings: ({msg.name}). Perception messages should (currently) include only one reading!')
+        elif msg.max_size==1:
+            node_name=msg.name
+            if node_name in self.activation_inputs:
+                if self.activation_inputs[node_name]['data'] is None:
+                    self.activation_inputs[node_name]['data']=Container.from_msg(msg)
+                else:
+                    self.activation_inputs[node_name]['data'].push_from_msg(msg)
+                self.activation_inputs[node_name]['updated']=True
+            else:
+                self.get_logger().error(
+                    "Received perception not registered in local perception cache!!!"
+                )
+        else:
+            self.get_logger().warn("Empty perception recieved in P-Node")
 
     def log_preference(self):
         """
