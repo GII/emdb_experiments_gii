@@ -34,18 +34,14 @@ LTM:
             id: pnodes_content
             class: core.file.FilePNodesContent
             file: pnodes_content.txt
-        -
-            id: pnodes_content_last_iteration
-            class: core.file.FileLastIterationPNodesContent
-            file: pnodes_content_last_ite.txt
+            parameters:
+                save_interval: 5000
         -
             id: goals_content
             class: core.file.FileGoalsContent
             file: goals_content.txt
-        -
-            id: goals_content_last_iteration
-            class: core.file.FileLastIterationGoalsContent
-            file: goals_content_last_ite.txt
+            parameters:
+                save_interval: 5000
         -
             id: trials
             class: core.file.FileTrialsSuccess
@@ -241,13 +237,13 @@ LTM:
                     weight: 0.1
                     drive_id: 'novelty_drive'
                     purpose_type: 'Need'
-            - 
-                name: effectance_need
-                class_name: cognitive_nodes.robot_purpose.RobotPurpose
-                parameters:
-                    weight: 0.25
-                    drive_id: 'effectance_drive'
-                    purpose_type: 'Need'
+            # - 
+            #     name: effectance_need
+            #     class_name: cognitive_nodes.robot_purpose.RobotPurpose
+            #     parameters:
+            #         weight: 0.25
+            #         drive_id: 'effectance_drive'
+            #         purpose_type: 'Need'
             -
                 name: client_present_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
@@ -309,14 +305,14 @@ LTM:
                 class_name: cognitive_nodes.novelty.DriveNovelty
                 parameters:
                     neighbors: [{"name": "novelty_need", "node_type": "RobotPurpose"}]
-            -
-                name: effectance_drive
-                class_name: cognitive_nodes.effectance.DriveEffectanceInternal
-                parameters:
-                    ltm_id: ltm_0
-                    min_confidence: 0.84
-                    limit_depth: True
-                    neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
+            # -
+            #     name: effectance_drive
+            #     class_name: cognitive_nodes.effectance.DriveEffectanceInternal
+            #     parameters:
+            #         ltm_id: ltm_0
+            #         min_confidence: 0.84
+            #         limit_depth: True
+            #         neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
             -
                 name: external_effects_drive
                 class_name: cognitive_nodes.effectance.DriveEffectanceExternal
@@ -348,11 +344,11 @@ LTM:
                 class_name: cognitive_nodes.goal.GoalMotiven
                 parameters:
                     neighbors: [{"name": "novelty_drive", "node_type": "Drive"}]
-            -
-                name: effectance_goal
-                class_name: dummy_nodes.dummy_goal.GoalDummy
-                parameters:
-                    neighbors: [{"name": "effectance_drive", "node_type": "Drive"}]
+            # -
+            #     name: effectance_goal
+            #     class_name: dummy_nodes.dummy_goal.GoalDummy
+            #     parameters:
+            #         neighbors: [{"name": "effectance_drive", "node_type": "Drive"}]
             -
                 name: external_effects_goal
                 class_name: dummy_nodes.dummy_goal.GoalDummy
@@ -369,11 +365,11 @@ LTM:
                 class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
                 parameters:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
-            -
-                name: effectance_pnode
-                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
-                parameters:
-                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            # -
+            #     name: effectance_pnode
+            #     class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+            #     parameters:
+            #         space_class: cognitive_nodes.space.ActivatedDummySpace
             -
                 name: external_effects_pnode
                 class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
@@ -403,12 +399,12 @@ LTM:
                 parameters:
                     neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "novelty_pnode", "node_type": "PNode"}]
                     track_competence: False
-            -
-                name: effectance_cnode
-                class_name: cognitive_nodes.cnode.CNode
-                parameters:
-                    neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "effectance_pnode", "node_type": "PNode"}]
-                    track_competence: False
+            # -
+            #     name: effectance_cnode
+            #     class_name: cognitive_nodes.cnode.CNode
+            #     parameters:
+            #         neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "effectance_pnode", "node_type": "PNode"}]
+            #         track_competence: False
             -
                 name: external_effects_cnode
                 class_name: cognitive_nodes.cnode.CNode
@@ -496,16 +492,16 @@ LTM:
                     exclude_list: ["effectance_policy", "external_effect_policy", "prospection_policy", "ask_nicely", "save_preference"]
                     neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
                     ltm_id: ltm_0
-            -
-                name: effectance_policy
-                class_name: cognitive_nodes.effectance.PolicyEffectanceInternal
-                parameters:
-                    goal_class: cognitive_nodes.effectance.GoalActivatePNode
-                    neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
-                    confidence: 0.5
-                    threshold_delta: 0.5
-                    limit_depth: True
-                    ltm_id: ltm_0
+            # -
+            #     name: effectance_policy
+            #     class_name: cognitive_nodes.effectance.PolicyEffectanceInternal
+            #     parameters:
+            #         goal_class: cognitive_nodes.effectance.GoalActivatePNode
+            #         neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
+            #         confidence: 0.5
+            #         threshold_delta: 0.5
+            #         limit_depth: True
+            #         ltm_id: ltm_0
             -
                 name: external_effect_policy
                 class_name: cognitive_nodes.effectance.PolicyEffectanceExternal
