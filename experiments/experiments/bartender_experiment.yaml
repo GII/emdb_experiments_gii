@@ -102,32 +102,24 @@ LTM:
                         n_ids: 4
                         n_preferences: 4
                         n_states: 2
-            # - 
-            #     name: last_bottle
-            #     class_name: bartender_experiment.perception.BartenderPerception
-            #     parameters:
-            #         default_msg: std_msgs.msg.Int8
-            #         default_topic: /emdb/simulator/sensor/last_bottle
-            #         normalize_data:
-            #             n_ids: 4
             - 
                 name: robot_position
                 class_name: bartender_experiment.perception.BartenderPerception
                 parameters:
                     default_msg: std_msgs.msg.Float32
                     default_topic: /emdb/simulator/sensor/robot_position
-            -
-                name: at_serv_with_glass
-                class_name: bartender_experiment.perception.BartenderPerception
-                parameters:
-                    default_msg: std_msgs.msg.Bool
-                    default_topic: /emdb/simulator/sensor/at_serv_with_glass
-            -
-                name: at_prep_with_used_glass
-                class_name: bartender_experiment.perception.BartenderPerception
-                parameters:
-                    default_msg: std_msgs.msg.Bool
-                    default_topic: /emdb/simulator/sensor/at_prep_with_used_glass
+            # -
+            #     name: at_serv_with_glass
+            #     class_name: bartender_experiment.perception.BartenderPerception
+            #     parameters:
+            #         default_msg: std_msgs.msg.Bool
+            #         default_topic: /emdb/simulator/sensor/at_serv_with_glass
+            # -
+            #     name: at_prep_with_used_glass
+            #     class_name: bartender_experiment.perception.BartenderPerception
+            #     parameters:
+            #         default_msg: std_msgs.msg.Bool
+            #         default_topic: /emdb/simulator/sensor/at_prep_with_used_glass
             -   
                 name: glass
                 class_name: bartender_experiment.perception.BartenderPerception
@@ -145,25 +137,24 @@ LTM:
                         dim_max: 0.1
                         n_states: 2
                         n_drink_types: 4
-                        
-            # -   
-            #     name: bottles
-            #     class_name: bartender_experiment.perception.BartenderFilterPerception
-            #     parameters:
-            #         default_msg: simulators_interfaces.msg.BottleListMsg
-            #         default_topic: /emdb/simulator/sensor/bottles
-            #         normalize_data:
-            #             distance_min: 0.0
-            #             distance_max: 1.9
-            #             angle_min: -1.4
-            #             angle_max: 1.4
-            #             diameter_min: 0.0
-            #             diameter_max: 0.15
-            #             dim_min: 0.03
-            #             dim_max: 0.1
-            #             n_states: 2
-            #             n_ids: 4
-            #             n_drink_types: 4
+            -   
+                name: bottles
+                class_name: bartender_experiment.perception.BartenderFilterPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.BottleListMsg
+                    default_topic: /emdb/simulator/sensor/bottles
+                    normalize_data:
+                        distance_min: 0.0
+                        distance_max: 1.9
+                        angle_min: -1.4
+                        angle_max: 1.4
+                        diameter_min: 0.0
+                        diameter_max: 0.15
+                        dim_min: 0.03
+                        dim_max: 0.1
+                        n_states: 2
+                        n_ids: 4
+                        n_drink_types: 4
             -
                 name: glass_in_left_hand
                 class_name: bartender_experiment.perception.BartenderPerception
@@ -176,31 +167,31 @@ LTM:
                 parameters:
                     default_msg: std_msgs.msg.Bool
                     default_topic: /emdb/simulator/sensor/bottle_in_right_hand
-            # History + state-disambiguation features
-            -
-                name: policy_pair
-                class_name: bartender_experiment.perception.BartenderPerception
-                parameters:
-                    default_msg: std_msgs.msg.Float32
-                    default_topic: /emdb/simulator/sensor/policy_pair
-            -
-                name: glass_at_serving
-                class_name: bartender_experiment.perception.BartenderPerception
-                parameters:
-                    default_msg: std_msgs.msg.Bool
-                    default_topic: /emdb/simulator/sensor/glass_at_serving
-            -
-                name: preference_known
-                class_name: bartender_experiment.perception.BartenderPerception
-                parameters:
-                    default_msg: std_msgs.msg.Bool
-                    default_topic: /emdb/simulator/sensor/preference_known
-            -
-                name: drink_matches_preference
-                class_name: bartender_experiment.perception.BartenderPerception
-                parameters:
-                    default_msg: std_msgs.msg.Bool
-                    default_topic: /emdb/simulator/sensor/drink_matches_preference
+            # # History + state-disambiguation features
+            # -
+            #     name: policy_pair
+            #     class_name: bartender_experiment.perception.BartenderPerception
+            #     parameters:
+            #         default_msg: std_msgs.msg.Float32
+            #         default_topic: /emdb/simulator/sensor/policy_pair
+            # -
+            #     name: glass_at_serving
+            #     class_name: bartender_experiment.perception.BartenderPerception
+            #     parameters:
+            #         default_msg: std_msgs.msg.Bool
+            #         default_topic: /emdb/simulator/sensor/glass_at_serving
+            # -
+            #     name: preference_known
+            #     class_name: bartender_experiment.perception.BartenderPerception
+            #     parameters:
+            #         default_msg: std_msgs.msg.Bool
+            #         default_topic: /emdb/simulator/sensor/preference_known
+            # -
+            #     name: drink_matches_preference
+            #     class_name: bartender_experiment.perception.BartenderPerception
+            #     parameters:
+            #         default_msg: std_msgs.msg.Bool
+            #         default_topic: /emdb/simulator/sensor/drink_matches_preference
 
         WorldModel:
             -
@@ -436,7 +427,6 @@ LTM:
                 parameters:
                     service_msg: cognitive_node_interfaces.srv.Policy
                     service_name: /emdb/simulator/executed_policy
-
             -
                 name: pick_glass
                 class_name: cognitive_nodes.policy.PolicyBlocking
@@ -529,10 +519,6 @@ DiscreteEventSimulator:
             perception_topic: /emdb/simulator/sensor/client
             perception_msg: simulators_interfaces.msg.ClientListMsg
         -
-            name: last_bottle
-            perception_topic: /emdb/simulator/sensor/last_bottle
-            perception_msg: std_msgs.msg.Int8
-        -
             name: bottles
             perception_topic: /emdb/simulator/sensor/bottles
             perception_msg: simulators_interfaces.msg.BottleListMsg
@@ -551,35 +537,6 @@ DiscreteEventSimulator:
         -
             name: robot_position
             perception_topic: /emdb/simulator/sensor/robot_position
-            perception_msg: std_msgs.msg.Float32    
-        -
-            name: at_serv_with_glass
-            perception_topic: /emdb/simulator/sensor/at_serv_with_glass
-            perception_msg: std_msgs.msg.Bool
-        -
-            name: at_prep_with_used_glass
-            perception_topic: /emdb/simulator/sensor/at_prep_with_used_glass
-            perception_msg: std_msgs.msg.Bool
-        # History + state-disambiguation features
-        -
-            name: policy_pair
-            perception_topic: /emdb/simulator/sensor/policy_pair
-            perception_msg: std_msgs.msg.Float32
-        -
-            name: glass_at_serving
-            perception_topic: /emdb/simulator/sensor/glass_at_serving
-            perception_msg: std_msgs.msg.Bool
-        -
-            name: preference_known
-            perception_topic: /emdb/simulator/sensor/preference_known
-            perception_msg: std_msgs.msg.Bool
-        -
-            name: drink_matches_preference
-            perception_topic: /emdb/simulator/sensor/drink_matches_preference
-            perception_msg: std_msgs.msg.Bool
-        -   
-            name: left_the_glass_goal
-            perception_topic: /emdb/simulator/sensor/left_the_glass
             perception_msg: std_msgs.msg.Float32
         -
             name: serve_the_drink_goal
