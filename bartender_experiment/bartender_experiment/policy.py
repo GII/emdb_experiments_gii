@@ -1,4 +1,4 @@
-from cognitive_nodes.policy import Policy
+from cognitive_nodes.policy import Policy, PolicyBlocking
 from core.service_client import ServiceClientAsync
 from core.container import Container
 
@@ -10,7 +10,7 @@ class BartenderClientPolicy(Policy):
     """
     BartenderClientPolicy class. Represents a policy for the bartender client.
     """    
-    def __init__(self, name='BartenderClientPolicy', class_name='cognitive_nodes.policy.Policy', service_msg=None, service_name=None, **params):
+    def __init__(self, name='BartenderClientPolicy', class_name='cognitive_nodes.policy.Policy', **params):
         """
         Constructor for the BartenderClientPolicy class.
 
@@ -18,10 +18,6 @@ class BartenderClientPolicy(Policy):
         :type name: str
         :param class_name: The name of the base Policy class.
         :type class_name: str
-        :param service_msg: Message type of the service that executes the policy.
-        :type service_msg: ROS2 message type. Typically cognitive_node_interfaces.srv.Policy
-        :param service_name: Name of the service that executes the policy.
-        :type service_name: str
         """        
         super().__init__(name=name, class_name=class_name, **params)
         self.know_client_service = None
@@ -92,3 +88,35 @@ class BartenderClientPolicy(Policy):
         except Exception as e:
             self.get_logger().error(f"Error extracting client data: {e}")
             return "0_0", 0.5
+
+class PolicyPerception(PolicyBlocking):
+    """
+    PolicyPerception class. Represents a policy for perception.
+    """    
+    def __init__(self, name='PolicyPerception', class_name='cognitive_nodes.policy.Policy', service_msg=None, service_name=None, **params):
+        """
+        Constructor for the PolicyPerception class.
+
+        :param name: The name of the policy.
+        :type name: str
+        :param class_name: The name of the base Policy class.
+        :type class_name: str
+        """        
+        super().__init__(name=name, class_name=class_name, service_msg=service_msg, service_name=service_name, **params)
+
+    async def execute_callback(self, request, response):
+
+        """
+        Makes a service call to the server that handles the execution of the policy.
+
+        :param request: The request to execute the policy.
+        :type request: cognitive_node_interfaces.srv.Execute.Request
+        :param response: The response indicating the executed policy.
+        :type response: cognitive_node_interfaces.srv.Execute.Response
+        :return: The response with the executed policy name.
+        :rtype: cognitive_node_interfaces.srv.Execute.Response
+        """
+        self.get_logger().info('Executing policy: ' + self.name + '...')
+        await self.policy_service.send_request_async(policy=self.name, perception=request.perception)
+        response.policy = self.name
+        return response

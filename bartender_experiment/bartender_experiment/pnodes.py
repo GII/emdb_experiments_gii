@@ -1,5 +1,6 @@
 import json
 import numpy as np
+from math import isclose
 
 from rclpy.time import Time
 
@@ -39,7 +40,7 @@ class PNodeBartenderClient(PNode):
         activation_value = 0.0
         if perception:
             preference = float(perception.read().sel(features=["client:preference"]).values[-1]) if "client:preference" in perception.feature_labels else 0.0
-            if preference != 0.0:
+            if not isclose(preference, 0.0):
                 activation_value = 1.0
 
         perception_timestamp = self.perception.data.coords["timestamp"].values[-1]
@@ -77,7 +78,8 @@ class PNodeClientPresent(PNode):
         activation_value = 0.0
         if perception:
             client_id = float(perception.read().sel(features=["client:id"]).values[-1]) if "client:id" in perception.feature_labels else 0.0
-            if client_id != 0.0:
+            preference = float(perception.read().sel(features=["client:preference"]).values[-1]) if "client:preference" in perception.feature_labels else 0.0
+            if not isclose(client_id, 0.0) and isclose(preference, 0.0):
                 activation_value = 1.0
 
         perception_timestamp = self.perception.data.coords["timestamp"].values[-1]

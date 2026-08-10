@@ -6,8 +6,12 @@ import numpy as np
 
 from math import isclose
 from std_msgs.msg import Float32
+
+
 from cognitive_nodes.perception import Perception
 from core.container import Container
+from core.utils import class_from_classname
+
 
 
 # ================================================================
@@ -66,9 +70,8 @@ class BartenderPerception(Perception):
             for p in reading:
                 id=self._normalize_and_clamp(p.id, self._id_divisor)
                 preference=self._normalize_and_clamp(p.preference, self._preference_divisor)
-                likes_shake=self._normalize_and_clamp(p.likes_shake, self._state_divisor)
-                data=np.array([id, preference, likes_shake])
-                labels = ["id", "preference", "likes_shake"]
+                data=np.array([id, preference])
+                labels = ["id", "preference"]
         else:
             data=np.array([reading])
             labels = ["data"]
@@ -90,19 +93,33 @@ class BartenderFilterPerception(Perception):
     """Deterministic bottle filter perception node."""
 
     def __init__(self, name='filter_perception', class_name='cognitive_nodes.perception.Perception',
-                 default_msg=None, default_topic=None, normalize_data=None, **params):
+                 default_msg=None, default_topic=None, normalize_data=None, last_bottle_topic=None, last_bottle_msg=None, gripper_topic=None, gripper_msg=None, **params):
         super().__init__(name=name, class_name=class_name, default_msg=default_msg, default_topic=default_topic, normalize_data=normalize_data, **params)
 
         # Subscribe to the world_model's last_bottle by default (Float32)
         # while the base class already subscribes to `default_topic` for bottles.
-        self.extra_subscription = self.create_subscription(
-            Float32,
-            'cognitive_node/world_model/last_bottle',
-            self.filter_callback,
-            1
-        )
+        if last_bottle_topic and last_bottle_msg:
+            self.last_bottle_subscription = self.create_subscription(
+                class_from_classname(last_bottle_msg),
+                last_bottle_topic,
+                self.last_bottle_callback,
+                1
+            )
+        else:
+            raise ValueError("last_bottle_topic and last_bottle_msg must be provided for BartenderFilterPerception.")
+
+        if gripper_topic and gripper_msg:
+            self.gripper_subscription = self.create_subscription(
+                class_from_classname(gripper_msg),
+                gripper_topic,
+                self.gripper_callback,
+                1
+            )
+        else:
+            raise ValueError("gripper_topic and gripper_msg must be provided for BartenderFilterPerception.")
 
         self._last_bottle_id = None
+        self._grasped_bottle_id = None
 
         if normalize_data:
             self._distance_min = normalize_data.get("distance_min", 0.0)
@@ -124,10 +141,8 @@ class BartenderFilterPerception(Perception):
         distance=(p.distance - self._distance_min) / self._distance_range
         angle=(p.angle - self._angle_min) / self._angle_range
         id=p.id / self._id_divisor
-        x=(getattr(p, "x", 0.0) - self._x_min) / self._x_range
-        y=(getattr(p, "y", 0.0) - self._y_min) / self._y_range
-        data=np.array([distance, angle, id, x, y])
-        labels = ["distance", "angle", "id", "x", "y"]
+        data=np.array([distance, angle, id])
+        labels = ["distance", "angle", "id"]
 
         return data, labels
 
@@ -140,9 +155,11 @@ class BartenderFilterPerception(Perception):
 
     def _select_bottle(self, bottles):
         selected = None
-        if self._last_bottle_id is not None:
+        selected_id = self._grasped_bottle_id if self._grasped_bottle_id is not None else self._last_bottle_id
+
+        if selected_id is not None:
             for bottle in bottles:
-                if isclose(bottle.id, self._last_bottle_id, abs_tol=1e-3):
+                if isclose(bottle.id, selected_id, abs_tol=1e-3):
                     selected = bottle
                     break
         if selected is None and bottles:
@@ -153,38 +170,17 @@ class BartenderFilterPerception(Perception):
         # `BottleMsg` does not have a `.data` field, so work with the message
         # object directly and also accept list-style containers from other
         # bottle perceptions.
-        reading = self.reading
+        reading = self.reading.data
         data = None
         labels = None
 
-        if "last_bottle" in self.name:
-            bottles = self._as_bottle_list(reading)
-            selected = None
-
-            if bottles:
-                selected = self._select_bottle(bottles)
-
+        bottles = self._as_bottle_list(reading)
+        if bottles:
+            selected = self._select_bottle(bottles)
             if selected is not None:
-                self._last_bottle_id = getattr(selected, "id", None)
                 data, labels = self._normalize_bottle(selected)
-            else:
-                raw = self._last_bottle_id
-                if raw is None:
-                    raw = getattr(reading, "id", None)
-                if raw is None:
-                    raw = -1
-                data = np.array([self._normalize_and_clamp(raw, self._id_divisor)])
-                labels = ["data"]
-
-        else:
-            bottles = self._as_bottle_list(reading)
-            if bottles:
-                selected = self._select_bottle(bottles)
-                if selected is not None:
-                    data, labels = self._normalize_bottle(selected)
-            if data is None:
-                data = np.array([reading])
-                labels = ["data"]
+        if data is None:
+            return  # No valid bottle selected, return immediately
 
         if self.container is None:
             self.container = Container(self.name, max_size=1, container_type="perception", labels=labels)
@@ -194,7 +190,7 @@ class BartenderFilterPerception(Perception):
         sensor_msg = self.container.to_msg()
         self.perception_publisher.publish(sensor_msg)
 
-    def filter_callback(self, msg):
+    def last_bottle_callback(self, msg):
         # Accept whatever message type is configured for the perception topic
         # (e.g., std_msgs.msg.Int8 from the simulator or std_msgs.msg.Float32
         # from the world_model). Extract numeric value in a tolerant way.
@@ -207,3 +203,13 @@ class BartenderFilterPerception(Perception):
             except Exception:
                 val = None
         self._last_bottle_id = val
+
+    def gripper_callback(self, msg):
+        if msg.data:
+            if msg.contents == "bottle":
+                self._grasped_bottle_id = msg.contents_id
+            else:
+                self.get_logger().warn("Gripper callback received unexpected contents: " + str(msg.contents))
+        else:
+            self._grasped_bottle_id = None
+                

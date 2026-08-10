@@ -33,18 +33,14 @@ LTM:
             id: pnodes_content
             class: core.file.FilePNodesContent
             file: pnodes_content.txt
-        -
-            id: pnodes_content_last_iteration
-            class: core.file.FileLastIterationPNodesContent
-            file: pnodes_content_last_ite.txt
+            parameters:
+                save_interval: 5000
         -
             id: goals_content
             class: core.file.FileGoalsContent
             file: goals_content.txt
-        -
-            id: goals_content_last_iteration
-            class: core.file.FileLastIterationGoalsContent
-            file: goals_content_last_ite.txt
+            parameters:
+                save_interval: 5000
         -
             id: trials
             class: core.file.FileTrialsSuccess
@@ -57,6 +53,18 @@ LTM:
             id: neighbors_full
             class: core.file.FileNeighborsFull
             file: neighbors_full.txt
+        -
+            id: save_models
+            class: core.file.FileSaveModels
+            file: models_save
+            parameters:
+                save_interval: 0
+        -
+            id: dataset
+            class: core.file.FileEpisodesDataset
+            file: dataset.csv
+            parameters:
+                max_size: 10000
 
     Connectors:
         -
@@ -84,8 +92,8 @@ LTM:
             parameters:
                 space_class: cognitive_nodes.space.ANNSpace
                 space_size: 50000
-                history_size: 300  
-                min_confidence: 0.94  
+                history_size: 100  
+                min_confidence: 0.84  
                 ltm_id: ltm_0
         -
             data: WorldModel

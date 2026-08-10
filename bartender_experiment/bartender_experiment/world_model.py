@@ -151,13 +151,6 @@ class ClientInBar(WorldModel):
         self.timer_cbgroup = ReentrantCallbackGroup()
         self.cbgroup_activation = getattr(self, "cbgroup_activation", MutuallyExclusiveCallbackGroup())
 
-        # OPT: timer más suave (100ms está bien) pero con QoS y sin trabajo pesado dentro
-        self.preference_timer = self.create_timer(
-            0.01,
-            self.log_preference,
-            callback_group=self.timer_cbgroup
-        )
-
         self.publish_last_bottle = self.create_publisher(
             Float32,
             'cognitive_node/world_model/last_bottle',
@@ -166,9 +159,6 @@ class ClientInBar(WorldModel):
         # OPT: mensaje prealocado
         self._last_bottle_msg = Float32()
 
-        # OPT: throttle para logs (si decides loguear)
-        self._last_log_ts = 0.0
-        self._log_throttle_s = 2.0
 
         self.perception = None  # placeholder for consolidated perception data
 
@@ -204,6 +194,7 @@ class ClientInBar(WorldModel):
 
         perception_timestamp = self.perception.data.coords["timestamp"].values[-1]
         self.activation.timestamp = Time(nanoseconds=perception_timestamp).to_msg()
+        self.log_preference()
         return self.activation
 
     def set_activation_callback(self, request, response):
