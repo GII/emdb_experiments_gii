@@ -85,6 +85,10 @@ class SimBridge(Node):
         # can start before the sim finishes building its (heavy) scene.
         self._step_client = None
         self._reset_client = None
+        # True once the world_reset SERVICE is hosted -> control-topic "reset_world"
+        # commands are then ignored (the service is authoritative). This also avoids
+        # two callbacks driving the shared reset client concurrently.
+        self.service_world_reset = False
 
     # ------------------------------------------------ scene_loader clients
     def _step(self, **fields):
@@ -153,7 +157,7 @@ class SimBridge(Node):
 
     def control_callback(self, data):
         command = getattr(data, "command", "")
-        if command == "reset_world":
+        if command == "reset_world" and not self.service_world_reset:
             self._reset(layout_id=-1, style_id=-1)
         elif command == "end":
             self.get_logger().info("Ending bridge as requested by LTM...")
@@ -197,6 +201,7 @@ class SimBridge(Node):
                 msg_srv, service_action, self.executed_action_callback,
                 callback_group=self.cbgroup_server)
         if service_world_reset:
+            self.service_world_reset = True
             msg_reset = class_from_classname(simulation["world_reset_msg"])
             self.create_service(
                 msg_reset, service_world_reset, self.world_reset_callback,

@@ -21,17 +21,18 @@ from cognitive_nodes.perception import Perception
 class EmdbSimulatorPerception(Perception):
     """Flatten emdb_simulator mdb sensor messages into e-MDB perception values."""
 
-    # NOTE: class_name MUST default to the base 'cognitive_nodes.perception.Perception'.
-    # CognitiveNode derives node_type = class_name.rpartition(".")[-1], and the LTM keys
-    # its dict by category ("Perception"), not by concrete class -- so defaulting this to
-    # the subclass path yields node_type "EmdbSimulatorPerception" and a KeyError in the
-    # LTM. The commander still instantiates THIS class via the yaml's node-level class_name.
+    # Pass everything to the base by KEYWORD. The Perception base has a `node_type`
+    # parameter between `class_name` and `default_msg`, so a positional super().__init__
+    # would misalign the args (default_msg landing in the wrong slot). Keyword args are
+    # robust to that; node_type defaults to "Perception" in the base, which is exactly
+    # the LTM category this node should register under.
     def __init__(self, name="perception",
                  class_name="cognitive_nodes.perception.Perception",
                  default_msg=None, default_topic=None, normalize_data=None,
                  **params):
-        super().__init__(name, class_name, default_msg, default_topic,
-                         normalize_data, **params)
+        super().__init__(name, class_name=class_name,
+                         default_msg=default_msg, default_topic=default_topic,
+                         normalize_data=normalize_data, **params)
 
     def _norm(self, value, key_min, key_max):
         nv = self.normalize_values
