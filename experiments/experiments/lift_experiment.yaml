@@ -1,0 +1,363 @@
+# lift_experiment.yaml -- e-MDB policy-learning experiment for emdb_simulator's
+# KitchenLift task (RoboCasa/robosuite UR5e), driven through mujoco_emdb_sim's
+# sim_bridge.
+#
+# Modeled on the working ur5_grasp_experiment.yaml: same autonomous-learning +
+# SAC machinery (WorldModelLearned + novelty exploration + effectance +
+# model-creation + QUtilityModel, with PolicyLearned as the Policy connector so
+# discovered goals are learned by SAC). Adapted for the lift task:
+#   - perceptions: obj (x,y,z) + obj_grasped, via mujoco_emdb_sim.perception
+#   - actuation: 7-DOF EE deltas [dx,dy,dz,droll,dpitch,dyaw,grasp]
+#   - control services hosted by sim_bridge (-> scene_loader /step_action,/reset)
+#   - mission reward: /emdb/simulator/sensor/progress (sparse lift success)
+#
+# NOTE: the mdb perception set exposes the OBJECT but not the arm/EE pose, so the
+# policy can't observe arm->object distance directly -- learning to reach may be
+# limited until an EE perception is added on the sim side. Bounds are untuned.
+#
+# RUN (two shells, shared ROS_DOMAIN_ID=0):
+#   A) sim  (TFM venv):  source /root/TFM/env.sh
+#                        ros2 launch emdb_simulator emdb_simulator.launch.py \
+#                            teleop:=false perception_mode:=mdb
+#   B) arch (this ws):   source /ros2_ws/install/setup.bash
+#                        source /root/TFM/ros_packages/install/setup.bash
+#                        ros2 launch experiments lift_launch.py
+
+Experiment:
+    name: main_loop
+    class_name: cognitive_processes.main_loop.MainLoopLight
+    new_executor: True
+    threads: 4
+    parameters:
+        iterations: 2000
+        trials: 5
+        softmax_selection: False
+        softmax_temperature: 0.3
+        kill_on_finish: True
+
+Control:
+    id: ltm_emdb_simulator
+    control_topic: /main_loop/control
+    control_msg: cognitive_processes_interfaces.msg.ControlMsg
+    episodes_topic: /main_loop/episodes
+    episodes_msg: core_interfaces.msg.Container
+    executed_action_service: /emdb/simulator/executed_action
+    executed_action_msg: cognitive_node_interfaces.srv.Action
+    world_reset_service: /emdb/simulator/world_reset
+    world_reset_msg: cognitive_processes_interfaces.srv.WorldReset
+
+LTM:
+    Globals:
+        actuation_config:
+            arm: ["dx", "dy", "dz", "droll", "dpitch", "dyaw", "grasp"]
+
+    # Absolute paths so the logs land in /ros2_ws/results (bind-mounted to the
+    # host ./results) no matter which directory the launch is started from.
+    # Each run appends a _N suffix (goodness_0.txt, goodness_1.txt, ...).
+    Files:
+        -
+            id: goodness
+            class: core.file.FileGoodness
+            file: /ros2_ws/results/goodness.txt
+        -
+            id: pnodes_content
+            class: core.file.FilePNodesContent
+            file: /ros2_ws/results/pnodes_content.txt
+            parameters:
+                save_interval: 0
+        -
+            id: trials
+            class: core.file.FileTrialsSuccess
+            file: /ros2_ws/results/trials.txt
+        -
+            id: dataset
+            class: core.file.FileEpisodesDataset
+            file: /ros2_ws/results/dataset.csv
+        -
+            id: world_model_success
+            class: core.file.FileWorldModelSuccess
+            file: /ros2_ws/results/world_model_success.txt
+        -
+            id: save_models
+            class: core.file.FileSaveModels
+            file: /ros2_ws/results/models_save
+            parameters:
+                save_interval: 0
+
+    Connectors:
+        -
+            data: Space
+            default_class: cognitive_nodes.space.ANNSpace
+        -
+            data: Perception
+            default_class: cognitive_nodes.perception.Perception
+        -
+            data: PNode
+            default_class: cognitive_nodes.pnode.PNode
+            parameters:
+                space_class: cognitive_nodes.space.ANNSpace
+                history_size: 500
+        -
+            data: CNode
+            default_class: cognitive_nodes.cnode.CNode
+        -
+            data: Goal
+            default_class: cognitive_nodes.goal.GoalMotiven
+            parameters:
+                space_class: cognitive_nodes.space.ANNSpace
+                history_size: 300
+                min_confidence: 0.94
+                ltm_id: ltm_0
+        -
+            data: WorldModel
+            default_class: cognitive_nodes.world_model.WorldModelLearned
+            parameters:
+                episodes_msg: core_interfaces.msg.Container
+                episodes_topic: /main_loop/episodes
+                prediction_srv_type: cognitive_node_interfaces.srv.Predict
+                main_size: 2000
+                train_sample: 200
+                train_split: 0.8
+                validation_split: 0.1
+                secondary_size: 50
+                retrain: True
+        -
+            data: UtilityModel
+            default_class: cognitive_nodes.utility_model.QUtilityModel
+            parameters:
+                    max_iterations: 50
+                    candidate_actions: 100
+                    ltm_id: ltm_0
+                    candidate_generation: "latin"
+                    softmax_selection: True
+                    softmax_temperature: 0.01
+                    trace_length: 20
+                    min_traces: 20
+                    max_traces: 200
+                    train_traces: 10
+                    train_every: 5
+                    replace_every: 5
+                    discount_factor: 0.9
+                    reward_factor: 10.0
+                    max_antitraces: 5
+                    evaluation_method: "exponential"
+                    epochs: 100
+                    learning_rate: 0.001
+                    output_activation: "linear"
+                    hidden_layers: [256, 128]
+        -
+            data: Policy
+            default_class: cognitive_nodes.policy.PolicyLearned
+            parameters:
+                obs_dim: 4          # obj (x,y,z = 3) + obj_grasped (1)
+                buffer_size: 100000
+                train_every: 5
+                gradient_steps: 100
+                batch_size: 100
+                min_traces: 20
+                max_steps: 50
+                ltm_id: ltm_0
+                learning_rate: 0.001
+
+    Nodes:
+        Perception:
+            -
+                name: obj
+                class_name: mujoco_emdb_sim.perception.EmdbSimulatorPerception
+                parameters:
+                    default_msg: emdb_interfaces.msg.ObjectStateArray
+                    default_topic: /emdb/simulator/sensor/obj
+                    normalize_data:
+                        x_min: -2.0
+                        x_max: 2.0
+                        y_min: -2.0
+                        y_max: 2.0
+                        z_min: 0.0
+                        z_max: 2.0
+            -
+                name: obj_grasped
+                class_name: mujoco_emdb_sim.perception.EmdbSimulatorPerception
+                parameters:
+                    default_msg: std_msgs.msg.Bool
+                    default_topic: /emdb/simulator/sensor/obj/grasped
+
+        RobotPurpose:
+            -
+                name: lift_object_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 1.0
+                    drive_id: 'lift_object_drive'
+                    purpose_type: 'Mission'
+                    terminal: True
+            -
+                name: novelty_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 0.1
+                    drive_id: 'novelty_drive'
+                    purpose_type: 'Need'
+            -
+                name: effectance_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 0.25
+                    drive_id: 'effectance_drive'
+                    purpose_type: 'Need'
+            -
+                name: model_creation_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 1.0
+                    drive_id: 'model_creation_drive'
+                    purpose_type: 'Need'
+
+        Drive:
+            -
+                # Sparse lift-success signal (float(_check_success())), exposed as
+                # a perception per e-MDB's "reward is just another perception".
+                name: lift_object_drive
+                class_name: cognitive_nodes.drive.DriveExponential
+                parameters:
+                    input_topic: /emdb/simulator/sensor/progress
+                    input_msg: std_msgs.msg.Float32
+                    min_eval: 0.8
+                    neighbors: [{"name": "lift_object_need", "node_type": "RobotPurpose"}]
+            -
+                name: novelty_drive
+                class_name: cognitive_nodes.novelty.DriveNovelty
+                parameters:
+                    neighbors: [{"name": "novelty_need", "node_type": "RobotPurpose"}]
+            -
+                name: effectance_drive
+                class_name: cognitive_nodes.effectance.DriveEffectanceInternal
+                parameters:
+                    ltm_id: ltm_0
+                    min_confidence: 0.84
+                    limit_depth: False
+                    neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
+            -
+                name: model_creation_drive
+                class_name: cognitive_nodes.model_creation.ModelCreationDrive
+                parameters:
+                    neighbors: [{"name": "model_creation_need", "node_type": "RobotPurpose"}]
+                    LTM_id: ltm_0
+                    max_iterations: 20
+                    episodes_topic: /main_loop/episodes
+                    episodes_msg: core_interfaces.msg.Container
+                    model_creation_policy: model_creation_policy
+
+        Goal:
+            -
+                name: novelty_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "novelty_drive", "node_type": "Drive"}]
+            -
+                name: effectance_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "effectance_drive", "node_type": "Drive"}]
+            -
+                name: model_creation_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "model_creation_drive", "node_type": "Drive"}]
+
+        PNode:
+            -
+                name: novelty_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: effectance_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: model_creation_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+
+        CNode:
+            -
+                name: novelty_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "novelty_pnode", "node_type": "PNode"}]
+            -
+                name: model_creation_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "model_creation_goal", "node_type": "Goal"}, {"name": "model_creation_pnode", "node_type": "PNode"}]
+            -
+                name: effectance_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "effectance_pnode", "node_type": "PNode"}]
+
+        Policy:
+            -
+                name: model_creation_policy
+                class_name: cognitive_nodes.model_creation.ModelCreationPolicy
+                parameters:
+                    neighbors: [{"name": "model_creation_cnode", "node_type": "CNode"}]
+                    LTM_id: ltm_0
+                    max_iterations: 20
+                    episodes_topic: /main_loop/episodes
+                    episodes_msg: core_interfaces.msg.Container
+            -
+                name: effectance_policy
+                class_name: cognitive_nodes.effectance.PolicyEffectanceInternal
+                parameters:
+                    goal_class: cognitive_nodes.effectance.GoalActivatePNode
+                    neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
+                    confidence: 0.5
+                    threshold_delta: 0.5
+                    limit_depth: False
+                    ltm_id: ltm_0
+
+        UtilityModel:
+            -
+                name: novelty_exploration
+                class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
+                new_executor: True
+                threads: 2
+                parameters:
+                    trace_length: 20
+                    max_iterations: 50
+                    candidate_actions: 100
+                    ltm_id: ltm_0
+                    neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
+                    softmax_selection: False
+                    softmax_temperature: 0.1
+
+# Read by sim_bridge (config_file param): the actuator bounds it uses to
+# un-normalize the Container action into scene_loader/StepAction fields. Keep
+# these consistent with LTM.Globals.actuation_config above.
+EmdbSimulator:
+    Actuation:
+        arm:
+            dx:
+                type: float
+                bounds: [-0.05, 0.05]
+            dy:
+                type: float
+                bounds: [-0.05, 0.05]
+            dz:
+                type: float
+                bounds: [-0.05, 0.05]
+            droll:
+                type: float
+                bounds: [-0.5, 0.5]
+            dpitch:
+                type: float
+                bounds: [-0.5, 0.5]
+            dyaw:
+                type: float
+                bounds: [-0.5, 0.5]
+            grasp:
+                type: float
+                bounds: [-1.0, 1.0]
