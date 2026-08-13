@@ -22,9 +22,6 @@ setup(
     entry_points={
         'console_scripts': [
             'sim_bridge = mujoco_emdb_sim.sim_bridge:main',
-            # TEMPORARY: remove with perception_relay.py once scene_loader
-            # streams perceptions in rl mode.
-            'perception_relay = mujoco_emdb_sim.perception_relay:main',
         ],
     },
 )

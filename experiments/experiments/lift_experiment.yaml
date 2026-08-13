@@ -15,13 +15,15 @@
 # policy can't observe arm->object distance directly -- learning to reach may be
 # limited until an EE perception is added on the sim side. Bounds are untuned.
 #
-# RUN (two shells, shared ROS_DOMAIN_ID=0):
-#   A) sim  (TFM venv):  source /root/TFM/env.sh
-#                        ros2 launch emdb_simulator emdb_simulator.launch.py \
-#                            teleop:=false perception_mode:=mdb
-#   B) arch (this ws):   source /ros2_ws/install/setup.bash
-#                        source /root/TFM/ros_packages/install/setup.bash
-#                        ros2 launch experiments lift_launch.py
+# scene_loader now streams /emdb/simulator/sensor/* continuously in rl mode via
+# a heartbeat timer (no more one-shot-per-step perceptions), so no relay node
+# is needed between the sim and the main loop.
+#
+# RUN (two shells, shared ROS_DOMAIN_ID=0, both sourcing this same workspace's
+# install/setup.bash -- sim and architecture packages live side by side here):
+#   A) sim:   ros2 launch emdb_simulator emdb_simulator.launch.py \
+#                 teleop:=false perception_mode:=mdb
+#   B) arch:  ros2 launch experiments lift_launch.py
 
 Experiment:
     name: main_loop
@@ -51,36 +53,36 @@ LTM:
         actuation_config:
             arm: ["dx", "dy", "dz", "droll", "dpitch", "dyaw", "grasp"]
 
-    # Absolute paths so the logs land in /ros2_ws/results (bind-mounted to the
+    # Absolute paths so the logs land in /home/fabian/Documents/TFM/ros_ws/results (bind-mounted to the
     # host ./results) no matter which directory the launch is started from.
     # Each run appends a _N suffix (goodness_0.txt, goodness_1.txt, ...).
     Files:
         -
             id: goodness
             class: core.file.FileGoodness
-            file: /ros2_ws/results/goodness.txt
+            file: /home/fabian/Documents/TFM/ros_ws/results/goodness.txt
         -
             id: pnodes_content
             class: core.file.FilePNodesContent
-            file: /ros2_ws/results/pnodes_content.txt
+            file: /home/fabian/Documents/TFM/ros_ws/results/pnodes_content.txt
             parameters:
                 save_interval: 0
         -
             id: trials
             class: core.file.FileTrialsSuccess
-            file: /ros2_ws/results/trials.txt
+            file: /home/fabian/Documents/TFM/ros_ws/results/trials.txt
         -
             id: dataset
             class: core.file.FileEpisodesDataset
-            file: /ros2_ws/results/dataset.csv
+            file: /home/fabian/Documents/TFM/ros_ws/results/dataset.csv
         -
             id: world_model_success
             class: core.file.FileWorldModelSuccess
-            file: /ros2_ws/results/world_model_success.txt
+            file: /home/fabian/Documents/TFM/ros_ws/results/world_model_success.txt
         -
             id: save_models
             class: core.file.FileSaveModels
-            file: /ros2_ws/results/models_save
+            file: /home/fabian/Documents/TFM/ros_ws/results/models_save
             parameters:
                 save_interval: 0
 

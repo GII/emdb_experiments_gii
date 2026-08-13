@@ -81,16 +81,6 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
         shell=True,
     )
 
-    # TEMPORARY: keeps scene_loader's one-shot rl-mode perceptions alive for the
-    # main loop (re-emits /emdb/simulator/sensor/* at 20 Hz). Remove this node
-    # once scene_loader streams perceptions in rl mode. See perception_relay.py.
-    perception_relay_node = Node(
-        package="mujoco_emdb_sim",
-        executable="perception_relay",
-        output="screen",
-        arguments=["--ros-args", "--log-level", logger],
-    )
-
     shutdown_on_exit = RegisterEventHandler(
         OnProcessExit(
             target_action=core_node,
@@ -98,7 +88,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
         )
     )
 
-    return [config_service_call, core_node, ltm_node, bridge_node, perception_relay_node, shutdown_on_exit]
+    return [config_service_call, core_node, ltm_node, bridge_node, shutdown_on_exit]
 
 
 def generate_launch_description():
