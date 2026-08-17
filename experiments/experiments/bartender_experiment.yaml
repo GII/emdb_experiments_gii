@@ -112,9 +112,8 @@ LTM:
                     default_msg: simulators_interfaces.msg.ClientListMsg
                     default_topic: /emdb/simulator/sensor/client
                     normalize_data:
-                        n_ids: 4
-                        n_preferences: 4
-                        n_states: 2
+                        n_ids: 2
+                        n_drink_types: 4
             - 
                 name: robot_position
                 class_name: bartender_experiment.perception.BartenderPerception
@@ -132,11 +131,6 @@ LTM:
                         distance_max: 0.5
                         angle_min: -180
                         angle_max: 180
-                        diameter_min: 0.0
-                        diameter_max: 0.15
-                        dim_min: 0.03
-                        dim_max: 0.1
-                        n_states: 2
                         n_drink_types: 4
             -   
                 name: bottles
@@ -153,12 +147,6 @@ LTM:
                         distance_max: 0.5
                         angle_min: -180
                         angle_max: 180
-                        diameter_min: 0.0
-                        diameter_max: 0.15
-                        dim_min: 0.03
-                        dim_max: 0.1
-                        n_states: 2
-                        n_ids: 4
                         n_drink_types: 4
             -
                 name: glass_in_left_hand
@@ -530,6 +518,9 @@ DiscreteEventSimulator:
         
 
     Stages:
-        stage0: 4000
-        stage1: 8000
-        stage2: 12000
+        stage0: 0
+        # ITERATION 0 - 3999: Helping curriculum
+        stage1: 4000 
+        # ITERATION 4000 - 7999: Balanced curriculum
+        stage2: 8000
+        # ITERATION 8000 - onwards: Benchmark curriculum

@@ -33,26 +33,15 @@ class BartenderPerception(Perception):
             self._angle_min = normalize_data.get("angle_min", -1.0)
             self._angle_range = max(1e-6, normalize_data.get("angle_max", 1.0) - self._angle_min)
             self._id_divisor = max(1, normalize_data.get("n_ids", 2) - 1)
-            self._preference_divisor = max(1, normalize_data.get("n_preferences", 2) - 1)
-            self._state_divisor = max(1, normalize_data.get("n_states", 2) - 1)
+            self._drinks_divisor = max(1, normalize_data.get("n_drink_types", 2) - 1)
 
     def _normalize_and_clamp(self, raw_value, divisor):
         n = raw_value / divisor
         return 0.98 if n >= 1.0 else max(0.0, n)
 
-    def _process_last_bottle(self, raw_data):
-        self._last_bottle_id = raw_data
-        return self._normalize_and_clamp(raw_data, self._id_divisor)
-
     def process_and_send_reading(self):
         reading = getattr(self.reading, "data", None)
-        if "last_bottle" in self.name:
-            raw = reading
-            if isinstance(raw, list):
-                raw = raw[0].data if raw else 0.0
-            data=np.array([self._process_last_bottle(raw)])
-            labels = ["data"]
-        elif "glass" in self.name and isinstance(reading, list):
+        if "glass" in self.name and isinstance(reading, list):
             if len(reading) == 0:
                 return # No reading to process, return immediatly
             for p in reading:
@@ -60,7 +49,7 @@ class BartenderPerception(Perception):
                 angle=(p.angle - self._angle_min) / self._angle_range
                 state=p.state
                 was_used=p.was_used
-                drink_type=self._normalize_and_clamp(p.drink_type, self._preference_divisor)
+                drink_type=self._normalize_and_clamp(p.drink_type, self._drinks_divisor)
                 is_shaken=p.is_shaken
                 data=np.array([distance, angle, state, was_used, drink_type, is_shaken])
                 labels = ["distance", "angle", "state", "was_used", "drink_type", "is_shaken"]
@@ -69,7 +58,7 @@ class BartenderPerception(Perception):
                 return # No reading to process, return immediatly
             for p in reading:
                 id=self._normalize_and_clamp(p.id, self._id_divisor)
-                preference=self._normalize_and_clamp(p.preference, self._preference_divisor)
+                preference=self._normalize_and_clamp(p.preference, self._drinks_divisor)
                 data=np.array([id, preference])
                 labels = ["id", "preference"]
         else:
@@ -126,12 +115,7 @@ class BartenderFilterPerception(Perception):
             self._distance_range = max(1e-6, normalize_data.get("distance_max", 1.0) - self._distance_min)
             self._angle_min = normalize_data.get("angle_min", -1.0)
             self._angle_range = max(1e-6, normalize_data.get("angle_max", 1.0) - self._angle_min)
-            self._x_min = normalize_data.get("x_min", 0.0)
-            self._x_range = max(1e-6, normalize_data.get("x_max", 1.5) - self._x_min)
-            self._y_min = normalize_data.get("y_min", 0.0)
-            self._y_range = max(1e-6, normalize_data.get("y_max", 1.5) - self._y_min)
-            self._id_divisor = max(1, normalize_data.get("n_ids", 2) - 1)
-            self._state_divisor = max(1, normalize_data.get("n_states", 2) - 1)
+            self._drinks_divisor = max(1, normalize_data.get("n_drink_types", 2) - 1)
 
     def _normalize_and_clamp(self, raw_value, divisor):
         n = raw_value / divisor
@@ -140,9 +124,9 @@ class BartenderFilterPerception(Perception):
     def _normalize_bottle(self, p):
         distance=(p.distance - self._distance_min) / self._distance_range
         angle=(p.angle - self._angle_min) / self._angle_range
-        id=p.id / self._id_divisor
-        data=np.array([distance, angle, id])
-        labels = ["distance", "angle", "id"]
+        drink_type=p.drink_type / self._drinks_divisor
+        data=np.array([distance, angle, drink_type])
+        labels = ["distance", "angle", "drink_type"]
 
         return data, labels
 
@@ -159,7 +143,7 @@ class BartenderFilterPerception(Perception):
 
         if selected_id is not None:
             for bottle in bottles:
-                if isclose(bottle.id, selected_id, abs_tol=1e-3):
+                if isclose(bottle.drink_type, selected_id, abs_tol=1e-3):
                     selected = bottle
                     break
         if selected is None and bottles:
@@ -202,7 +186,7 @@ class BartenderFilterPerception(Perception):
                 val = float(msg)
             except Exception:
                 val = None
-        self._last_bottle_id = val
+        self._last_bottle_id = int(val * self._drinks_divisor)
 
     def gripper_callback(self, msg):
         if msg.data:
