@@ -112,7 +112,7 @@ LTM:
                     default_msg: simulators_interfaces.msg.ClientListMsg
                     default_topic: /emdb/simulator/sensor/client
                     normalize_data:
-                        n_ids: 2
+                        n_ids: 4
                         n_drink_types: 4
             - 
                 name: robot_position
@@ -466,7 +466,6 @@ LTM:
                 parameters:
                     drive_name: external_effects_drive
                     goal_class: cognitive_nodes.effectance.GoalRecreateEffect
-                    space_class: cognitive_nodes.space.ANNSpace
                     goal_params:
                         history_size: 40
                         min_confidence: 0.9
@@ -519,8 +518,8 @@ DiscreteEventSimulator:
 
     Stages:
         stage0: 0
-        # ITERATION 0 - 3999: Helping curriculum
-        stage1: 4000 
-        # ITERATION 4000 - 7999: Balanced curriculum
-        stage2: 8000
-        # ITERATION 8000 - onwards: Benchmark curriculum
+        # ITERATION 0 - 12000: Helping curriculum
+        stage1: 12000 
+        # ITERATION 12000 - 15999: Balanced curriculum
+        stage2: 16000
+        # ITERATION 16000 - onwards: Benchmark curriculum
