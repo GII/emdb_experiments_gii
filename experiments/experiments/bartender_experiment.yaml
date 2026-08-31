@@ -270,7 +270,7 @@ LTM:
                 parameters:
                     ltm_id: ltm_0
                     min_confidence: 0.84
-                    limit_depth: True
+                    limit_depth: False
                     neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
             -
                 name: external_effects_drive
@@ -287,6 +287,8 @@ LTM:
                     min_pnode_rate: 0.85
                     min_goal_rate: 0.95
                     neighbors: [{"name": "prospection_need", "node_type": "RobotPurpose"}]
+                    pnode_in_goal: False
+                    goal_in_pnode: True
         Goal:
             -
                 name: client_present_goal
@@ -458,7 +460,7 @@ LTM:
                     neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
                     confidence: 0.5
                     threshold_delta: 0.5
-                    limit_depth: True
+                    limit_depth: False
                     ltm_id: ltm_0
             -
                 name: external_effect_policy
@@ -518,8 +520,8 @@ DiscreteEventSimulator:
 
     Stages:
         stage0: 0
-        # ITERATION 0 - 12000: Helping curriculum
-        stage1: 12000 
-        # ITERATION 12000 - 15999: Balanced curriculum
+        # ITERATION 0 - 5999: Helping curriculum
+        stage1: 6000 
+        # ITERATION 6000 - 15999: Balanced curriculum
         stage2: 16000
         # ITERATION 16000 - onwards: Benchmark curriculum
