@@ -1,6 +1,6 @@
 Experiment:
     name: main_loop
-    class_name: cognitive_processes.main_loop.MainLoop
+    class_name: bartender_experiment.main_loop.BartenderExperimentMainLoop
     new_executor: True
     threads: 2
     parameters: 
@@ -515,8 +515,10 @@ DiscreteEventSimulator:
             name: return_the_glass_goal
             perception_topic: /emdb/simulator/sensor/return_the_glass
             perception_msg: std_msgs.msg.Float32
-
-        
+        -  
+            name: finished_signal
+            perception_topic: /emdb/simulator/sensor/finished_signal
+            perception_msg: std_msgs.msg.Bool
 
     Stages:
         stage0: 0
