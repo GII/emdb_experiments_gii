@@ -1,0 +1,486 @@
+Experiment:
+    name: main_loop
+    class_name: bartender_experiment.main_loop.BartenderExperimentMainLoop
+    new_executor: True
+    threads: 2
+    parameters: 
+        iterations: 90000
+        paused: False
+        trials: 40
+        subgoals: True
+        softmax_selection: True
+        softmax_temperature: 0.1
+        kill_on_finish: True
+Control:
+    id: ltm_simulator
+    control_topic: /main_loop/control
+    control_msg: cognitive_processes_interfaces.msg.ControlMsg
+    episodes_topic: /main_loop/episodes
+    episodes_msg: core_interfaces.msg.Container
+    executed_policy_service: /emdb/simulator/executed_policy
+    executed_policy_msg: cognitive_node_interfaces.srv.Policy
+    world_reset_service: /emdb/simulator/world_reset
+    world_reset_msg: cognitive_processes_interfaces.srv.WorldReset
+LTM:
+    Files:
+        -
+            id: goodness
+            class: core.file.FileGoodness
+            file: goodness.txt
+        -
+            id: pnodes_success
+            class: core.file.FilePNodesSuccess
+            file: pnodes_success.txt
+        -
+            id: pnodes_content
+            class: core.file.FilePNodesContent
+            file: pnodes_content.txt
+            parameters:
+                save_interval: 5000
+        -
+            id: goals_content
+            class: core.file.FileGoalsContent
+            file: goals_content.txt
+            parameters:
+                save_interval: 5000
+        -
+            id: trials
+            class: core.file.FileTrialsSuccess
+            file: trials.txt
+        -
+            id: neighbors
+            class: core.file.FileNeighbors
+            file: neighbors.txt
+        -
+            id: neighbors_full
+            class: core.file.FileNeighborsFull
+            file: neighbors_full.txt
+        -
+            id: save_models
+            class: core.file.FileSaveModels
+            file: models_save
+            parameters:
+                save_interval: 0
+        -
+            id: dataset
+            class: core.file.FileEpisodesDataset
+            file: dataset.csv
+            parameters:
+                max_size: 40000
+    Connectors:
+        -
+            data: Space
+            default_class: cognitive_nodes.space.ANNSpace
+        -
+            data: Perception
+            default_class: cognitive_nodes.perception.Perception
+        -
+            data: PNode
+            default_class: cognitive_nodes.pnode.PNode
+            parameters:
+                space_class: cognitive_nodes.space.ANNSpace
+                space_parameters:
+                    sampled_points: 128
+                    train_every: 16
+                    min_warmup_samples: 16
+                    min_samples_per_class: 4
+                space_size: 50000
+                history_size: 100
+
+        -
+            data: CNode
+            default_class: cognitive_nodes.cnode.CNode
+            parameters:
+                history_size: 40
+                track_competence: True
+        -
+            data: Goal
+            default_class: cognitive_nodes.goal.GoalLearnedSpace
+            parameters:
+                space_class: cognitive_nodes.space.ANNSpace
+                space_size: 50000
+                history_size: 100  
+                min_confidence: 0.9
+                ltm_id: ltm_0
+        -
+            data: WorldModel
+            default_class: cognitive_nodes.world_model.WorldModel
+        -
+            data: Policy
+            default_class: cognitive_nodes.policy.PolicyBlocking
+
+    Nodes:
+        Perception:
+            -
+                name: client
+                class_name: bartender_experiment.perception.BartenderPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.ClientListMsg
+                    default_topic: /emdb/simulator/sensor/client
+                    normalize_data:
+                        n_ids: 4
+                        n_drink_types: 4
+            - 
+                name: robot_position
+                class_name: bartender_experiment.perception.BartenderPerception
+                parameters:
+                    default_msg: std_msgs.msg.Float32
+                    default_topic: /emdb/simulator/sensor/robot_position
+            -   
+                name: glass
+                class_name: bartender_experiment.perception.BartenderPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.GlassListMsg
+                    default_topic: /emdb/simulator/sensor/glass
+                    normalize_data:
+                        distance_min: 0.0
+                        distance_max: 0.5
+                        angle_min: -180
+                        angle_max: 180
+                        n_drink_types: 4
+            -   
+                name: bottles
+                class_name: bartender_experiment.perception.BartenderFilterPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.BottleListMsg
+                    default_topic: /emdb/simulator/sensor/bottles
+                    last_bottle_topic: /cognitive_node/world_model/last_bottle
+                    last_bottle_msg: std_msgs.msg.Float32
+                    gripper_topic: /emdb/simulator/sensor/bottle_in_right_hand
+                    gripper_msg: simulators_interfaces.msg.BartenderGripperMsg
+                    normalize_data:
+                        distance_min: 0.0
+                        distance_max: 0.5
+                        angle_min: -180
+                        angle_max: 180
+                        n_drink_types: 4
+            -
+                name: glass_in_left_hand
+                class_name: bartender_experiment.perception.BartenderPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.BartenderGripperMsg
+                    default_topic: /emdb/simulator/sensor/glass_in_left_hand
+            - 
+                name: bottle_in_right_hand
+                class_name: bartender_experiment.perception.BartenderPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.BartenderGripperMsg
+                    default_topic: /emdb/simulator/sensor/bottle_in_right_hand
+
+        WorldModel:
+            -
+                name: BARTENDER
+                class_name: bartender_experiment.world_model.BarEmpty
+        RobotPurpose:
+            -
+                name: get_response_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 1.0
+                    drive_id: 'get_response_drive'
+                    purpose_type: 'Need'  
+            -
+                name: return_the_glass_mission
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 1.0
+                    drive_id: 'return_the_glass_drive'
+                    purpose_type: 'Mission'
+                    terminal: True
+            -
+                name: serve_the_drink_mission
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 0.8
+                    drive_id: 'serve_the_drink_drive'
+                    purpose_type: 'Mission'
+                    terminal: False
+            - 
+                name: novelty_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 0.1
+                    drive_id: 'novelty_drive'
+                    purpose_type: 'Need'
+            - 
+                name: effectance_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 0.25
+                    drive_id: 'effectance_drive'
+                    purpose_type: 'Need'
+            -
+                name: client_present_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 1.0
+                    drive_id: 'client_present_drive'
+                    purpose_type: 'Need'
+            - 
+                name: prospection_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 1.0
+                    drive_id: 'prospection_drive'
+                    purpose_type: 'Need'
+        Drive:
+            -
+                name: serve_the_drink_drive
+                class_name: cognitive_nodes.drive.DriveExponential
+                parameters:
+                    input_topic: /emdb/simulator/sensor/serve_the_drink
+                    input_msg: std_msgs.msg.Float32
+                    min_eval: 0.8 
+                    neighbors: [{"name": "serve_the_drink_mission", "node_type": "RobotPurpose"}]
+            -
+                name: return_the_glass_drive
+                class_name: cognitive_nodes.drive.DriveExponential
+                parameters:
+                    input_topic: /emdb/simulator/sensor/return_the_glass
+                    input_msg: std_msgs.msg.Float32
+                    min_eval: 0.8 
+                    neighbors: [{"name": "return_the_glass_mission", "node_type": "RobotPurpose"}]
+            -
+                name: client_present_drive
+                class_name: dummy_nodes.dummy_drive.DriveDummy
+                parameters:
+                    neighbors: [{"name": "client_present_need", "node_type": "RobotPurpose"}]
+            -   
+                name: get_response_drive
+                class_name: dummy_nodes.dummy_drive.DriveDummy
+                parameters:
+                    neighbors: [{"name": "get_response_need", "node_type": "RobotPurpose"}]
+            -
+                name: novelty_drive
+                class_name: cognitive_nodes.novelty.DriveNovelty
+                parameters:
+                    neighbors: [{"name": "novelty_need", "node_type": "RobotPurpose"}]
+            -
+                name: effectance_drive
+                class_name: cognitive_nodes.effectance.DriveEffectanceInternal
+                parameters:
+                    ltm_id: ltm_0
+                    min_confidence: 0.84
+                    limit_depth: False
+                    neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
+            -
+                name: prospection_drive
+                class_name: cognitive_nodes.prospection.ProspectionDrive
+                parameters:
+                    ltm_id: ltm_0
+                    min_pnode_rate: 0.85
+                    min_goal_rate: 0.95
+                    neighbors: [{"name": "prospection_need", "node_type": "RobotPurpose"}]
+                    pnode_in_goal: False
+                    goal_in_pnode: True
+        Goal:
+            -
+                name: client_present_goal
+                class_name: cognitive_nodes.goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "client_present_drive", "node_type": "Drive"}]
+            -   
+                name: get_response_goal
+                class_name: dummy_nodes.dummy_goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "get_response_drive", "node_type": "Drive"}]
+            -
+                name: novelty_goal
+                class_name: cognitive_nodes.goal.GoalMotiven
+                parameters:
+                    neighbors: [{"name": "novelty_drive", "node_type": "Drive"}]
+            -
+                name: effectance_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "effectance_drive", "node_type": "Drive"}]
+            -
+                name: prospection_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "prospection_drive", "node_type": "Drive"}]
+        PNode:
+            -
+                name: novelty_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: effectance_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: prospection_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -   
+                name: client_present_pnode
+                class_name: bartender_experiment.pnodes.PNodeClientPresent
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+                    neighbors: [{"name": "client", "node_type": "Perception"}]
+            -   
+                name: get_response_pnode
+                class_name:  bartender_experiment.pnodes.PNodeBartenderClient
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+                    neighbors: [{"name": "client", "node_type": "Perception"}]
+        CNode:
+            -
+                name: novelty_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "novelty_pnode", "node_type": "PNode"}]
+                    track_competence: False
+            -
+                name: effectance_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "effectance_pnode", "node_type": "PNode"}]
+                    track_competence: False
+            -
+                name: prospection_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "prospection_goal", "node_type": "Goal"}, {"name": "prospection_pnode", "node_type": "PNode"}]
+                    track_competence: False
+            -
+                name: client_present_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "client_present_goal", "node_type": "Goal"}, {"name": "BARTENDER", "node_type": "WorldModel"}, {"name": "client_present_pnode", "node_type": "PNode"}]
+                    track_competence: False
+            -
+                name: get_response_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "get_response_goal", "node_type": "Goal"}, {"name": "BARTENDER", "node_type": "WorldModel"}, {"name": "get_response_pnode", "node_type": "PNode"}]
+                    track_competence: False
+        Policy:
+            -
+                name: shake_glass
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: pick_glass
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: pick_bottle
+                class_name: bartender_experiment.policy.PolicyPerception
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: place_bottle
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: place_glass
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: change_position
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: prepare_drink
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+            -
+                name: ask_nicely
+                class_name: cognitive_nodes.policy.PolicyBlocking
+                parameters:
+                    service_msg: cognitive_node_interfaces.srv.Policy
+                    service_name: /emdb/simulator/executed_policy
+                    neighbors: [{"name": "client_present_cnode", "node_type": "CNode"}]
+            -   
+                name: save_preference
+                class_name: bartender_experiment.policy.BartenderClientPolicy
+                parameters:
+                    neighbors: [{"name": "get_response_cnode", "node_type": "CNode"}]
+            -
+                name: novelty_policy
+                class_name: cognitive_nodes.novelty.PolicyNovelty
+                parameters:
+                    exclude_list: ["effectance_policy", "external_effect_policy", "prospection_policy", "ask_nicely", "save_preference"]
+                    neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
+                    ltm_id: ltm_0
+            -
+                name: effectance_policy
+                class_name: cognitive_nodes.effectance.PolicyEffectanceInternal
+                parameters:
+                    goal_class: cognitive_nodes.effectance.GoalActivatePNode
+                    neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
+                    confidence: 0.5
+                    threshold_delta: 0.5
+                    limit_depth: False
+                    ltm_id: ltm_0
+            -
+                name: prospection_policy
+                class_name: cognitive_nodes.prospection.PolicyProspection
+                parameters:
+                    drive_name: prospection_drive
+                    neighbors: [{"name": "prospection_cnode", "node_type": "CNode"}]
+                    ltm_id: ltm_0
+
+DiscreteEventSimulator:
+    Perceptions:
+        -
+            name: client
+            perception_topic: /emdb/simulator/sensor/client
+            perception_msg: simulators_interfaces.msg.ClientListMsg
+        -
+            name: bottles
+            perception_topic: /emdb/simulator/sensor/bottles
+            perception_msg: simulators_interfaces.msg.BottleListMsg
+        -
+            name: glass
+            perception_topic: /emdb/simulator/sensor/glass
+            perception_msg: simulators_interfaces.msg.GlassListMsg
+        -
+            name: glass_in_left_hand
+            perception_topic: /emdb/simulator/sensor/glass_in_left_hand
+            perception_msg: simulators_interfaces.msg.BartenderGripperMsg
+        -
+            name: bottle_in_right_hand
+            perception_topic: /emdb/simulator/sensor/bottle_in_right_hand
+            perception_msg: simulators_interfaces.msg.BartenderGripperMsg
+        -
+            name: robot_position
+            perception_topic: /emdb/simulator/sensor/robot_position
+            perception_msg: std_msgs.msg.Float32
+        -
+            name: serve_the_drink_goal
+            perception_topic: /emdb/simulator/sensor/serve_the_drink
+            perception_msg: std_msgs.msg.Float32
+        -  
+            name: return_the_glass_goal
+            perception_topic: /emdb/simulator/sensor/return_the_glass
+            perception_msg: std_msgs.msg.Float32
+        -  
+            name: finished_signal
+            perception_topic: /emdb/simulator/sensor/finished_signal
+            perception_msg: std_msgs.msg.Bool
+
+    Stages:
+        stage0: 0
+        # ITERATION 0 - 14999: Helping curriculum
+        stage1: 15000 
+        # ITERATION 15000 - 59999: Balanced curriculum
+        stage2: 60000
+        # ITERATION 60000 - onwards: Benchmark curriculum

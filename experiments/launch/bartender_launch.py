@@ -19,6 +19,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
     experiment_package = LaunchConfiguration("experiment_package")
     config_package = LaunchConfiguration("config_package")
     config_file = LaunchConfiguration("config_file")
+    single_client = LaunchConfiguration("single_client")
 
     core_node = Node(
         package="core",
@@ -45,6 +46,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
                 "config_file": PathJoinSubstitution(
                     [FindPackageShare(experiment_package), "experiments", experiment_file]
                 ),
+                "single_client": single_client,
             }
         ],
     )
@@ -132,6 +134,14 @@ def generate_launch_description():
             "experiment_package",
             default_value="experiments",
             description="Package where the experiment file is located",
+        )
+    )
+
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "single_client",
+            default_value="False",
+            description="Whether to use a single client or multiple clients in the simulation",
         )
     )
 
