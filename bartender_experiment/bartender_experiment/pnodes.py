@@ -10,6 +10,9 @@ from core.service_client import ServiceClient
 from core_interfaces.srv import GetNodeFromLTM
 from core.container import Container, consolidate_containers
 from cognitive_nodes.space import PointBasedSpace
+from bartender_experiment.world_model import _known_key_from_id_legacy
+
+from bartender_experiment_interfaces.srv import KnowClient
 
 class PNodeBartenderClient(PNode):
     """
@@ -48,7 +51,123 @@ class PNodeBartenderClient(PNode):
         self.activation.timestamp = Time(nanoseconds=perception_timestamp).to_msg()
         return self.activation
 
+class PNodeBartenderClientMemory(PNode):
+    """
+    PNode that represents a bartender client.
+    Activates when client preference is different from 0. It saves the client preference in its memory space, to deactivate when the client is already known.
+    """
+    def __init__(self, name='bartender_client', class_name='cognitive_nodes.pnode.PNode',
+                 space_class=None, space=None, history_size=100, **params):
+        super().__init__(name=name, class_name=class_name, space_class=space_class, space=space, history_size=history_size, **params)
 
+        self.know_client_service = self.create_service(
+            KnowClient,
+            f"pnode/{name}/know_client",
+            self.know_client_callback,
+            callback_group=self.cbgroup_server
+        )
+
+        self.known_clients = set()
+
+        self.get_logger().info('PNodeBartenderClient: Initialized')
+
+    def calculate_activation(self, perception=None, activation_list=None):
+        """
+        Activates when client preference != 0. Returns 1.0 or 0.0 (sin decay).
+        """
+        if activation_list is not None:
+            data = [activation_list[sensor]['data'] for sensor in activation_list]
+            if self.perception is None and len(data)>0:
+                self.perception = consolidate_containers(data, name="perception", container_type="perception")
+            elif len(data)==0: # Activation list may be empty when initializing the P-Node.
+                self.activation.activation = 0.0
+                self.activation.timestamp = self.get_clock().now().to_msg()
+                return self.activation
+            else:
+                consolidate_containers(data, write_container=self.perception)
+            perception = self.perception
+
+        activation_value = 0.0
+        if perception:
+            preference = float(perception.read().sel(features=["client:preference"]).values[-1]) if "client:preference" in perception.feature_labels else 0.0
+            client_id = float(perception.read().sel(features=["client:id"]).values[-1]) if "client:id" in perception.feature_labels else 0.0
+            client_key = _known_key_from_id_legacy(client_id)
+
+            # Activate only if the client is not already known and has a non-zero preference
+            if not isclose(preference, 0.0) and client_key not in self.known_clients:
+                activation_value = 1.0
+
+        perception_timestamp = self.perception.data.coords["timestamp"].values[-1]
+        self.activation.activation = activation_value
+        self.activation.timestamp = Time(nanoseconds=perception_timestamp).to_msg()
+        return self.activation
+
+    def know_client_callback(self, request, response):
+        """Marca cliente como conocido en LTM (persistencia simple)."""
+        client_key = _known_key_from_id_legacy(request.client_id)
+        if client_key not in self.known_clients:
+            self.known_clients.add(client_key)
+        response.success = True
+        return response
+
+class PNodeNewClientPresent(PNode):
+    """
+    PNode that represents a bartender client.
+    Activates when client preference is different from 0. It saves the client preference in its memory space, to deactivate when the client is already known.
+    """
+    def __init__(self, name='bartender_client', class_name='cognitive_nodes.pnode.PNode',
+                 space_class=None, space=None, history_size=100, **params):
+        super().__init__(name=name, class_name=class_name, space_class=space_class, space=space, history_size=history_size, **params)
+
+        self.know_client_service = self.create_service(
+            KnowClient,
+            f"pnode/{name}/know_client",
+            self.know_client_callback,
+            callback_group=self.cbgroup_server
+        )
+
+        self.known_clients = set()
+
+        self.get_logger().info('PNodeBartenderClient: Initialized')
+
+    def calculate_activation(self, perception=None, activation_list=None):
+        """
+        Activates when client preference != 0. Returns 1.0 or 0.0 (sin decay).
+        """
+        if activation_list is not None:
+            data = [activation_list[sensor]['data'] for sensor in activation_list]
+            if self.perception is None and len(data)>0:
+                self.perception = consolidate_containers(data, name="perception", container_type="perception")
+            elif len(data)==0: # Activation list may be empty when initializing the P-Node.
+                self.activation.activation = 0.0
+                self.activation.timestamp = self.get_clock().now().to_msg()
+                return self.activation
+            else:
+                consolidate_containers(data, write_container=self.perception)
+            perception = self.perception
+
+        activation_value = 0.0
+        if perception:
+            preference = float(perception.read().sel(features=["client:preference"]).values[-1]) if "client:preference" in perception.feature_labels else 0.0
+            client_id = float(perception.read().sel(features=["client:id"]).values[-1]) if "client:id" in perception.feature_labels else 0.0
+            client_key = _known_key_from_id_legacy(client_id)
+
+            # Activate only if the client is not already known and has a non-zero preference
+            if isclose(preference, 0.0) and client_key not in self.known_clients:
+                activation_value = 1.0
+
+        perception_timestamp = self.perception.data.coords["timestamp"].values[-1]
+        self.activation.activation = activation_value
+        self.activation.timestamp = Time(nanoseconds=perception_timestamp).to_msg()
+        return self.activation
+
+    def know_client_callback(self, request, response):
+        """Marca cliente como conocido en LTM (persistencia simple)."""
+        client_key = _known_key_from_id_legacy(request.client_id)
+        if client_key not in self.known_clients:
+            self.known_clients.add(client_key)
+        response.success = True
+        return response
 
 class PNodeClientPresent(PNode):
     """

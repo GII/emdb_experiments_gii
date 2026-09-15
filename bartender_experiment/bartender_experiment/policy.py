@@ -89,9 +89,89 @@ class BartenderClientPolicy(Policy):
             self.get_logger().error(f"Error extracting client data: {e}")
             return "0_0", 0.5
 
+class BartenderClientNoWorldModelPolicy(Policy):
+    """
+    BartenderClientPolicy class. Similar to BartenderClientPolicy but does not create a world model node for the client.
+    """    
+    def __init__(self, name='BartenderClientPolicy', class_name='cognitive_nodes.policy.Policy', **params):
+        """
+        Constructor for the BartenderClientPolicy class.
+
+        :param name: The name of the policy.
+        :type name: str
+        :param class_name: The name of the base Policy class.
+        :type class_name: str
+        """        
+        super().__init__(name=name, class_name=class_name, **params)
+        self.know_client_service = None
+
+    async def execute_callback(self, request, response):
+        """
+        Makes a service call to the server that handles the execution of the policy.
+        """
+        try:
+            # Extract client ID and preference from perception
+            perception = Container.from_msg(request.perception)
+            client_id, client_preference = self.get_client_data(perception)
+            
+            if client_id is not None:
+                # Add client to known_clients list
+                await self.add_known_client(client_id, client_preference)
+                
+        except Exception as e:
+            self.get_logger().error(f"Exception in execute_callback: {e}")
+    
+        response.policy = self.name
+        return response
+    
+    async def add_known_client(self, client_id, client_preference):
+        """
+        Add a client to the known clients list using the know_client service.
+        In the no WorldModel version it has to be saved in the WorldModel, and the PNodes for asking and saving the preference. 
+        """
+        try:
+            world_model_service = "/world_model/BARTENDER/know_client"
+            pnode_response_service = "/pnode/get_response_pnode/know_client"
+            pnode_ask_service = "/pnode/client_present_pnode/know_client"
+            if world_model_service not in self.node_clients:
+                client = ServiceClientAsync(self, KnowClient, world_model_service, self.cbgroup_client)
+                self.node_clients[world_model_service] = client
+            if pnode_response_service not in self.node_clients:
+                client = ServiceClientAsync(self, KnowClient, pnode_response_service, self.cbgroup_client)
+                self.node_clients[pnode_response_service] = client
+            if pnode_ask_service not in self.node_clients:
+                client = ServiceClientAsync(self, KnowClient, pnode_ask_service, self.cbgroup_client)
+                self.node_clients[pnode_ask_service] = client
+            response_wm = await self.node_clients[world_model_service].send_request_async(client_id=client_id, preference=client_preference)
+            response_pnode = await self.node_clients[pnode_response_service].send_request_async(client_id=client_id, preference=client_preference)
+            response_pnode_ask = await self.node_clients[pnode_ask_service].send_request_async(client_id=client_id, preference=client_preference)
+            success = response_wm.success and response_pnode.success and response_pnode_ask.success
+            return success
+        
+        except Exception as e:
+            self.get_logger().error(f"Failed to add known client {client_id}: {e}")
+            return False
+    
+    def get_client_data(self, perception):
+        """
+        Extract client ID and preference from perception data.
+        
+        :param perception: The perception message
+        :return: Tuple of (Client ID value (rounded), Client preference)
+        """
+        try:
+            client_preference = float(perception.read().sel(features=["client:preference"]).values[-1]) if "client:preference" in perception.feature_labels else 0.0
+            client_id = float(perception.read().sel(features=["client:id"]).values[-1]) if "client:id" in perception.feature_labels else 0.0
+            client_id_rounded = round(client_id, 2)
+            return client_id_rounded, client_preference
+            
+        except Exception as e:
+            self.get_logger().error(f"Error extracting client data: {e}")
+            return None, 0.5
+
 class PolicyPerception(PolicyBlocking):
     """
-    PolicyPerception class. Represents a policy for perception.
+    PolicyPerception class. Represents a policy that passes the current perception to the execution service.
     """    
     def __init__(self, name='PolicyPerception', class_name='cognitive_nodes.policy.Policy', service_msg=None, service_name=None, **params):
         """

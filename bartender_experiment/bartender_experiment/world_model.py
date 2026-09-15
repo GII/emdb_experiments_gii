@@ -42,7 +42,7 @@ class BarEmpty(WorldModel):
         self.known_clients = self.ltm.setdefault('known_clients', set())
 
         # OPT: QoS de servicio estándar
-        self.set_activation_service = self.create_service(
+        self.know_client_service = self.create_service(
             KnowClient,
             f"world_model/{name}/know_client",
             self.know_client_callback,
@@ -134,6 +134,64 @@ class BarEmpty(WorldModel):
         perception_timestamp = self.perception.data.coords["timestamp"].values[-1]
         self.activation.activation = activation_value
         self.activation.timestamp = Time(nanoseconds=perception_timestamp).to_msg()
+        return self.activation
+
+
+class BarAnyClient(BarEmpty):
+    """World model that remains active and publishes the current client's preference."""
+    def __init__(self, name='world_model',
+                 class_name='cognitive_nodes.world_model.WorldModel', **params):
+        super().__init__(name=name, class_name=class_name, **params)
+
+        self.client_preferences = self.ltm.setdefault('client_preferences', {})
+        self.publish_last_bottle = self.create_publisher(
+            Float32,
+            'cognitive_node/world_model/last_bottle',
+            1
+        )
+        self._last_bottle_msg = Float32()
+
+    def know_client_callback(self, request, response):
+        """Stores the client's preference in LTM."""
+        client_key = _known_key_from_id_legacy(request.client_id)
+        self.known_clients.add(client_key)
+        self.client_preferences[client_key] = float(request.preference)
+        self.ltm['known_clients'] = self.known_clients
+        self.ltm['client_preferences'] = self.client_preferences
+        response.success = True
+        return response
+
+    def calculate_activation(self, perception=None, activation_list=None):
+        """Always active and publishes the perceived client's preference."""
+        if activation_list is not None:
+            data = [activation_list[sensor]['data'] for sensor in activation_list]
+            if self.perception is None and len(data) > 0:
+                self.perception = consolidate_containers(
+                    data, name="perception", container_type="perception"
+                )
+            elif len(data) > 0:
+                consolidate_containers(data, write_container=self.perception)
+            perception = self.perception
+
+        self.activation.activation = 1.0
+
+        if perception:
+            client_id = (
+                float(perception.read().sel(features=["client:id"]).values[-1])
+                if "client:id" in perception.feature_labels else 0.0
+            )
+            client_key = _known_key_from_id_legacy(client_id)
+            preference = self.client_preferences.get(client_key, -1.0)
+            perception_timestamp = self.perception.data.coords["timestamp"].values[-1]
+            self.activation.timestamp = Time(
+                nanoseconds=perception_timestamp
+            ).to_msg()
+        else:
+            preference = -1.0
+            self.activation.timestamp = self.get_clock().now().to_msg()
+
+        self._last_bottle_msg.data = float(preference)
+        self.publish_last_bottle.publish(self._last_bottle_msg)
         return self.activation
 
 

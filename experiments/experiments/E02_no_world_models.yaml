@@ -4,7 +4,7 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 90000
+        iterations: 280000
         paused: False
         trials: 40
         subgoals: True
@@ -164,7 +164,7 @@ LTM:
         WorldModel:
             -
                 name: BARTENDER
-                class_name: bartender_experiment.world_model.BarEmpty
+                class_name: bartender_experiment.world_model.BarAnyClient
         RobotPurpose:
             -
                 name: get_response_need
@@ -311,13 +311,13 @@ LTM:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
             -   
                 name: client_present_pnode
-                class_name: bartender_experiment.pnodes.PNodeClientPresent
+                class_name: bartender_experiment.pnodes.PNodeNewClientPresent
                 parameters:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
                     neighbors: [{"name": "client", "node_type": "Perception"}]
             -   
                 name: get_response_pnode
-                class_name:  bartender_experiment.pnodes.PNodeBartenderClient
+                class_name:  bartender_experiment.pnodes.PNodeBartenderClientMemory
                 parameters:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
                     neighbors: [{"name": "client", "node_type": "Perception"}]
@@ -404,7 +404,7 @@ LTM:
                     neighbors: [{"name": "client_present_cnode", "node_type": "CNode"}]
             -   
                 name: save_preference
-                class_name: bartender_experiment.policy.BartenderClientPolicy
+                class_name: bartender_experiment.policy.BartenderClientNoWorldModelPolicy
                 parameters:
                     neighbors: [{"name": "get_response_cnode", "node_type": "CNode"}]
             -
@@ -473,8 +473,8 @@ DiscreteEventSimulator:
 
     Stages:
         stage0: 0
-        # ITERATION 0 - 29999: Helping curriculum
-        stage1: 30000 
-        # ITERATION 30000 - 59999: Balanced curriculum
-        stage2: 60000
-        # ITERATION 60000 - onwards: Benchmark curriculum
+        # ITERATION 0 - 89999: Helping curriculum
+        stage1: 90000 
+        # ITERATION 90000 - 179999: Balanced curriculum
+        stage2: 180000
+        # ITERATION 180000 - onwards: Benchmark curriculum

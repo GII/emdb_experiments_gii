@@ -1,3 +1,4 @@
 float32 client_id
+float32 preference
 ---
 bool success
