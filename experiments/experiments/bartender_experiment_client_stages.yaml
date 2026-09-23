@@ -4,7 +4,7 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 90000
+        iterations: 280000
         paused: False
         trials: 40
         subgoals: True
@@ -473,8 +473,15 @@ DiscreteEventSimulator:
 
     Stages:
         stage0: 0
-        # ITERATION 0 - 29999: Helping curriculum
-        stage1: 30000 
-        # ITERATION 30000 - 59999: Balanced curriculum
-        stage2: 60000
-        # ITERATION 60000 - onwards: Benchmark curriculum
+        # ITERATION 0 - 61599: Helping curriculum
+        stage1: 61600
+        # ITERATION 61600 - 123199: Balanced curriculum
+        stage2: 123200
+        # ITERATION 123200 - onwards: Benchmark curriculum
+    ClientStages:
+        client_stage0: 0
+        # ITERATION 0 - 184799: Alternate between the first two clients
+        client_stage3: 184800
+        # ITERATION 184800 - 232399: Learn the previously unseen third client
+        client_stage4: 232400
+        # ITERATION 232400 - 279999: Alternate between all clients
