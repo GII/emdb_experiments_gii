@@ -442,7 +442,7 @@ LTM:
                 name: novelty_policy
                 class_name: cognitive_nodes.novelty.PolicyNovelty
                 parameters:
-                    exclude_list: ["effectance_policy", "external_effect_policy", "prospection_policy", "ask_nicely", "save_preference"]
+                    exclude_list: ["effectance_policy", "external_effect_policy", "prospection_policy", "ask_nicely", "save_preference", "knowledge_reuse_policy"]
                     neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
                     ltm_id: ltm_0
             -
