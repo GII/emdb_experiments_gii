@@ -4,7 +4,7 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 280000
+        iterations: 90000
         paused: False
         trials: 40
         subgoals: True
@@ -474,7 +474,7 @@ DiscreteEventSimulator:
     Stages:
         stage0: 0
         # ITERATION 0 - 29999: Helping curriculum
-        stage1: 90000 
+        stage1: 30000 
         # ITERATION 30000 - 59999: Balanced curriculum
-        stage2: 180000
+        stage2: 60000
         # ITERATION 60000 - onwards: Benchmark curriculum
