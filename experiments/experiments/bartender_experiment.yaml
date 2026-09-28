@@ -36,13 +36,13 @@ LTM:
             class: core.file.FilePNodesContent
             file: pnodes_content.txt
             parameters:
-                save_interval: 5000
+                save_interval: 20000
         -
             id: goals_content
             class: core.file.FileGoalsContent
             file: goals_content.txt
             parameters:
-                save_interval: 5000
+                save_interval: 20000
         -
             id: trials
             class: core.file.FileTrialsSuccess
