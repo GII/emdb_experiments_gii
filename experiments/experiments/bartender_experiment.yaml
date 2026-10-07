@@ -4,7 +4,7 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 280000
+        iterations: 180000
         paused: False
         trials: 40
         subgoals: True
@@ -81,6 +81,11 @@ LTM:
                 space_class: cognitive_nodes.space.ANNSpace
                 space_size: 50000
                 history_size: 100
+                space_parameters:
+                    sampled_points: 64
+                    train_every: 8
+                    min_warmup_samples: 8
+                    min_samples_per_class: 2
         -
             data: CNode
             default_class: cognitive_nodes.cnode.CNode
@@ -473,8 +478,8 @@ DiscreteEventSimulator:
 
     Stages:
         stage0: 0
-        # ITERATION 0 - 29999: Helping curriculum
-        stage1: 90000 
-        # ITERATION 30000 - 59999: Balanced curriculum
-        stage2: 180000
-        # ITERATION 60000 - onwards: Benchmark curriculum
+        # ITERATION 0 - 59999: Helping curriculum
+        stage1: 60000 
+        # ITERATION 60000 - 89999: Balanced curriculum
+        stage2: 90000
+        # ITERATION 90000 - onwards: Benchmark curriculum
