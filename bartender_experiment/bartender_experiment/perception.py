@@ -109,6 +109,9 @@ class BartenderFilterPerception(Perception):
 
         self._last_bottle_id = None
         self._grasped_bottle_id = None
+        self._last_bottle_timestamp = None
+        self._gripper_timestamp = None
+        self._reading_timestamp = None
 
         if normalize_data:
             self._distance_min = normalize_data.get("distance_min", 0.0)
@@ -116,6 +119,10 @@ class BartenderFilterPerception(Perception):
             self._angle_min = normalize_data.get("angle_min", -1.0)
             self._angle_range = max(1e-6, normalize_data.get("angle_max", 1.0) - self._angle_min)
             self._drinks_divisor = max(1, normalize_data.get("n_drink_types", 2) - 1)
+
+    def read_perception_callback(self, reading):
+        self._reading_timestamp = self.get_clock().now().nanoseconds
+        super().read_perception_callback(reading)
 
     def _normalize_and_clamp(self, raw_value, divisor):
         n = raw_value / divisor
@@ -165,16 +172,23 @@ class BartenderFilterPerception(Perception):
                 data, labels = self._normalize_bottle(selected)
         if data is None:
             return  # No valid bottle selected, return immediately
+        timestamps = [
+            self._reading_timestamp,
+            self._last_bottle_timestamp,
+            self._gripper_timestamp,
+        ]
+        timestamps = [timestamp for timestamp in timestamps if timestamp is not None]
 
         if self.container is None:
             self.container = Container(self.name, max_size=1, container_type="perception", labels=labels)
-        self.container.push(data, labels, timestamps=self.get_clock().now().nanoseconds)
+        self.container.push(data, labels, timestamps=min(timestamps))
 
         self.get_logger().debug("Publishing normalized " + self.name + " = " + str(self.container))
         sensor_msg = self.container.to_msg()
         self.perception_publisher.publish(sensor_msg)
 
     def last_bottle_callback(self, msg):
+        self._last_bottle_timestamp = self.get_clock().now().nanoseconds
         # Accept whatever message type is configured for the perception topic
         # (e.g., std_msgs.msg.Int8 from the simulator or std_msgs.msg.Float32
         # from the world_model). Extract numeric value in a tolerant way.
@@ -186,9 +200,10 @@ class BartenderFilterPerception(Perception):
                 val = float(msg)
             except Exception:
                 val = None
-        self._last_bottle_id = int(val * self._drinks_divisor)
+        self._last_bottle_id = round(val * self._drinks_divisor)
 
     def gripper_callback(self, msg):
+        self._gripper_timestamp = self.get_clock().now().nanoseconds
         if msg.data:
             if msg.contents == "bottle":
                 self._grasped_bottle_id = msg.contents_id
