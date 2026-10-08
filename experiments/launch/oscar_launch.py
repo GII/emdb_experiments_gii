@@ -45,6 +45,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
     oscar_node = Node(
         package="oscar_emdb",
         executable="oscar_emdb_server",
+        arguments=["--ros-args", "--log-level", logger],
         output="screen",
         parameters=[
             {

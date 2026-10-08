@@ -40,6 +40,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
     simulator_node = Node(
         package="simulators",
         executable="fruit_serve_simulator",
+        arguments=["--ros-args", "--log-level", logger],
         output="screen",
         parameters=[
             {
