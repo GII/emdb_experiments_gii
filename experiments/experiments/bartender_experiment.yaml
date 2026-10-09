@@ -48,6 +48,14 @@ LTM:
             class: core.file.FileTrialsSuccess
             file: trials.txt
         -
+            id: pnodes_confidence
+            class: core.file.FilePNodesConfidence
+            file: pnodes_confidence.txt
+        -
+            id: subgoal_events
+            class: core.file.FileSubgoalEvents
+            file: subgoal_events.txt
+        -
             id: neighbors
             class: core.file.FileNeighbors
             file: neighbors.txt

@@ -48,6 +48,14 @@ LTM:
             class: core.file.FileTrialsSuccess
             file: trials.txt
         -
+            id: pnodes_confidence
+            class: core.file.FilePNodesConfidence
+            file: pnodes_confidence.txt
+        -
+            id: subgoal_events
+            class: core.file.FileSubgoalEvents
+            file: subgoal_events.txt
+        -
             id: neighbors
             class: core.file.FileNeighbors
             file: neighbors.txt
@@ -88,7 +96,7 @@ LTM:
                     min_samples_per_class: 2
         -
             data: CNode
-            default_class: cognitive_nodes.cnode.CNodeWorldPreactive
+            default_class: cognitive_nodes.cnode.CNode
             parameters:
                 history_size: 40
                 track_competence: True
@@ -223,13 +231,13 @@ LTM:
                     weight: 1.0
                     drive_id: 'prospection_drive'
                     purpose_type: 'Need'
-            # -
-            #     name: knowledge_reuse_need
-            #     class_name: cognitive_nodes.robot_purpose.RobotPurpose
-            #     parameters:
-            #         weight: 0.8
-            #         drive_id: 'knowledge_reuse_drive'
-            #         purpose_type: 'Need'
+            -
+                name: knowledge_reuse_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 0.8
+                    drive_id: 'knowledge_reuse_drive'
+                    purpose_type: 'Need'
         Drive:
             -
                 name: serve_the_drink_drive
@@ -280,14 +288,14 @@ LTM:
                     neighbors: [{"name": "prospection_need", "node_type": "RobotPurpose"}]
                     pnode_in_goal: False
                     goal_in_pnode: True
-            # -
-            #     name: knowledge_reuse_drive
-            #     class_name: cognitive_nodes.knowledge_reuse.DriveKnowledgeReuse
-            #     parameters:
-            #         ltm_id: ltm_0
-            #         depth_threshold: 3
-            #         min_points: 15
-            #         neighbors: [{"name": "knowledge_reuse_need", "node_type": "RobotPurpose"}]
+            -
+                name: knowledge_reuse_drive
+                class_name: cognitive_nodes.knowledge_reuse.DriveKnowledgeReuse
+                parameters:
+                    ltm_id: ltm_0
+                    depth_threshold: 3
+                    min_points: 15
+                    neighbors: [{"name": "knowledge_reuse_need", "node_type": "RobotPurpose"}]
         Goal:
             -
                 name: client_present_goal
@@ -314,11 +322,11 @@ LTM:
                 class_name: dummy_nodes.dummy_goal.GoalDummy
                 parameters:
                     neighbors: [{"name": "prospection_drive", "node_type": "Drive"}]
-            # -
-            #     name: knowledge_reuse_goal
-            #     class_name: dummy_nodes.dummy_goal.GoalDummy
-            #     parameters:
-            #         neighbors: [{"name": "knowledge_reuse_drive", "node_type": "Drive"}]
+            -
+                name: knowledge_reuse_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "knowledge_reuse_drive", "node_type": "Drive"}]
         PNode:
             -
                 name: novelty_pnode
@@ -335,11 +343,11 @@ LTM:
                 class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
                 parameters:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
-            # -
-            #     name: knowledge_reuse_pnode
-            #     class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
-            #     parameters:
-            #         space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: knowledge_reuse_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
             -   
                 name: client_present_pnode
                 class_name: bartender_experiment.pnodes.PNodeClientPresent
@@ -371,12 +379,12 @@ LTM:
                 parameters:
                     neighbors: [{"name": "prospection_goal", "node_type": "Goal"}, {"name": "prospection_pnode", "node_type": "PNode"}]
                     track_competence: False
-            # -
-            #     name: knowledge_reuse_cnode
-            #     class_name: cognitive_nodes.cnode.CNode
-            #     parameters:
-            #         neighbors: [{"name": "knowledge_reuse_goal", "node_type": "Goal"}, {"name": "knowledge_reuse_pnode", "node_type": "PNode"}]
-            #         track_competence: False
+            -
+                name: knowledge_reuse_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "knowledge_reuse_goal", "node_type": "Goal"}, {"name": "knowledge_reuse_pnode", "node_type": "PNode"}]
+                    track_competence: False
             -
                 name: client_present_cnode
                 class_name: cognitive_nodes.cnode.CNode
@@ -468,13 +476,13 @@ LTM:
                     drive_name: prospection_drive
                     neighbors: [{"name": "prospection_cnode", "node_type": "CNode"}]
                     ltm_id: ltm_0
-            # -
-            #     name: knowledge_reuse_policy
-            #     class_name: cognitive_nodes.knowledge_reuse.PolicyKnowledgeReuse
-            #     parameters:
-            #         drive_name: knowledge_reuse_drive
-            #         neighbors: [{"name": "knowledge_reuse_cnode", "node_type": "CNode"}]
-            #         ltm_id: ltm_0
+            -
+                name: knowledge_reuse_policy
+                class_name: cognitive_nodes.knowledge_reuse.PolicyKnowledgeReuse
+                parameters:
+                    drive_name: knowledge_reuse_drive
+                    neighbors: [{"name": "knowledge_reuse_cnode", "node_type": "CNode"}]
+                    ltm_id: ltm_0
 
 DiscreteEventSimulator:
     Perceptions:
@@ -525,7 +533,7 @@ DiscreteEventSimulator:
     ClientStages:
         client_stage0: 0
         # ITERATION 0 - 184799: Alternate between the first two clients
-        client_stage3: 120000
+        client_stage3: 45000
         # ITERATION 184800 - 232399: Learn the previously unseen third client
         client_stage4: 150000
         # ITERATION 232400 - 279999: Alternate between all clients
