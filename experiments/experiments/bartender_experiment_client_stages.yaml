@@ -533,7 +533,7 @@ DiscreteEventSimulator:
     ClientStages:
         client_stage0: 0
         # ITERATION 0 - 184799: Alternate between the first two clients
-        client_stage3: 45000
+        client_stage3: 120000
         # ITERATION 184800 - 232399: Learn the previously unseen third client
         client_stage4: 150000
         # ITERATION 232400 - 279999: Alternate between all clients
