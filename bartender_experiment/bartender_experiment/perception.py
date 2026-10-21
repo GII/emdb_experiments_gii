@@ -131,7 +131,10 @@ class BartenderFilterPerception(Perception):
     def _normalize_bottle(self, p):
         distance=(p.distance - self._distance_min) / self._distance_range
         angle=(p.angle - self._angle_min) / self._angle_range
-        drink_type=p.drink_type / self._drinks_divisor
+        drink_type = self._normalize_and_clamp(
+            p.drink_type,
+            self._drinks_divisor,
+        )
         data=np.array([distance, angle, drink_type])
         labels = ["distance", "angle", "drink_type"]
 
@@ -193,14 +196,13 @@ class BartenderFilterPerception(Perception):
         # (e.g., std_msgs.msg.Int8 from the simulator or std_msgs.msg.Float32
         # from the world_model). Extract numeric value in a tolerant way.
         try:
-            val = msg.data
-        except Exception:
-            # Fallback: if message wraps list or nested structure
-            try:
-                val = float(msg)
-            except Exception:
-                val = None
+            val = float(msg.data)
+        except (AttributeError, TypeError, ValueError) as exc:
+            self.get_logger().error(f"Invalid last bottle message: {msg!r}: {exc}")
+            return
         self._last_bottle_id = round(val * self._drinks_divisor)
+        if getattr(self, "reading", None) is not None:
+            self.process_and_send_reading()
 
     def gripper_callback(self, msg):
         self._gripper_timestamp = self.get_clock().now().nanoseconds
