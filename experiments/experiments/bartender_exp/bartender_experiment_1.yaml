@@ -1,10 +1,11 @@
+# DOE1-01: Resolution-V DOE1 condition; help=2/3, sampled_points=32, train_every=16, min_warmup_samples=4, min_samples_per_class=4
 Experiment:
     name: main_loop
     class_name: bartender_experiment.main_loop.BartenderExperimentMainLoop
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 90000
+        iterations: 60000
         paused: False
         trials: 40
         subgoals: True
@@ -48,6 +49,14 @@ LTM:
             class: core.file.FileTrialsSuccess
             file: trials.txt
         -
+            id: pnodes_confidence
+            class: core.file.FilePNodesConfidence
+            file: pnodes_confidence.txt
+        -
+            id: subgoal_events
+            class: core.file.FileSubgoalEvents
+            file: subgoal_events.txt
+        -
             id: neighbors
             class: core.file.FileNeighbors
             file: neighbors.txt
@@ -66,7 +75,7 @@ LTM:
             class: core.file.FileEpisodesDataset
             file: dataset.csv
             parameters:
-                max_size: 40000
+                max_size: 65000
     Connectors:
         -
             data: Space
@@ -80,9 +89,9 @@ LTM:
             parameters:
                 space_class: cognitive_nodes.space.ANNSpace
                 space_parameters:
-                    sampled_points: 128
+                    sampled_points: 32
                     train_every: 16
-                    min_warmup_samples: 16
+                    min_warmup_samples: 4
                     min_samples_per_class: 4
                 space_size: 50000
                 history_size: 100
@@ -479,8 +488,7 @@ DiscreteEventSimulator:
 
     Stages:
         stage0: 0
-        # ITERATION 0 - 29999: Helping curriculum
-        stage1: 30000 
-        # ITERATION 30000 - 59999: Balanced curriculum
-        stage2: 60000
-        # ITERATION 60000 - onwards: Benchmark curriculum
+        # Learning phase: help curriculum (2/3 of 30000 iterations)
+        stage1: 20000
+        # Benchmark phase starts after 30000 learning iterations
+        stage2: 30000

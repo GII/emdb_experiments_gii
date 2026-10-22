@@ -54,6 +54,16 @@ class BarEmpty(WorldModel):
 
         self.perception = None  # placeholder for consolidated perception data
 
+        # Publish no preference
+        self.preference = 0
+        self._last_bottle_msg = Float32()
+        self.publish_last_bottle = self.create_publisher(
+            Float32,
+            'cognitive_node/world_model/last_bottle',
+            1
+        )
+
+
     def create_activation_input(self, node: dict):
         """Añade suscripciones con QoS de sensor para baja latencia."""
         name = node['name']
@@ -134,7 +144,18 @@ class BarEmpty(WorldModel):
         perception_timestamp = self.perception.data.coords["timestamp"].values[-1]
         self.activation.activation = activation_value
         self.activation.timestamp = Time(nanoseconds=perception_timestamp).to_msg()
+        self.log_preference(client_id)
         return self.activation
+
+    def log_preference(self, client_id):
+        """
+        Timer: publica 'last_bottle' solo si está activo.
+        Mantén el trabajo mínimo aquí para no bloquear el executor.
+        """
+        if self.preference is not None and self.activation.activation > 0.0:
+            # OPT: reutiliza el mensaje
+            self._last_bottle_msg.data = float(self.preference)
+            self.publish_last_bottle.publish(self._last_bottle_msg)
 
 
 class BarAnyClient(BarEmpty):
@@ -314,8 +335,4 @@ class ClientInBar(WorldModel):
         if self.preference is not None and self.activation.activation > 0.0:
             # OPT: reutiliza el mensaje
             self._last_bottle_msg.data = float(self.preference)
-            self.publish_last_bottle.publish(self._last_bottle_msg)
-        else:
-            # OPT: publica -1.0 para indicar "ninguno"
-            self._last_bottle_msg.data = -1.0
             self.publish_last_bottle.publish(self._last_bottle_msg)
