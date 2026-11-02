@@ -5,6 +5,7 @@ Maintains synchronization across perception nodes.
 import numpy as np
 
 from math import isclose
+from rclpy.logging import LoggingSeverity
 from std_msgs.msg import Float32
 
 
@@ -69,7 +70,9 @@ class BartenderPerception(Perception):
             self.container = Container(self.name, max_size=1, container_type="perception", labels=labels)
         self.container.push(data, labels, timestamps=self.get_clock().now().nanoseconds)
 
-        self.get_logger().debug("Publishing normalized " + self.name + " = " + str(self.container))
+        # The text is built only if it is going to be logged: building it for every reading is expensive
+        if self.get_logger().is_enabled_for(LoggingSeverity.DEBUG):
+            self.get_logger().debug("Publishing normalized " + self.name + " = " + str(self.container))
         sensor_msg = self.container.to_msg()
         self.perception_publisher.publish(sensor_msg)
 
@@ -186,7 +189,9 @@ class BartenderFilterPerception(Perception):
             self.container = Container(self.name, max_size=1, container_type="perception", labels=labels)
         self.container.push(data, labels, timestamps=min(timestamps))
 
-        self.get_logger().debug("Publishing normalized " + self.name + " = " + str(self.container))
+        # The text is built only if it is going to be logged: building it for every reading is expensive
+        if self.get_logger().is_enabled_for(LoggingSeverity.DEBUG):
+            self.get_logger().debug("Publishing normalized " + self.name + " = " + str(self.container))
         sensor_msg = self.container.to_msg()
         self.perception_publisher.publish(sensor_msg)
 
