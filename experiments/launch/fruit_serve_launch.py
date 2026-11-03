@@ -105,7 +105,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "experiment_file",
-            default_value="fruit_serve_llm_experiment.yaml",
+            default_value="fruit_serve_experiment.yaml",
             description="The file that loads the experiment config",
         )
     )
