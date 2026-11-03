@@ -24,6 +24,24 @@ def _client_key_from_id(cid: float) -> str:
     # 0.67  -> "client_0_67"
     return f"client_{str(cid_rounded).replace('.', '_')}"
 
+def _latest_value(perception, label, default=0.0):
+    """
+    Value of a feature in the latest sample of a perception. It reads the container with read_numpy:
+    this runs in every activation update, and read() builds a new xarray object in every call.
+
+    :param perception: The perception.
+    :type perception: core.container.Container
+    :param label: The feature, e.g. "client:id".
+    :type label: str
+    :param default: Value returned if the perception does not have the feature.
+    :return: The value as a float, or default.
+    """
+    labels = perception.feature_labels
+    if label not in labels:
+        return default
+    values, _ = perception.read_numpy()
+    return float(values[-1, labels.index(label)])
+
 def _known_key_from_id_legacy(cid: float) -> str:
     # Mantiene tu convención anterior "client_0_{int(cid*100)}"
     # Úsalo solo si ya persististe así en LTM.
@@ -133,7 +151,7 @@ class BarEmpty(WorldModel):
 
         activation_value = 1.0 # Activate by default (no client known)
         if perception:
-            client_id = float(perception.read().sel(features=["client:id"]).values[-1]) if "client:id" in perception.feature_labels else 0.0
+            client_id = _latest_value(perception, "client:id")
             if client_id != 0.0:
                 # Si ya tienes LTM con la convención legacy, mantén esta:
                 key = _known_key_from_id_legacy(client_id)
@@ -197,10 +215,7 @@ class BarAnyClient(BarEmpty):
         self.activation.activation = 1.0
 
         if perception:
-            client_id = (
-                float(perception.read().sel(features=["client:id"]).values[-1])
-                if "client:id" in perception.feature_labels else 0.0
-            )
+            client_id = _latest_value(perception, "client:id")
             client_key = _known_key_from_id_legacy(client_id)
             preference = self.client_preferences.get(client_key, -1.0)
             perception_timestamp = self.perception.data.coords["timestamp"].values[-1]
@@ -261,7 +276,7 @@ class ClientInBar(WorldModel):
             activation_value = 0.0
 
             # OPT: busca primera clave que contenga "client" sin crear estructuras extra
-            cid = float(perception.read().sel(features=["client:id"]).values[-1]) if "client:id" in perception.feature_labels else None
+            cid = _latest_value(perception, "client:id", None)
             client_id = round(cid, 2) if cid is not None else None
 
             if client_id is not None:

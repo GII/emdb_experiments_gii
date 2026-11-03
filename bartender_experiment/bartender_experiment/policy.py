@@ -1,6 +1,7 @@
 from cognitive_nodes.policy import Policy, PolicyBlocking
 from core.service_client import ServiceClientAsync
 from core.container import Container
+from bartender_experiment.world_model import _latest_value
 
 from bartender_experiment_interfaces.srv import KnowClient
 
@@ -64,8 +65,11 @@ class BartenderClientPolicy(Policy):
         """
         try:
             service_name = "/world_model/BARTENDER/know_client"
-            client = ServiceClientAsync(self, KnowClient, service_name, self.cbgroup_client)
-            response = await client.send_request_async(client_id=client_id)
+            # The client is created once: a new client in every execution means a new ROS client, which has to
+            # discover the service again
+            if service_name not in self.node_clients:
+                self.node_clients[service_name] = ServiceClientAsync(self, KnowClient, service_name, self.cbgroup_client)
+            response = await self.node_clients[service_name].send_request_async(client_id=client_id)
             return response.success if response is not None else False
         except Exception as e:
             self.get_logger().error(f"Failed to add known client {client_id}: {e}")
@@ -79,8 +83,8 @@ class BartenderClientPolicy(Policy):
         :return: Tuple of (Client ID value (rounded and formatted as string), Client preference)
         """
         try:
-            client_preference = float(perception.read().sel(features=["client:preference"]).values[-1]) if "client:preference" in perception.feature_labels else 0.0
-            client_id = float(perception.read().sel(features=["client:id"]).values[-1]) if "client:id" in perception.feature_labels else 0.0
+            client_preference = _latest_value(perception, "client:preference")
+            client_id = _latest_value(perception, "client:id")
             client_id_rounded = round(client_id, 2)
             client_id_str = str(client_id_rounded).replace('.', '_')
             return client_id_str, client_preference
@@ -160,8 +164,8 @@ class BartenderClientNoWorldModelPolicy(Policy):
         :return: Tuple of (Client ID value (rounded), Client preference)
         """
         try:
-            client_preference = float(perception.read().sel(features=["client:preference"]).values[-1]) if "client:preference" in perception.feature_labels else 0.0
-            client_id = float(perception.read().sel(features=["client:id"]).values[-1]) if "client:id" in perception.feature_labels else 0.0
+            client_preference = _latest_value(perception, "client:preference")
+            client_id = _latest_value(perception, "client:id")
             client_id_rounded = round(client_id, 2)
             return client_id_rounded, client_preference
             

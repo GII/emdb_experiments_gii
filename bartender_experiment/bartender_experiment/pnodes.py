@@ -10,7 +10,7 @@ from core.service_client import ServiceClient
 from core_interfaces.srv import GetNodeFromLTM
 from core.container import Container, consolidate_containers
 from cognitive_nodes.space import PointBasedSpace
-from bartender_experiment.world_model import _known_key_from_id_legacy
+from bartender_experiment.world_model import _known_key_from_id_legacy, _latest_value
 
 from bartender_experiment_interfaces.srv import KnowClient
 
@@ -42,7 +42,7 @@ class PNodeBartenderClient(PNode):
 
         activation_value = 0.0
         if perception:
-            preference = float(perception.read().sel(features=["client:preference"]).values[-1]) if "client:preference" in perception.feature_labels else 0.0
+            preference = _latest_value(perception, "client:preference")
             if not isclose(preference, 0.0):
                 activation_value = 1.0
 
@@ -89,8 +89,8 @@ class PNodeBartenderClientMemory(PNode):
 
         activation_value = 0.0
         if perception:
-            preference = float(perception.read().sel(features=["client:preference"]).values[-1]) if "client:preference" in perception.feature_labels else 0.0
-            client_id = float(perception.read().sel(features=["client:id"]).values[-1]) if "client:id" in perception.feature_labels else 0.0
+            preference = _latest_value(perception, "client:preference")
+            client_id = _latest_value(perception, "client:id")
             client_key = _known_key_from_id_legacy(client_id)
 
             # Activate only if the client is not already known and has a non-zero preference
@@ -148,8 +148,8 @@ class PNodeNewClientPresent(PNode):
 
         activation_value = 0.0
         if perception:
-            preference = float(perception.read().sel(features=["client:preference"]).values[-1]) if "client:preference" in perception.feature_labels else 0.0
-            client_id = float(perception.read().sel(features=["client:id"]).values[-1]) if "client:id" in perception.feature_labels else 0.0
+            preference = _latest_value(perception, "client:preference")
+            client_id = _latest_value(perception, "client:id")
             client_key = _known_key_from_id_legacy(client_id)
 
             # Activate only if the client is not already known and has a non-zero preference
@@ -196,8 +196,8 @@ class PNodeClientPresent(PNode):
 
         activation_value = 0.0
         if perception:
-            client_id = float(perception.read().sel(features=["client:id"]).values[-1]) if "client:id" in perception.feature_labels else 0.0
-            preference = float(perception.read().sel(features=["client:preference"]).values[-1]) if "client:preference" in perception.feature_labels else 0.0
+            client_id = _latest_value(perception, "client:id")
+            preference = _latest_value(perception, "client:preference")
             if not isclose(client_id, 0.0) and isclose(preference, 0.0):
                 activation_value = 1.0
 
