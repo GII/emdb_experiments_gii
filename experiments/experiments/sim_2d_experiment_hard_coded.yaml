@@ -65,7 +65,7 @@ LTM:
             default_class: cognitive_nodes.world_model.WorldModelLearned
             parameters:
                 episodes_topic: /main_loop/episodes
-                prediction_srv_type: core_interfaces.msg.Container
+                prediction_srv_type: cognitive_node_interfaces.srv.Predict
         -
             data: UtilityModel
             default_class: cognitive_nodes.utility_model.LearnedUtilityModel
@@ -93,10 +93,8 @@ LTM:
                 # class_name: cognitive_nodes.world_model.Sim2DWorldModel
                 parameters:
                     episodes_topic: /main_loop/episodes
-                    prediction_srv_type: core_interfaces.msg.Container
+                    prediction_srv_type: cognitive_node_interfaces.srv.Predict
                     retrain: False
-                    learner_params:
-                        model_file: /home/fabian/Documents/ws_dreaming/data/utility_model_Q_grasped_ball_goal.pth
 
 
 
@@ -315,7 +313,6 @@ LTM:
                     min_traces: .inf
                     max_traces: 50
                     max_antitraces: 10
-                    model_file: /home/fabian/Documents/ws_dreaming/data/utility_model_Q_grasped_ball_goal.pth
 
 
 
