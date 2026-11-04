@@ -1,6 +1,10 @@
 # Pump panel Experiment
 (Work in progress)
 
+```{warning}
+This experiment cannot be run in this version. Its configuration files use classes that are not available here (`PolicyParametrized`, `PolicyBlockingParametrized`, `CNodeParameter`, `PumpPanelPerception` and `PolicyLLMExplorationPump`). The page is kept for reference and is not included in the documentation index.
+```
+
 This experiment demonstrates the usage of a LLM-based exploration strategy to achieve goals in an environment where it is not feasible to achieve goals by means of random exploration. It is developed in a discrete event simulator where the robot has to operate an industrial panel to start a pump system.
 
 <div style="width:100%; margin:auto; text-align:center;">
@@ -85,7 +89,7 @@ The process begins with a human-provided purpose, expressed as a natural languag
 The experiment can be executed using the launch file contained in the experiments package:
 
 ```bash
-ros2 launch emdb_experiments pump_panel_launch.py experiment_file:=pump_panel_llm_experiment.yaml
+ros2 launch experiments pump_panel_launch.py experiment_file:=pump_panel_llm_experiment.yaml
 ```
 
 The experiment file can be selected from the ones available in the experiments package of this repository:
@@ -93,4 +97,4 @@ The experiment file can be selected from the ones available in the experiments p
 - pump_panel_experiment.yaml: Experiment without the LLM exploration policy. 
 - pump_panel_llm_experiment.yaml: Includes the LLM exploration policy. 
 
-Configuration parameters can be adjusted through the corresponding YAML configuration file to modify the model used, initial prompt and other learning parameters. 
+Configuration parameters can be adjusted through the corresponding YAML configuration file to modify the model used, initial prompt and other learning parameters. The general parameters are described in the [configuration page](https://docs.pillar-robots.eu/projects/emdb_core/en/latest/core/configuration.html) of the core documentation. 

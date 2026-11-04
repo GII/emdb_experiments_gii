@@ -13,36 +13,34 @@ Remembering, the task consists in placing a cylinder in a box. These elements ar
 
 ## Experiment description
 
-As in the PutObjectInBox experiment, this experiment tests the behavior of the Long-Term Memory (LTM) of the architecture. There is a single World Model (GripperAndLowFriction), and no Desires (Needs & Missions) nor Drives are used.
+As in the PutObjectInBox experiment, this experiment tests the behavior of the Long-Term Memory (LTM) and of the motivational system of the architecture. There is a single World Model (GRIPPER_AND_LOW_FRICTION). The motivational system has the Mission *ball_in_box_mission* (placing the cylinder in the box) and four Needs: *novelty*, *effectance* (internal), *external effects* and *prospection*, each one with its Drive, Goal, P-Node, C-Node and Policy, as described in the [PutObjectInBox experiment](put_object_in_box_experiment.md). The Goal of the Mission is not defined in the configuration file: it is created and learned during the execution.
 
 The perceptions received by the cognitive architecture are the following ones:
 
 - **Boxes**: data about the boxes in the table.
     - **Distance**: distance from the robot to the box.
     - **Angle**: angle from the robot to the box.
-    - **Diameter**: diameter of the box.
+    - **Diameter**: diameter of the box (a constant value, it is not measured).
 
 - **Cylinders**: data about the cylinders in the table.
     - **Distance**: distance from the robot to the cylinder.
     - **Angle**: angle from the robot to the cylinder.
-    - **Diameter**: diameter of the cylinder.
-- **Ball in left hand**: indicates if the robot has the cylinder in the left gripper.
-- **Ball in right hand**: indicates if the robot has the cylinder in the right gripper.
+    - **Diameter**: diameter of the cylinder (a constant value, it is not measured).
+- **Object in left hand**: indicates if the robot has the cylinder in the left gripper.
+- **Object in right hand**: indicates if the robot has the cylinder in the right gripper.
 
-The policies that the robot can use to solve the task are the following ones:
+The policies that the robot can use to solve the task are the following ones. The first six are executed by the OSCAR server:
 
-- **Grasp object:** Use one of the two grippers to grasp an object.
-- **Grasp object with two hands:** Use both arms to grasp an object between their ends.
-- **Change hands:** Move an object from one gripper to the other.
-- **Sweep object:** Sweep an object to the central line of the table.
-- **Ask nicely:** Ask experimenter, simulated in this case, to bring something to within reach.
-- **Put object with robot:** Deposit an object close to the robot base.
-- **Put object in box:** Place an object in a receptacle.
-- **Throw:** Throw an object to a position.
+- **Grasp right / Grasp left:** Use the right or the left arm to grasp the object, if it is reachable.
+- **Change hands:** Move the object from one gripper to the other.
+- **Press button:** Press the button with the left arm. If the object is out of reach, it is moved closer to the robot.
+- **Place object right / Place object left:** Place the object in the box with the right or the left arm, if the arm holds the object and the box is within reach.
 
-The goal node ObjectInBoxStandalone provides reward for placing the cylinder inside the box. Partial rewards are given as the robot nears the final objective: 0.25 for approaching the cylinder with the button, 0.5 for grasping the cylinder, 0.75 for changing the cylinder to the appropriate hand and 1.0 for placing the cylinder in the box.    
+The remaining four policies belong to the motivational system, one per Need: *novelty_policy*, *effectance_policy*, *external_effect_policy* and *prospection_policy*.
 
-A P-Node and C-Node pair is created each time a reward is obtained. Thus, at the end of the experiment, seven pairs should be created, one per Policy, except *Put object with robot*, which doesn't lead to any reward.
+The reward of the Mission is binary: the *ball_in_box_goal* sensor is 1.0 if the cylinder is in the box and 0.0 otherwise. The partial rewards defined in the OSCAR server (approaching the object with the button, grasping it and switching hands) are not used.
+
+P-Nodes and C-Nodes are created as rewards are obtained, linking the Policies that lead to the Mission with the situations in which they work.
 
 We will have this structure for each Policy:
 
@@ -71,7 +69,7 @@ Afterwards, the experiment can be launched:
 ros2 launch experiments oscar_launch.py
 ```
 
-This experiment is configured through the **oscar_experiment.yaml** file, which you can find in the *experiments* package of this repository.
+This experiment is configured through the **oscar_experiment.yaml** file, which you can find in the *experiments* package of this repository. The parameters that can be set in this file are described in the [configuration page](https://docs.pillar-robots.eu/projects/emdb_core/en/latest/core/configuration.html) of the core documentation.
 
 Once executed, it is possible to see the logs in the terminal, being able to follow the behavior of the experiment in real time.
 
@@ -85,34 +83,38 @@ In the first one, it is possible to observe important information, such as the p
 tail -f goodness.txt
 ```
 
-| Iteration | Goal More documentation addedt_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 0.2    | press_button          | True              | 6       |
-| 1416      | object_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 0.5    | grasp_right           | True              | 6       |
-| 1417      | object_in_box_standalone | GRIPPER_AND_LOW_FRICTION  | 1.0    | place_object_right    | True              | 6       |
+| Iteration | World                     | Goal reward list    | Policy                | Sensorial changes | C-nodes |
+|-----------|---------------------------|---------------------|-----------------------|-------------------|---------|
+| 1415      | GRIPPER_AND_LOW_FRICTION  | {'goal_0': '0.0'}   | press_button          | True              | 6       |
+| 1416      | GRIPPER_AND_LOW_FRICTION  | {'goal_0': '0.0'}   | grasp_right           | True              | 6       |
+| 1417      | GRIPPER_AND_LOW_FRICTION  | {'goal_0': '1.0'}   | place_object_right    | True              | 6       |
 
 In the second file, it's possible to see an activation historical of the P-Nodes and if it was a point (True) or an anti-point (False).
 
-When the execution is finished, it's possible to obtain statistics about reward and P-Nodes activations per 100 iterations by using the scripts available in the scripts directory of the core package (~/eMDB_ws/src/wp5_gii/emdb_core/core/scripts):
+When the execution is finished, it's possible to obtain statistics about reward and P-Nodes activations per 100 iterations by using the scripts available in the scripts directory of the core package (the *core/scripts* directory of the emdb_core repository):
 
 ```bash
-python3 ~/eMDB_ws/src/wp5_gii/emdb_core/core/scripts/generate_grouped_statistics -n 100 -f goodness.txt > goodness_grouped_statistics.csv
+python3 <path_to_emdb_core>/core/scripts/generate_grouped_statistics -n 100 -f goodness.txt > goodness_grouped_statistics.csv
 
-python3 ~/eMDB_ws/src/wp5_gii/emdb_core/core/scripts/generate_grouped_success_statistics -n 100 -f pnodes_success.txt > pnodes_grouped_statistics.csv
+python3 <path_to_emdb_core>/core/scripts/generate_grouped_success_statistics -n 100 -f pnodes_success.txt > pnodes_grouped_statistics.csv
 ```
 
 ```{note}
-To use these scripts it's necessary to have installed **python-magic 0.4.27** dependency.
+To use these scripts it's necessary to have installed the **python-magic 0.4.27**, **pandas**, **matplotlib** and **numpy** dependencies.
 ```
 
 By plotting the data of these final files, it is possible to obtain a visual interpretation of the learning of the cognitive architecture.  -->
 
-# OSCAR Alignment Experiment
+## OSCAR Alignment Experiment
 
 This experiment is a new version of the [PutObjectInBox experiment](put_object_in_box_experiment.md) implemented in the OSCAR robot in the Gazebo simulator. 
-In this case, the experiment uses an Alignment Engine powered by an LLM model. The LLM recieves the human purpose in natural language and it is trained to interact with the human until the purpose is fully defined. Then, this purpose goes to the Translation Engine, wich is composed by two LLM models and transforms the purpose into missions and drive functions compatible with the e-MDB cognitive architecture. In this case, the purpose of the user is to place the red object in a box. These elements are placed in random positions and may be out of reach of the robot.
+In this case, the experiment uses an Alignment Engine powered by an LLM model. The LLM receives the human purpose in natural language and it is trained to interact with the human until the purpose is fully defined. Then, this purpose goes to the Translation Engine, which is composed by two LLM models and transforms the purpose into missions and drive functions compatible with the e-MDB cognitive architecture. In this case, the purpose of the user is to place the red object in a box. These elements are placed in random positions and may be out of reach of the robot.
 
-## Experiment description
+### Experiment description
 
-This experimnt was desigend to validate the Alignment Engine and the validity of the missions and drives generated by the Translation Engine. There is only one World Model (GripperAndLowFriction) and the user can express the purpose in different ways but in the end the robot should be able to reach the goal every time.
+This experiment was designed to validate the Alignment Engine and the validity of the missions and drives generated by the Translation Engine. There is only one World Model (GRIPPER_AND_LOW_FRICTION) and the user can express the purpose in different ways but in the end the robot should be able to reach the goal every time.
+
+Unlike the previous experiment, no Mission is defined in the configuration file. The motivational system has five Needs: *alignment*, whose Drive is always active and whose Policy (*alignment_policy*) runs the interaction with the user and creates the Missions and Drives from the resulting purpose, and the *novelty*, *effectance* (internal), *external effects* and *prospection* Needs, as in the previous experiment.
 
 The perceptions received by the cognitive architecture are the following ones:
 
@@ -135,11 +137,12 @@ The perceptions received by the cognitive architecture are the following ones:
 
 The policies that the robot can use to solve the task are the following ones:
 
-- **Grasp object:** Use the  right arm and gripper to grasp an object.
-- **Ask nicely:** Ask experimenter, simulated in this case, to bring something to within reach.
-- **Put object in box:** Place an object in a receptacle.
+- **Grasp right:** Use the right arm and gripper to grasp an object.
+- **Press button:** Press the button with the left arm. If the object is out of reach, it is moved closer to the robot.
+- **Place object right:** Place an object in the box with the right arm.
+- **Alignment policy**, plus the *novelty*, *effectance*, *external effect* and *prospection* policies of the motivational system.
 
-## Execution
+### Execution
 
 To execute this experiment, the OSCAR simulator must be installed. The instructions can be found [here](https://github.com/efallash/oscar/tree/humble_gazebo_classic).
 
@@ -155,25 +158,10 @@ Afterwards, the experiment can be launched:
 ros2 launch experiments oscar_alignment_launch.py
 ```
 
-This experiment is configured through the **oscar_alignment_experiment.yaml** file, which you can find in the *experiments* package of this repository.
+This experiment is configured through the **oscar_alignment_experiment.yaml** file, which you can find in the *experiments* package of this repository. The parameters that can be set in this file are described in the [configuration page](https://docs.pillar-robots.eu/projects/emdb_core/en/latest/core/configuration.html) of the core documentation.
 
 Once executed, it is possible to see the logs in the terminal, being able to follow the behavior of the experiment in real time.
 
-In the first experiment iteration there is a window witha chatbox where the user writes the purpose and intercats with the engine as shown in the following figure.
+In the first experiment iteration a window with a chatbox opens, where the user writes the purpose and interacts with the engine.
 
-<div style="width:100%; margin:auto; text-align:center;">
-
-![OSCAR robot](images/OSCAR.png)
-
-*OSCAR robot*
-</div>
-
-Then, the experiment is excecuted as normal.
-
-
-
-
-
-
-
-
+Then, the experiment is executed as normal.

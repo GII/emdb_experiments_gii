@@ -6,11 +6,11 @@ from core.container import Container
 
 class Sim2DPerception(Perception):
     """
-    Sim2DPerception class
+    Perception of the 2D simulator for objects with a position (``x``, ``y``) and, optionally, an orientation (``angle``).
     """
     def __init__(self, name='perception', class_name = 'cognitive_nodes.perception.Perception', default_msg = None, default_topic = None, normalize_data = None, **params):
         """
-        Constructor for the Perception class.
+        Constructor for the Sim2DPerception class.
         Initializes a Perception instance with the given name and registers it in the LTM.
         
         :param name: The name of the Perception instance.
@@ -21,14 +21,20 @@ class Sim2DPerception(Perception):
         :type default_msg: str
         :param default_topic: The topic of the default subscription.
         :type default_topic: str
-        :param normalize_data: Values in order to normalize values.
+        :param normalize_data: Normalization limits: ``x_min``, ``x_max``, ``y_min`` and ``y_max``. If ``angle_min`` and ``angle_max`` are also given (and are not zero), the angle is encoded too.
         :type normalize_data: dict
         """
         super().__init__(name, class_name, default_msg=default_msg, default_topic=default_topic, normalize_data=normalize_data, **params)
      
     def process_and_send_reading(self):
         """
-        Method that processes the sensor values received.
+        Normalizes the reading received and publishes it as a Container.
+
+        If the reading is a list of objects, only the first element is processed. Its ``x`` and ``y`` are
+        normalized to [0, 1] (labels ``x`` and ``y``). If ``angle_min`` and ``angle_max`` are configured, the
+        angle (in degrees if the configured range is larger than 2*pi, otherwise in radians) is encoded as
+        its cosine and sine, each rescaled from [-1, 1] to [0, 1] (labels ``angle_cos`` and ``angle_sin``).
+        Any other reading is published as is with the label ``data``.
         """
         if isinstance(self.reading.data, list):
             for perception in self.reading.data:
@@ -81,11 +87,11 @@ class Sim2DPerception(Perception):
 
 class Sim2DDistancesPerception(Perception):
     """
-    Sim2DDistancesPerception class
+    Perception of the 2D simulator for distances (and relative angles) between entities, or for a single scalar value.
     """
     def __init__(self, name='perception', class_name = 'cognitive_nodes.perception.Perception', default_msg = None, default_topic = None, normalize_data = None, **params):
         """
-        Constructor for the Perception class.
+        Constructor for the Sim2DDistancesPerception class.
         Initializes a Perception instance with the given name and registers it in the LTM.
         
         :param name: The name of the Perception instance.
@@ -96,14 +102,20 @@ class Sim2DDistancesPerception(Perception):
         :type default_msg: str
         :param default_topic: The topic of the default subscription.
         :type default_topic: str
-        :param normalize_data: Values in order to normalize values.
+        :param normalize_data: Normalization limits. For a list of objects: ``distance_min`` and ``distance_max``, and optionally ``angle_min`` and ``angle_max`` (not zero) to encode the angle. For a scalar reading: ``min_value`` and ``max_value``.
         :type normalize_data: dict
         """
         super().__init__(name, class_name, default_msg=default_msg, default_topic=default_topic, normalize_data=normalize_data, **params)
      
     def process_and_send_reading(self):
         """
-        Method that processes the sensor values received.
+        Normalizes the reading received and publishes it as a Container.
+
+        If the reading is a list of objects, only the first element is processed. Its ``distance`` is
+        normalized to [0, 1] (label ``distance``). If ``angle_min`` and ``angle_max`` are configured, the
+        angle (in degrees if the configured range is larger than 2*pi, otherwise in radians) is also encoded
+        as its cosine and sine, each rescaled from [-1, 1] to [0, 1] (labels ``angle_cos`` and ``angle_sin``).
+        If the reading is a scalar, it is normalized with ``min_value`` and ``max_value`` (label ``data``).
         """
         if isinstance(self.reading.data, list):
             for perception in self.reading.data:

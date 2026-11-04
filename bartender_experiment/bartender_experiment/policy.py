@@ -9,7 +9,8 @@ from bartender_experiment_interfaces.srv import KnowClient
 
 class BartenderClientPolicy(Policy):
     """
-    BartenderClientPolicy class. Represents a policy for the bartender client.
+    BartenderClientPolicy class. Represents the policy that registers a new client in the bartender experiment.
+    It does not call a server to execute anything: it creates the World Model node of the client and registers the client in the BARTENDER World Model.
     """    
     def __init__(self, name='BartenderClientPolicy', class_name='cognitive_nodes.policy.Policy', **params):
         """
@@ -25,7 +26,17 @@ class BartenderClientPolicy(Policy):
 
     async def execute_callback(self, request, response):
         """
-        Makes a service call to the server that handles the execution of the policy.
+        Executes the policy. Reads the client id and preference from the perception. If the client is valid
+        (id different from ``0_0``) and its World Model node (``client_<id>``) does not exist yet, creates it with the
+        class ``bartender_experiment.world_model.ClientInBar`` and the preference of the client, and registers the
+        client in the BARTENDER World Model with the ``know_client`` service. No server is called to execute the policy.
+
+        :param request: The request to execute the policy, with the current perception.
+        :type request: cognitive_node_interfaces.srv.Execute.Request
+        :param response: The response indicating the executed policy.
+        :type response: cognitive_node_interfaces.srv.Execute.Response
+        :return: The response with the executed policy name.
+        :rtype: cognitive_node_interfaces.srv.Execute.Response
         """
         try:
             # Extract client ID and preference from perception
@@ -61,7 +72,12 @@ class BartenderClientPolicy(Policy):
     
     async def add_known_client(self, client_id):
         """
-        Add a client to the known clients list using the know_client service.
+        Add a client to the known clients list of the BARTENDER World Model using its ``know_client`` service.
+
+        :param client_id: Id of the client (rounded to two decimals).
+        :type client_id: float
+        :return: True if the service call succeeded, False otherwise.
+        :rtype: bool
         """
         try:
             service_name = "/world_model/BARTENDER/know_client"
@@ -79,8 +95,10 @@ class BartenderClientPolicy(Policy):
         """
         Extract client ID and preference from perception data.
         
-        :param perception: The perception message
-        :return: Tuple of (Client ID value (rounded and formatted as string), Client preference)
+        :param perception: The current perception, with the features ``client:id`` and ``client:preference``.
+        :type perception: core.container.Container
+        :return: Tuple of (Client ID value (rounded to two decimals, with the dot replaced by an underscore, as a string), Client preference). If the data cannot be read, ``("0_0", 0.5)``.
+        :rtype: tuple
         """
         try:
             client_preference = _latest_value(perception, "client:preference")
@@ -95,11 +113,12 @@ class BartenderClientPolicy(Policy):
 
 class BartenderClientNoWorldModelPolicy(Policy):
     """
-    BartenderClientPolicy class. Similar to BartenderClientPolicy but does not create a world model node for the client.
+    BartenderClientNoWorldModelPolicy class. Similar to BartenderClientPolicy but does not create a World Model node for the client.
+    The client and its preference are stored in the BARTENDER World Model and in two P-Nodes instead.
     """    
     def __init__(self, name='BartenderClientPolicy', class_name='cognitive_nodes.policy.Policy', **params):
         """
-        Constructor for the BartenderClientPolicy class.
+        Constructor for the BartenderClientNoWorldModelPolicy class.
 
         :param name: The name of the policy.
         :type name: str
@@ -111,7 +130,16 @@ class BartenderClientNoWorldModelPolicy(Policy):
 
     async def execute_callback(self, request, response):
         """
-        Makes a service call to the server that handles the execution of the policy.
+        Executes the policy. Reads the client id and preference from the perception and, if they can be read,
+        registers the client with the ``know_client`` services (see :meth:`add_known_client`). No World Model node is
+        created for the client and no server is called to execute the policy.
+
+        :param request: The request to execute the policy, with the current perception.
+        :type request: cognitive_node_interfaces.srv.Execute.Request
+        :param response: The response indicating the executed policy.
+        :type response: cognitive_node_interfaces.srv.Execute.Response
+        :return: The response with the executed policy name.
+        :rtype: cognitive_node_interfaces.srv.Execute.Response
         """
         try:
             # Extract client ID and preference from perception
@@ -130,8 +158,15 @@ class BartenderClientNoWorldModelPolicy(Policy):
     
     async def add_known_client(self, client_id, client_preference):
         """
-        Add a client to the known clients list using the know_client service.
-        In the no WorldModel version it has to be saved in the WorldModel, and the PNodes for asking and saving the preference. 
+        Add a client and its preference using the ``know_client`` service of three nodes: the BARTENDER World Model
+        and the P-Nodes ``get_response_pnode`` and ``client_present_pnode``.
+
+        :param client_id: Id of the client (rounded to two decimals).
+        :type client_id: float
+        :param client_preference: Preference of the client.
+        :type client_preference: float
+        :return: True if the three services succeeded, False otherwise.
+        :rtype: bool
         """
         try:
             world_model_service = "/world_model/BARTENDER/know_client"
@@ -160,8 +195,10 @@ class BartenderClientNoWorldModelPolicy(Policy):
         """
         Extract client ID and preference from perception data.
         
-        :param perception: The perception message
-        :return: Tuple of (Client ID value (rounded), Client preference)
+        :param perception: The current perception, with the features ``client:id`` and ``client:preference``.
+        :type perception: core.container.Container
+        :return: Tuple of (Client ID value (rounded to two decimals), Client preference). If the data cannot be read, ``(None, 0.5)``.
+        :rtype: tuple
         """
         try:
             client_preference = _latest_value(perception, "client:preference")
