@@ -161,10 +161,13 @@ class Sim2DSimple(Node):
 
     def execute_action(self, action):
         """
-        Execute an action in the simulation.
+        Execute an action in the simulation. The action is denormalized with the actuation
+        configuration, applied to both arms, and then the grippers are updated: they grasp a ball
+        that is within grasp range, release it over the box, and exchange the ball when they are
+        close to each other.
 
-        :param action: The action to be executed.
-        :type action: dict
+        :param action: The action to be executed (normalized values of ``left_arm:dist``, ``left_arm:angle``, ``right_arm:dist`` and ``right_arm:angle``).
+        :type action: core.container.Container
         """
 
         action_vector = self.denormalize_actuation(action, self.actuation_config)
@@ -254,9 +257,11 @@ class Sim2DSimple(Node):
 
     def new_command_callback(self, data):
         """
-        Process a command received.
+        Process a command received through the control topic. Only the ``end`` command is handled
+        (it shuts the simulator down). World resets are not requested through this topic but through the
+        world reset service (see :meth:`world_reset_service_callback`).
 
-        :param data: The message that contais the command received.
+        :param data: The message that contains the command received.
         :type data: ROS msg defined in setup_control_channel
         """
         self.get_logger().debug(f"Command received... ITERATION: {data.iteration}")
@@ -268,14 +273,16 @@ class Sim2DSimple(Node):
 
     def new_action_service_callback(self, request, response):
         """
-        Execute a policy and publish new perceptions.
+        Execute a low-level action in the simulation. This is the callback of the executed action service
+        (``executed_action_service``). The perceptions are not published here: they are published periodically
+        by a timer.
 
-        :param request: The message that contains the policy to execute.
-        :type request: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Policy.Request
-        :param response: Response of the success of the execution of the action.
-        :type response: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Policy.Response
-        :return: Response indicating the success of the action execution.
-        :rtype: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Policy.Response
+        :param request: The message that contains the action to execute, as a Container message.
+        :type request: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Action.Request
+        :param response: Response of the execution of the action.
+        :type response: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Action.Response
+        :return: The response, once the action has been executed.
+        :rtype: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Action.Response
         """
         action=Container.from_msg(request.action)
         self.get_logger().info("Executing action " + str(action))

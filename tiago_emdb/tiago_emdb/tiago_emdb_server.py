@@ -34,12 +34,12 @@ from core.utils import class_from_classname, resolve_seed
 
 class TiagoMDB(Node):
     """
-    This class provides a node that interfaces the OSCAR robot with the eMDB Cognitive Architecture
+    This class provides a node that interfaces the TIAGo++ robot with the eMDB Cognitive Architecture
     """
 
     def __init__(self):
         """
-        Constructor of the OscarMDB class
+        Constructor of the TiagoMDB class
         """
         super().__init__("tiago_fruit_shop_server")
 
@@ -308,9 +308,12 @@ class TiagoMDB(Node):
 
     async def new_command_callback(self, data):
         """
-        Process a command received
+        Process a command received through the control topic. The current iteration is stored (it selects
+        the reward of each stage) and the ``end`` command shuts the node down. World resets are not
+        requested through this topic but through the world reset service
+        (see :meth:`world_reset_service_callback`).
 
-        :param data: The message that contais the command received.
+        :param data: The message that contains the command received.
         :type data: ROS msg defined in the config file. Typically cognitive_processes_interfaces.msg.ControlMsg
         """
         self.get_logger().debug(f"Command received... ITERATION: {data.iteration}")
@@ -354,8 +357,9 @@ class TiagoMDB(Node):
 
     async def reset_world(self):
         """
-        This method initializes the world. Moves the robot to home position
-        and randomizes the position of the objects.
+        This method initializes the world. Moves the robot to home position, resets the
+        internal state of the fruit and scale flags, and waits (with ``input()``) until a person
+        has set up the world and pressed Enter. The positions of the objects are not randomized.
         """
         self.get_logger().info("Reseting World...")
         # Go Home
@@ -706,11 +710,9 @@ class TiagoMDB(Node):
 
     def publish_perceptions(self):
         """
-        This method iterates the list of publishers and publishes the corresponding value
-        from the perception input.
-
-        :param perceptions: Dictionary with perceptions.
-        :type perceptions: dict
+        This method iterates the list of publishers and publishes the value of the corresponding
+        perception stored in ``self.perceptions``. Only the perceptions whose flag in
+        ``self.perception_flags`` is set are published, and the flag is cleared after publishing.
         """
         for ident, publisher in self.sim_publishers.items():
             if self.perception_flags[ident]:
