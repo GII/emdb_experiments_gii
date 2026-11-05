@@ -150,9 +150,9 @@ class OscarPerception(Node):
         Service callback that provides the latest processed perceptions.
 
         :param response: Message with the position of the objects and state of the grippers.
-        :type response: oscar_emdb_interfaces.srv.Perception.Response
+        :type response: oscar_emdb_interfaces.srv.PerceptionMultiObj.Response
         :return: Message with the position of the objects and state of the grippers.
-        :rtype: oscar_emdb_interfaces.srv.Perception.Response
+        :rtype: oscar_emdb_interfaces.srv.PerceptionMultiObj.Response
         """
         self.get_logger().info("Processing perception...")
         found, obj, bskt, left, right = self.process_perception()

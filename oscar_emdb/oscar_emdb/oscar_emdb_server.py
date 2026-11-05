@@ -228,9 +228,11 @@ class OscarMDB(Node):
 
     async def new_command_callback(self, data):
         """
-        Process a command received
+        Process a command received through the control topic. Only the ``end`` command is handled
+        (it shuts the node down). World resets are not requested through this topic but through the
+        world reset service (see :meth:`world_reset_service_callback`).
 
-        :param data: The message that contais the command received.
+        :param data: The message that contains the command received.
         :type data: ROS msg defined in the config file. Typically cognitive_processes_interfaces.msg.ControlMsg
         """
         self.get_logger().debug(f"Command received... ITERATION: {data.iteration}")
@@ -729,10 +731,13 @@ class OscarMDB(Node):
 
     def publish_perceptions_callback(self, msg: PerceptionMultiObj):
         """
-        Method that publishes the current perceptions and the reward value in the appropriate topics.
+        Callback of the ``/oscar/redescribed_sensors`` topic. Publishes the perceptions of the experiment
+        (cylinders, boxes, object in each hand) in their topics. The values are taken from the latest
+        perception stored in ``self.perception`` (the object and basket positions are converted to distance
+        and angle); the content of ``msg`` is not read. Rewards are not published here.
 
-        :param msg: Perception message with the latest perceptions.
-        :type msg: cognitive_processes_interfaces.msg.Perception
+        :param msg: Message with the latest redescribed perceptions.
+        :type msg: oscar_emdb_interfaces.msg.PerceptionMultiObj
         """
         self.get_logger().debug("DEBUG - Publishing perceptions")
         # Convert perceptions to distance, angle
@@ -889,10 +894,13 @@ class OscarMDB_LLM(OscarMDB):
 
     def publish_perceptions_callback(self, msg: PerceptionMultiObj):
         """
-        Method that publishes the current perceptions and the reward value in the appropriate topics.
+        Callback of the ``/oscar/redescribed_sensors`` topic for the alignment experiment. Publishes
+        ``object1``, ``object2`` and ``robot_hand`` (position, color, diameter and state) in their topics.
+        The values are taken from the latest perception stored in ``self.perception``; the content of ``msg``
+        is not read.
 
-        :param msg: Perception message with the latest perceptions.
-        :type msg: cognitive_processes_interfaces.msg.Perception
+        :param msg: Message with the latest redescribed perceptions.
+        :type msg: oscar_emdb_interfaces.msg.PerceptionMultiObj
         """
         self.get_logger().debug("DEBUG - Publishing perceptions")
         # Assign perceptions to MDB messages

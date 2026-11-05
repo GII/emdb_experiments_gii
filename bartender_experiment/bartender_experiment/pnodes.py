@@ -16,17 +16,41 @@ from bartender_experiment_interfaces.srv import KnowClient
 
 class PNodeBartenderClient(PNode):
     """
-    PNode that represents a bartender client.
-    Activates when client preference is different from 0.
+    P-Node that is active when the client has told its preference.
+
+    The activation is binary: 1.0 if the ``client:preference`` of the perception is different from 0, and 0.0 otherwise.
     """
     def __init__(self, name='bartender_client', class_name='cognitive_nodes.pnode.PNode',
                  space_class=None, space=None, history_size=100, **params):
+        """
+        Constructor for the PNodeBartenderClient class.
+
+        :param name: The name of the P-Node.
+        :type name: str
+        :param class_name: The name of the P-Node class.
+        :type class_name: str
+        :param space_class: Full name of the class of the space of the P-Node. It is only used if no space is given.
+        :type space_class: str
+        :param space: The space of the P-Node.
+        :type space: cognitive_nodes.space.PointBasedSpace
+        :param history_size: The size of the history of the P-Node, defaults to 100.
+        :type history_size: int
+        :param params: Additional parameters passed to :class:`cognitive_nodes.pnode.PNode`.
+        :type params: dict
+        """
         super().__init__(name=name, class_name=class_name, space_class=space_class, space=space, history_size=history_size, **params)
         self.get_logger().info('PNodeBartenderClient: Initialized')
 
     def calculate_activation(self, perception=None, activation_list=None):
         """
-        Activates when client preference != 0. Returns 1.0 or 0.0 (sin decay).
+        Calculate the activation: 1.0 if ``client:preference`` is different from 0, 0.0 otherwise (there is no decay).
+
+        :param perception: Perception to use if no activation list is given.
+        :type perception: core.container.Container
+        :param activation_list: Dictionary of the activation inputs, with the data of each input (``activation_list[name]['data']``).
+        :type activation_list: dict
+        :return: The ``Activation`` message of the node.
+        :rtype: cognitive_node_interfaces.msg.Activation
         """
         if activation_list is not None:
             data = [activation_list[sensor]['data'] for sensor in activation_list]
@@ -53,11 +77,30 @@ class PNodeBartenderClient(PNode):
 
 class PNodeBartenderClientMemory(PNode):
     """
-    PNode that represents a bartender client.
-    Activates when client preference is different from 0. It saves the client preference in its memory space, to deactivate when the client is already known.
+    P-Node that is active when the client has told its preference and the client is not known yet.
+
+    The activation is binary: 1.0 if the ``client:preference`` of the perception is different from 0 and the client
+    (``client:id``) has not been registered, and 0.0 otherwise. Clients are registered with the ``pnode/<name>/know_client``
+    service (:class:`bartender_experiment_interfaces.srv.KnowClient`), and they are kept in the memory of the node.
     """
     def __init__(self, name='bartender_client', class_name='cognitive_nodes.pnode.PNode',
                  space_class=None, space=None, history_size=100, **params):
+        """
+        Constructor for the PNodeBartenderClientMemory class. It also creates the ``know_client`` service.
+
+        :param name: The name of the P-Node.
+        :type name: str
+        :param class_name: The name of the P-Node class.
+        :type class_name: str
+        :param space_class: Full name of the class of the space of the P-Node. It is only used if no space is given.
+        :type space_class: str
+        :param space: The space of the P-Node.
+        :type space: cognitive_nodes.space.PointBasedSpace
+        :param history_size: The size of the history of the P-Node, defaults to 100.
+        :type history_size: int
+        :param params: Additional parameters passed to :class:`cognitive_nodes.pnode.PNode`.
+        :type params: dict
+        """
         super().__init__(name=name, class_name=class_name, space_class=space_class, space=space, history_size=history_size, **params)
 
         self.know_client_service = self.create_service(
@@ -73,7 +116,14 @@ class PNodeBartenderClientMemory(PNode):
 
     def calculate_activation(self, perception=None, activation_list=None):
         """
-        Activates when client preference != 0. Returns 1.0 or 0.0 (sin decay).
+        Calculate the activation: 1.0 if ``client:preference`` is different from 0 and the client is not known, 0.0 otherwise (there is no decay).
+
+        :param perception: Perception to use if no activation list is given.
+        :type perception: core.container.Container
+        :param activation_list: Dictionary of the activation inputs, with the data of each input (``activation_list[name]['data']``).
+        :type activation_list: dict
+        :return: The ``Activation`` message of the node.
+        :rtype: cognitive_node_interfaces.msg.Activation
         """
         if activation_list is not None:
             data = [activation_list[sensor]['data'] for sensor in activation_list]
@@ -103,7 +153,16 @@ class PNodeBartenderClientMemory(PNode):
         return self.activation
 
     def know_client_callback(self, request, response):
-        """Marca cliente como conocido en LTM (persistencia simple)."""
+        """
+        Callback of the ``pnode/<name>/know_client`` service. It registers the client as known.
+
+        :param request: The request, with the ``client_id`` of the client.
+        :type request: bartender_experiment_interfaces.srv.KnowClient.Request
+        :param response: The response of the service.
+        :type response: bartender_experiment_interfaces.srv.KnowClient.Response
+        :return: The response, with ``success`` set to True.
+        :rtype: bartender_experiment_interfaces.srv.KnowClient.Response
+        """
         client_key = _known_key_from_id_legacy(request.client_id)
         if client_key not in self.known_clients:
             self.known_clients.add(client_key)
@@ -112,11 +171,30 @@ class PNodeBartenderClientMemory(PNode):
 
 class PNodeNewClientPresent(PNode):
     """
-    PNode that represents a bartender client.
-    Activates when client preference is different from 0. It saves the client preference in its memory space, to deactivate when the client is already known.
+    P-Node that is active when there is a client that is not known yet and has not told its preference.
+
+    The activation is binary: 1.0 if the ``client:preference`` of the perception is 0 and the client (``client:id``) has not been
+    registered, and 0.0 otherwise. Clients are registered with the ``pnode/<name>/know_client`` service
+    (:class:`bartender_experiment_interfaces.srv.KnowClient`), and they are kept in the memory of the node.
     """
     def __init__(self, name='bartender_client', class_name='cognitive_nodes.pnode.PNode',
                  space_class=None, space=None, history_size=100, **params):
+        """
+        Constructor for the PNodeNewClientPresent class. It also creates the ``know_client`` service.
+
+        :param name: The name of the P-Node.
+        :type name: str
+        :param class_name: The name of the P-Node class.
+        :type class_name: str
+        :param space_class: Full name of the class of the space of the P-Node. It is only used if no space is given.
+        :type space_class: str
+        :param space: The space of the P-Node.
+        :type space: cognitive_nodes.space.PointBasedSpace
+        :param history_size: The size of the history of the P-Node, defaults to 100.
+        :type history_size: int
+        :param params: Additional parameters passed to :class:`cognitive_nodes.pnode.PNode`.
+        :type params: dict
+        """
         super().__init__(name=name, class_name=class_name, space_class=space_class, space=space, history_size=history_size, **params)
 
         self.know_client_service = self.create_service(
@@ -132,7 +210,14 @@ class PNodeNewClientPresent(PNode):
 
     def calculate_activation(self, perception=None, activation_list=None):
         """
-        Activates when client preference != 0. Returns 1.0 or 0.0 (sin decay).
+        Calculate the activation: 1.0 if ``client:preference`` is 0 and the client is not known, 0.0 otherwise (there is no decay).
+
+        :param perception: Perception to use if no activation list is given.
+        :type perception: core.container.Container
+        :param activation_list: Dictionary of the activation inputs, with the data of each input (``activation_list[name]['data']``).
+        :type activation_list: dict
+        :return: The ``Activation`` message of the node.
+        :rtype: cognitive_node_interfaces.msg.Activation
         """
         if activation_list is not None:
             data = [activation_list[sensor]['data'] for sensor in activation_list]
@@ -162,7 +247,16 @@ class PNodeNewClientPresent(PNode):
         return self.activation
 
     def know_client_callback(self, request, response):
-        """Marca cliente como conocido en LTM (persistencia simple)."""
+        """
+        Callback of the ``pnode/<name>/know_client`` service. It registers the client as known.
+
+        :param request: The request, with the ``client_id`` of the client.
+        :type request: bartender_experiment_interfaces.srv.KnowClient.Request
+        :param response: The response of the service.
+        :type response: bartender_experiment_interfaces.srv.KnowClient.Response
+        :return: The response, with ``success`` set to True.
+        :rtype: bartender_experiment_interfaces.srv.KnowClient.Response
+        """
         client_key = _known_key_from_id_legacy(request.client_id)
         if client_key not in self.known_clients:
             self.known_clients.add(client_key)
@@ -171,16 +265,40 @@ class PNodeNewClientPresent(PNode):
 
 class PNodeClientPresent(PNode):
     """
-    PNode that represents that a client is present (but no world model yet).
-    Activates with 1.0 while WM no existe; se desactiva (0.0) cuando existe.
+    P-Node that is active when a client is present but has not told its preference yet.
+
+    The activation is binary: 1.0 if the ``client:id`` of the perception is different from 0 and its ``client:preference`` is 0, and 0.0 otherwise.
     """
     def __init__(self, name='client_present', class_name='cognitive_nodes.pnode.PNode',
                  space_class=None, space=None, history_size=100, **params):
+        """
+        Constructor for the PNodeClientPresent class.
+
+        :param name: The name of the P-Node.
+        :type name: str
+        :param class_name: The name of the P-Node class.
+        :type class_name: str
+        :param space_class: Full name of the class of the space of the P-Node. It is only used if no space is given.
+        :type space_class: str
+        :param space: The space of the P-Node.
+        :type space: cognitive_nodes.space.PointBasedSpace
+        :param history_size: The size of the history of the P-Node, defaults to 100.
+        :type history_size: int
+        :param params: Additional parameters passed to :class:`cognitive_nodes.pnode.PNode`.
+        :type params: dict
+        """
         super().__init__(name=name, class_name=class_name, space_class=space_class, space=space, history_size=history_size, **params)
 
     def calculate_activation(self, perception=None, activation_list=None):
         """
-        Binario 0/1 (sin waits ni decay). Deja que el goal/policy cree el WM.
+        Calculate the activation: 1.0 if ``client:id`` is different from 0 and ``client:preference`` is 0, 0.0 otherwise (there is no waiting or decay).
+
+        :param perception: Perception to use if no activation list is given.
+        :type perception: core.container.Container
+        :param activation_list: Dictionary of the activation inputs, with the data of each input (``activation_list[name]['data']``).
+        :type activation_list: dict
+        :return: The ``Activation`` message of the node.
+        :rtype: cognitive_node_interfaces.msg.Activation
         """
         if activation_list is not None:
             data = [activation_list[sensor]['data'] for sensor in activation_list]
@@ -211,12 +329,19 @@ class LookupTableSpace(PointBasedSpace):
     """
     Exact-match point space.
 
-    Activates only when a perception matches an already stored point within
-    a tolerance. Uses a hash table for fast candidate lookup and a final
-    isclose check for correctness.
+    It is active only for perceptions that match a stored point within a tolerance. A hash table gives the candidate points
+    of each perception and a final ``numpy.isclose`` check with the same tolerance confirms the match. The activation is
+    the confidence stored for the matching point, or 0.0 if there is none.
     """
 
     def __init__(self, atol=1e-8, **kwargs):
+        """
+        Constructor for the LookupTableSpace class.
+
+        :param atol: Absolute tolerance used to match a perception with a stored point, defaults to 1e-8. If it is 0 or less, only identical values match.
+        :type atol: float
+        :param kwargs: Additional keyword arguments passed to :class:`cognitive_nodes.space.PointBasedSpace`.
+        """
         self.atol = atol
         self._lookup = {}
         super().__init__(**kwargs)
@@ -238,21 +363,53 @@ class LookupTableSpace(PointBasedSpace):
 
     @classmethod
     def populate_space(cls, data_container: Container, **kwargs):
+        """
+        Create the space from a data container, as in :meth:`cognitive_nodes.space.PointBasedSpace.populate_space`, and build the lookup table.
+
+        :param data_container: Container with the points of the space (features plus the confidence column).
+        :type data_container: core.container.Container
+        :param kwargs: Additional keyword arguments for the constructor of the space.
+        :return: The space populated with the data of the container.
+        :rtype: LookupTableSpace
+        """
         space = super().populate_space(data_container, **kwargs)
         space._rebuild_lookup()
         return space
 
     def reload_members(self, members, memberships, timestamps):
+        """
+        Replace the points of the space as in :meth:`cognitive_nodes.space.PointBasedSpace.reload_members` and rebuild the lookup table.
+
+        :param members: Features of the points, one row per point.
+        :type members: numpy.ndarray
+        :param memberships: Confidence of each point.
+        :type memberships: numpy.ndarray
+        :param timestamps: Timestamp of each point.
+        :type timestamps: numpy.ndarray
+        """
         super().reload_members(members, memberships, timestamps)
         self._rebuild_lookup()
 
     def prune(self, space):
+        """
+        Prune the features of the space as in :meth:`cognitive_nodes.space.PointBasedSpace.prune` and rebuild the lookup table.
+
+        :param space: The space used for comparison.
+        :type space: cognitive_nodes.space.PointBasedSpace
+        """
         super().prune(space)
         self._rebuild_lookup()
 
     def add_point(self, perceptions: Container, confidences: np.ndarray):
         """
-        Same insertion policy as PointBasedSpace, plus incremental index updates.
+        Add points to the space with the insertion rule of :meth:`cognitive_nodes.space.PointBasedSpace.add_point`, and update the lookup table with the new points.
+
+        :param perceptions: The perceptions to add.
+        :type perceptions: core.container.Container
+        :param confidences: The confidence of each perception.
+        :type confidences: numpy.ndarray
+        :return: The slot or slots where the points were stored, or -1 if no point was added.
+        :rtype: int | numpy.ndarray
         """
         probabilities = self.get_probability(perceptions)
         indexes = (confidences > 0.0) | (probabilities > 0.0)
@@ -282,7 +439,13 @@ class LookupTableSpace(PointBasedSpace):
 
     def get_probability(self, perceptions):
         """
-        Returns the stored confidence for an exact/tolerance match, otherwise 0.0.
+        Get the activation of the perceptions: the confidence stored for a point that matches each perception, or 0.0 if there is
+        none. If the space has a parent space, the minimum of both activations is taken.
+
+        :param perceptions: The perceptions to calculate the activation for.
+        :type perceptions: core.container.Container
+        :return: The activation values, one per perception row.
+        :rtype: numpy.ndarray
         """
         if self._data is None:
             return np.zeros(perceptions.size, dtype=float)

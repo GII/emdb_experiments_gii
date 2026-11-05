@@ -49,8 +49,25 @@ def _known_key_from_id_legacy(cid: float) -> str:
 
 
 class BarEmpty(WorldModel):
-    """BarEmpty class: activates when no client is present (o cliente no conocido)."""
+    """
+    World Model that is active while the client in the perception is not known.
+
+    The activation is 1.0, except when the perceived client (``client:id`` of the perception) has been registered with the
+    ``world_model/<name>/know_client`` service (:class:`bartender_experiment_interfaces.srv.KnowClient`), in which case it is 0.0.
+    The known clients are stored in the LTM data of the node. While it is active, it publishes its ``preference`` (0)
+    as a ``std_msgs/msg/Float32`` on ``cognitive_node/world_model/last_bottle``.
+    """
     def __init__(self, name='world_model', class_name='cognitive_nodes.world_model.WorldModel', **params):
+        """
+        Constructor for the BarEmpty class. It creates the ``know_client`` service and the publisher of the last bottle.
+
+        :param name: The name of the World Model.
+        :type name: str
+        :param class_name: The name of the World Model class.
+        :type class_name: str
+        :param params: Additional parameters passed to :class:`cognitive_nodes.world_model.WorldModel`.
+        :type params: dict
+        """
 
         super().__init__(name=name, class_name=class_name, **params)
 
@@ -83,7 +100,13 @@ class BarEmpty(WorldModel):
 
 
     def create_activation_input(self, node: dict):
-        """Añade suscripciones con QoS de sensor para baja latencia."""
+        """
+        Create the subscription to the value of a Perception neighbor, with the sensor data QoS profile, and register it in the activation inputs.
+        Neighbors that are not Perceptions are ignored.
+
+        :param node: The neighbor, with its ``name`` and ``node_type``.
+        :type node: dict
+        """
         name = node['name']
         node_type = node['node_type']
         if node_type == "Perception":
@@ -103,11 +126,11 @@ class BarEmpty(WorldModel):
 
     def read_activation_callback(self, msg: ContainerMsg):
         """
-        Callback method that reads a perception and stores it in the activation inputs list.
+        Callback that stores a perception in the activation inputs. Only messages with a single reading (``max_size`` of 1) are supported.
 
-        :param msg: PerceptionStamped message that contains the perception and its timestamp.
-        :type msg: cognitive_node_interfaces.msg.PerceptionStamped
-        """        
+        :param msg: The perception, as a container message.
+        :type msg: core_interfaces.msg.Container
+        """
         if msg.max_size>1:
             self.get_logger().error(f'Received perception with multiple readings: ({msg.name}). Perception messages should (currently) include only one reading!')
         elif msg.max_size==1:
@@ -126,7 +149,16 @@ class BarEmpty(WorldModel):
             self.get_logger().warn("Empty perception recieved in P-Node")
 
     def know_client_callback(self, request, response):
-        """Marca cliente como conocido en LTM (persistencia simple)."""
+        """
+        Callback of the ``know_client`` service. It registers the client as known and stores it in the LTM data of the node.
+
+        :param request: The request, with the ``client_id`` of the client.
+        :type request: bartender_experiment_interfaces.srv.KnowClient.Request
+        :param response: The response of the service.
+        :type response: bartender_experiment_interfaces.srv.KnowClient.Response
+        :return: The response, with ``success`` set to True.
+        :rtype: bartender_experiment_interfaces.srv.KnowClient.Response
+        """
         # OPT: única ruta de formateo: usa la convención ya persistida
         client_key = _known_key_from_id_legacy(request.client_id)
         if client_key not in self.known_clients:
@@ -136,7 +168,17 @@ class BarEmpty(WorldModel):
         return response
 
     def calculate_activation(self, perception=None, activation_list=None):
-        """Activa si NO hay cliente conocido activo."""
+        """
+        Calculate the activation of the World Model: 1.0 unless the client in the perception is known (see the class description).
+        The timestamp of the activation is that of the last sample of the perception, and the preference is published with :meth:`log_preference`.
+
+        :param perception: Perception to use if no activation list is given.
+        :type perception: core.container.Container
+        :param activation_list: Dictionary of the activation inputs, with the data of each input (``activation_list[name]['data']``).
+        :type activation_list: dict
+        :return: The ``Activation`` message of the node.
+        :rtype: cognitive_node_interfaces.msg.Activation
+        """
         if activation_list is not None:
             data = [activation_list[sensor]['data'] for sensor in activation_list]
             if self.perception is None and len(data)>0:
@@ -167,8 +209,10 @@ class BarEmpty(WorldModel):
 
     def log_preference(self, client_id):
         """
-        Timer: publica 'last_bottle' solo si está activo.
-        Mantén el trabajo mínimo aquí para no bloquear el executor.
+        Publish the preference on ``cognitive_node/world_model/last_bottle`` if the World Model is active.
+
+        :param client_id: Normalized id of the client in the perception.
+        :type client_id: float
         """
         if self.preference is not None and self.activation.activation > 0.0:
             # OPT: reutiliza el mensaje
@@ -177,9 +221,24 @@ class BarEmpty(WorldModel):
 
 
 class BarAnyClient(BarEmpty):
-    """World model that remains active and publishes the current client's preference."""
+    """
+    World Model that is always active and publishes the preference of the perceived client.
+
+    It extends :class:`BarEmpty`: its ``know_client`` service also stores the preference of the client. The preference
+    published on ``cognitive_node/world_model/last_bottle`` is that of the client in the perception, or -1.0 if the client is not registered.
+    """
     def __init__(self, name='world_model',
                  class_name='cognitive_nodes.world_model.WorldModel', **params):
+        """
+        Constructor for the BarAnyClient class.
+
+        :param name: The name of the World Model.
+        :type name: str
+        :param class_name: The name of the World Model class.
+        :type class_name: str
+        :param params: Additional parameters passed to :class:`BarEmpty`.
+        :type params: dict
+        """
         super().__init__(name=name, class_name=class_name, **params)
 
         self.client_preferences = self.ltm.setdefault('client_preferences', {})
@@ -191,7 +250,16 @@ class BarAnyClient(BarEmpty):
         self._last_bottle_msg = Float32()
 
     def know_client_callback(self, request, response):
-        """Stores the client's preference in LTM."""
+        """
+        Callback of the ``know_client`` service. It registers the client as known, stores its preference and saves both in the LTM data of the node.
+
+        :param request: The request, with the ``client_id`` and the ``preference`` of the client.
+        :type request: bartender_experiment_interfaces.srv.KnowClient.Request
+        :param response: The response of the service.
+        :type response: bartender_experiment_interfaces.srv.KnowClient.Response
+        :return: The response, with ``success`` set to True.
+        :rtype: bartender_experiment_interfaces.srv.KnowClient.Response
+        """
         client_key = _known_key_from_id_legacy(request.client_id)
         self.known_clients.add(client_key)
         self.client_preferences[client_key] = float(request.preference)
@@ -201,7 +269,16 @@ class BarAnyClient(BarEmpty):
         return response
 
     def calculate_activation(self, perception=None, activation_list=None):
-        """Always active and publishes the perceived client's preference."""
+        """
+        Set the activation to 1.0 and publish the preference of the client in the perception on ``cognitive_node/world_model/last_bottle``.
+
+        :param perception: Perception to use if no activation list is given.
+        :type perception: core.container.Container
+        :param activation_list: Dictionary of the activation inputs, with the data of each input (``activation_list[name]['data']``).
+        :type activation_list: dict
+        :return: The ``Activation`` message of the node.
+        :rtype: cognitive_node_interfaces.msg.Activation
+        """
         if activation_list is not None:
             data = [activation_list[sensor]['data'] for sensor in activation_list]
             if self.perception is None and len(data) > 0:
@@ -232,9 +309,32 @@ class BarAnyClient(BarEmpty):
 
 
 class ClientInBar(WorldModel):
-    """World model por cliente."""
+    """
+    World Model of one client.
+
+    It is active (1.0) only while the client in the perception (``client:id``, rounded to two decimals) is the client of the
+    node: the name of the node has to be ``client_<id>``, with the decimal point of the id replaced by ``_`` (for example ``client_0_67``
+    for the id 0.67). While it is active, it publishes its preference as a ``std_msgs/msg/Float32`` on ``cognitive_node/world_model/last_bottle``.
+    The nodes are created by :class:`bartender_experiment.policy.BartenderClientPolicy`.
+    """
     def __init__(self, name='world_model', actuation_config=None, perception_config=None,
                  class_name='cognitive_nodes.world_model.WorldModel', preference=None, **params):
+        """
+        Constructor for the ClientInBar class.
+
+        :param name: The name of the World Model, ``client_<id>``.
+        :type name: str
+        :param actuation_config: Actuation configuration. It is not used.
+        :type actuation_config: dict
+        :param perception_config: Perception configuration. It is not used.
+        :type perception_config: dict
+        :param class_name: The name of the World Model class.
+        :type class_name: str
+        :param preference: Preference (drink type) of the client, published while the node is active.
+        :type preference: float
+        :param params: Additional parameters passed to :class:`cognitive_nodes.world_model.WorldModel`.
+        :type params: dict
+        """
 
         self.preference = preference
         self.last_published_preference = None
@@ -257,7 +357,17 @@ class ClientInBar(WorldModel):
         self.perception = None  # placeholder for consolidated perception data
 
     def calculate_activation(self, perception=None, activation_list=None):
-        """Activa cuando el nombre del WM coincide con client_{id} (con _ por .)."""
+        """
+        Calculate the activation of the World Model: 1.0 if the client in the perception is the client of the node, 0.0 otherwise.
+        The timestamp of the activation is that of the last sample of the perception, and the preference is published with :meth:`log_preference`.
+
+        :param perception: Perception to use if no activation list is given.
+        :type perception: core.container.Container
+        :param activation_list: Dictionary of the activation inputs, with the data of each input (``activation_list[name]['data']``).
+        :type activation_list: dict
+        :return: The ``Activation`` message of the node.
+        :rtype: cognitive_node_interfaces.msg.Activation
+        """
         self.activation.activation = 0.0
 
         if activation_list is not None:
@@ -292,6 +402,16 @@ class ClientInBar(WorldModel):
         return self.activation
 
     def set_activation_callback(self, request, response):
+        """
+        Callback of the set activation service. It sets the activation of the node to the requested value.
+
+        :param request: The request, with the new ``activation``.
+        :type request: cognitive_node_interfaces.srv.SetActivation.Request
+        :param response: The response of the service.
+        :type response: cognitive_node_interfaces.srv.SetActivation.Response
+        :return: The response, with ``set`` set to True.
+        :rtype: cognitive_node_interfaces.srv.SetActivation.Response
+        """
         self.get_logger().debug('Setting activation ' + str(request.activation) + '...')
         self.activation.activation = request.activation
         self.activation.timestamp = self.get_clock().now().to_msg()
@@ -300,7 +420,12 @@ class ClientInBar(WorldModel):
 
     # TODO: Refactor common methods in BarEmpty and ClientInBar to avoid code duplication
     def create_activation_input(self, node: dict):
-        """Añade suscripciones con QoS de sensor para baja latencia."""
+        """
+        Create the subscription to the value of a Perception neighbor and register it in the activation inputs. Neighbors that are not Perceptions are ignored.
+
+        :param node: The neighbor, with its ``name`` and ``node_type``.
+        :type node: dict
+        """
         name = node['name']
         node_type = node['node_type']
         if node_type == "Perception":
@@ -320,11 +445,11 @@ class ClientInBar(WorldModel):
 
     def read_activation_callback(self, msg: ContainerMsg):
         """
-        Callback method that reads a perception and stores it in the activation inputs list.
+        Callback that stores a perception in the activation inputs. Only messages with a single reading (``max_size`` of 1) are supported.
 
-        :param msg: PerceptionStamped message that contains the perception and its timestamp.
-        :type msg: cognitive_node_interfaces.msg.PerceptionStamped
-        """        
+        :param msg: The perception, as a container message.
+        :type msg: core_interfaces.msg.Container
+        """
         if msg.max_size>1:
             self.get_logger().error(f'Received perception with multiple readings: ({msg.name}). Perception messages should (currently) include only one reading!')
         elif msg.max_size==1:
@@ -344,8 +469,7 @@ class ClientInBar(WorldModel):
 
     def log_preference(self):
         """
-        Timer: publica 'last_bottle' solo si está activo.
-        Mantén el trabajo mínimo aquí para no bloquear el executor.
+        Publish the preference of the client on ``cognitive_node/world_model/last_bottle`` if the World Model is active.
         """
         if self.preference is not None and self.activation.activation > 0.0:
             # OPT: reutiliza el mensaje

@@ -31,40 +31,65 @@ class Slider1DScenario:
     """
     Minimal 1-D reach task.
 
-    The agent is a scalar position on [0, 1000].  At each step the agent
-    applies a velocity that is clamped so the agent stays in bounds.  The
-    target position is randomised on every reset.  Success is declared when
-    the agent comes within ``success_radius`` units of the target.
+    The agent is a scalar position in the range given by ``BOUNDS`` (0 to 1000). At each step the agent
+    applies a velocity, and the resulting position is clamped to stay in bounds. The target position is
+    randomized on every reset. The target is reached when the agent is closer to it than ``SUCCESS_RADIUS``
+    (50 units).
     """
 
     BOUNDS = (0.0, 1000.0)
     SUCCESS_RADIUS = 50.0
 
     def __init__(self):
+        """
+        Constructor for the Slider1DScenario class. The agent and the target start at the middle of the range (500.0)
+        until :meth:`reset` is called.
+        """
         self.agent_pos = 500.0
         self.target_pos = 500.0
 
     # ------------------------------------------------------------------
     def reset(self, rng: np.random.Generator):
-        """Randomise agent and target positions."""
+        """
+        Randomize the positions of the agent and of the target, with a uniform distribution over ``BOUNDS``.
+
+        :param rng: The random number generator used to draw both positions.
+        :type rng: numpy.random.Generator
+        """
         lo, hi = self.BOUNDS
         self.agent_pos  = float(rng.uniform(lo, hi))
         self.target_pos = float(rng.uniform(lo, hi))
 
     # ------------------------------------------------------------------
     def apply_action(self, velocity: float):
-        """Move the agent by *velocity* units, clamped to bounds."""
+        """
+        Move the agent by the given velocity, keeping its position within ``BOUNDS``.
+
+        :param velocity: Displacement of the agent, in position units. It can be negative.
+        :type velocity: float
+        """
         lo, hi = self.BOUNDS
         self.agent_pos = float(np.clip(self.agent_pos + velocity, lo, hi))
 
     # ------------------------------------------------------------------
     @property
     def signed_distance(self) -> float:
-        """target_pos - agent_pos  ∈ [-1000, 1000]."""
+        """
+        Signed distance from the agent to the target (``target_pos - agent_pos``), in the range [-1000, 1000].
+
+        :return: The signed distance.
+        :rtype: float
+        """
         return self.target_pos - self.agent_pos
 
     @property
     def reached(self) -> bool:
+        """
+        Whether the target has been reached: the absolute value of the signed distance is lower than ``SUCCESS_RADIUS``.
+
+        :return: True if the agent is within the success radius of the target.
+        :rtype: bool
+        """
         return abs(self.signed_distance) < self.SUCCESS_RADIUS
 
 
@@ -72,22 +97,29 @@ class Slider1DScenario:
 
 class Sim1DSlider(Node):
     """
-    Minimal standalone ROS2 simulator node for the 1-D slider task.
+    Standalone ROS 2 simulator node for the 1-D slider task (see :class:`Slider1DScenario`).
 
-    Reads its configuration from the ``Simulator1D`` section of the
-    experiment YAML (same file passed to the commander).  Publishes two
-    Float32 sensors:
+    It reads its configuration from the ``Simulator1D`` section of the experiment YAML (the same file that is sent to the
+    commander) and from the ``Control`` section. The ROS parameters of the node are ``random_seed``, ``config_file``
+    (path of the experiment file) and ``visualize`` (whether to show the matplotlib window).
 
-    * ``/mdb/slider/sensor/dist_to_target``  — signed distance (raw)
-    * ``/mdb/slider/sensor/reached_target``  — 1.0 if reached, else 0.0
+    It publishes the sensors listed in ``Simulator1D.Perceptions`` as ``std_msgs/msg/Float32``. In the provided experiment
+    they are:
 
-    Exposes two ROS2 services mirroring the 2-D simulator API:
+    - ``/mdb/slider/sensor/dist_to_target``: signed distance from the agent to the target (not normalized).
+    - ``/mdb/slider/sensor/reached_target``: 1.0 if the target is reached, 0.0 otherwise.
 
-    * ``/mdb/slider/executed_action``   (cognitive_node_interfaces/srv/Action)
-    * ``/mdb/slider/world_reset``       (cognitive_processes_interfaces/srv/WorldReset)
+    It offers two services, whose names and types are taken from the ``Control`` section:
+
+    - ``executed_action_service`` (``/mdb/slider/executed_action``, :class:`cognitive_node_interfaces.srv.Action`): executes an action.
+    - ``world_reset_service`` (``/mdb/slider/world_reset``, :class:`cognitive_processes_interfaces.srv.WorldReset`): resets the world.
     """
 
     def __init__(self):
+        """
+        Constructor for the Sim1DSlider class. It declares the ``random_seed``, ``config_file`` and ``visualize`` parameters,
+        creates the scenario and the client of the commander service used to load the experiment.
+        """
         super().__init__("sim_1d_slider")
 
         self.random_seed = (
@@ -124,18 +156,35 @@ class Sim1DSlider(Node):
     # ------------------------------------------------------------------
 
     def get_perceptions(self):
-        """Push current scenario state into the ROS perception messages."""
+        """
+        Copy the state of the scenario into the perception messages: ``dist_to_target`` takes the signed distance and
+        ``reached_target`` takes 1.0 or 0.0.
+        """
         self.perceptions["dist_to_target"].data  = self.scenario.signed_distance
         self.perceptions["reached_target"].data  = 1.0 if self.scenario.reached else 0.0
 
     def reset_world(self):
-        """Randomise the scenario."""
+        """
+        Randomize the scenario (see :meth:`Slider1DScenario.reset`) and, if the visualization is enabled, redraw it.
+        """
         self.scenario.reset(self.rng)
         if self.visualize:
             self._update_visualization()
 
     def denormalize_actuation(self, action: Container, actuation_config):
-        """Rescale policy [0, 1] outputs back to physical units."""
+        """
+        Rescale the values of an action from [0, 1] to the physical bounds of the actuation configuration.
+
+        Every feature of the action is labeled ``<actuator>:<parameter>``. The features whose parameter is of type ``float`` in
+        ``actuation_config`` are rescaled as ``min + value * (max - min)``, with the ``bounds`` of the parameter.
+
+        :param action: The action to rescale.
+        :type action: core.container.Container
+        :param actuation_config: The ``Simulator1D.Actuation`` section of the experiment file: for each actuator, its parameters with ``type`` and ``bounds``.
+        :type actuation_config: dict
+        :return: The data of the action, with the float parameters in physical units.
+        :rtype: xarray.DataArray
+        """
         data = action.read()
         for dim in action.feature_labels:
             actuator, param = dim.split(":", 1)
@@ -146,7 +195,12 @@ class Sim1DSlider(Node):
         return data
 
     def execute_action(self, action: Container):
-        """Denormalise and apply the action to the scenario."""
+        """
+        Rescale the action and apply the ``agent:velocity`` of its last row to the scenario. If the visualization is enabled, it is redrawn.
+
+        :param action: The action to execute, with values in [0, 1].
+        :type action: core.container.Container
+        """
         data = self.denormalize_actuation(action, self.actuation_config)
         velocity = float(data.sel(features="agent:velocity").values[-1])
         self.scenario.apply_action(velocity)
@@ -226,11 +280,27 @@ class Sim1DSlider(Node):
     # ------------------------------------------------------------------
 
     def world_reset_service_callback(self, request, response):
+        """
+        Callback of the world reset service. It resets the world with :meth:`reset_world`.
+
+        :param request: The request to reset the world.
+        :type request: cognitive_processes_interfaces.srv.WorldReset.Request
+        :param response: The response of the service.
+        :type response: cognitive_processes_interfaces.srv.WorldReset.Response
+        :return: The response, with ``success`` set to True.
+        :rtype: cognitive_processes_interfaces.srv.WorldReset.Response
+        """
         self.reset_world()
         response.success = True
         return response
 
     def new_command_callback(self, data):
+        """
+        Callback of the control topic. When the command is ``end``, the simulator shuts down.
+
+        :param data: Control message, with the iteration and the command.
+        :type data: cognitive_processes_interfaces.msg.ControlMsg
+        """
         self.get_logger().debug(f"Command received... ITERATION: {data.iteration}")
         # World resets arrive through the world reset service, not through this topic
         if data.command == "end":
@@ -238,6 +308,16 @@ class Sim1DSlider(Node):
             rclpy.shutdown()
 
     def new_action_service_callback(self, request, response):
+        """
+        Callback of the executed action service. It builds the action from the request and executes it with :meth:`execute_action`.
+
+        :param request: The request, with the action to execute.
+        :type request: cognitive_node_interfaces.srv.Action.Request
+        :param response: The response of the service.
+        :type response: cognitive_node_interfaces.srv.Action.Response
+        :return: The response, with ``success`` set to True.
+        :rtype: cognitive_node_interfaces.srv.Action.Response
+        """
         action = Container.from_msg(request.action)
         self.get_logger().info("Executing action " + str(action))
         self.execute_action(action)
@@ -245,6 +325,9 @@ class Sim1DSlider(Node):
         return response
 
     def publish_perceptions(self):
+        """
+        Update the perceptions from the scenario (see :meth:`get_perceptions`) and publish all of them. It is called by a timer every 0.01 s.
+        """
         self.get_perceptions()
         for ident, publisher in self.sim_publishers.items():
             self.get_logger().debug(
@@ -257,10 +340,23 @@ class Sim1DSlider(Node):
     # ------------------------------------------------------------------
 
     def load_experiment_file_in_commander(self):
+        """
+        Ask the commander to load the experiment file.
+
+        :return: The result of the request.
+        """
         loaded = self.load_client.send_request(file=self.config_file)
         return loaded
 
     def load_configuration(self):
+        """
+        Read the experiment file given in ``config_file`` and configure the simulator.
+
+        It creates the perceptions (``Simulator1D.Perceptions``), reads the actuation configuration (``Simulator1D.Actuation``),
+        sets up the control channel (``Control``), creates the random number generator from ``random_seed`` and randomizes the scenario.
+        If the visualization is enabled, it creates the window. Finally, it asks the commander to load the same file. If no
+        file is given or it does not exist, the node is shut down.
+        """
         if not self.config_file:
             self.get_logger().error("No configuration file specified!")
             rclpy.shutdown()
@@ -295,6 +391,15 @@ class Sim1DSlider(Node):
         self.load_experiment_file_in_commander()
 
     def setup_control_channel(self, simulation: dict):
+        """
+        Create the subscription to the control topic and the services of the simulator.
+
+        The action service and the timer that publishes the perceptions are created if ``executed_action_service`` is in the
+        configuration, and the world reset service if ``world_reset_service`` is.
+
+        :param simulation: The ``Control`` section of the experiment file.
+        :type simulation: dict
+        """
         self.ident = simulation["id"]
         topic     = simulation["control_topic"]
         classname = simulation["control_msg"]
@@ -330,6 +435,14 @@ class Sim1DSlider(Node):
             )
 
     def setup_perceptions(self, perceptions: list):
+        """
+        Create the messages and the publishers of the perceptions.
+
+        The initial value of each perception depends on its message type: 0.0 for Float types, an empty list for List types and False otherwise.
+
+        :param perceptions: The ``Simulator1D.Perceptions`` section of the experiment file: a list with the ``name``, ``perception_topic`` and ``perception_msg`` of each perception.
+        :type perceptions: list
+        """
         for perception in perceptions:
             sid       = perception["name"]
             topic     = perception["perception_topic"]
@@ -351,6 +464,12 @@ class Sim1DSlider(Node):
 
 
 def main(args=None):
+    """
+    Entry point of the ``simple_1d_sim`` executable. It creates the simulator, loads its configuration and spins it until it is shut down.
+
+    :param args: Command line arguments passed to ``rclpy.init``.
+    :type args: list
+    """
     rclpy.init(args=args)
     sim = Sim1DSlider()
     sim.load_configuration()
