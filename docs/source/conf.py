@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.abspath("../../oscar_perception"))
 sys.path.insert(0, os.path.abspath("../../sim_2d_emdb"))
 sys.path.insert(0, os.path.abspath("../../sim_2d_emdb/sim_2d_emdb"))
 sys.path.insert(0, os.path.abspath("../../tiago_emdb"))
+sys.path.insert(0, os.path.abspath("../../bartender_experiment"))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -77,6 +78,9 @@ autodoc_mock_imports = [
     "tf2_ros",
     "tf2_geometry_msgs",
     "simulators_interfaces",
+    "bartender_experiment_interfaces",
+    "cognitive_processes",
+    "cognitive_processes_interfaces",
 ]
 
 # -- Options for HTML output -------------------------------------------------
