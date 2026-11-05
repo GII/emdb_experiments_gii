@@ -55,7 +55,7 @@ So, as we can see, the Policies activation depends exclusively on their P-Nodes 
 
 ## Execution
 
-To execute this experiment, the OSCAR simulator must be installed. The instructions can be found [here](https://github.com/efallash/oscar/tree/humble_gazebo_classic).
+To execute this experiment, the OSCAR simulator must be installed. The instructions can be found [here](https://github.com/efallash/oscar/tree/humble_gazebo_classic), in its branch for ROS 2 Humble and Gazebo Classic, the most recent one.
 
 Once installed, to run the experiment, first the OSCAR simulator must be launched:
 
@@ -144,7 +144,7 @@ The policies that the robot can use to solve the task are the following ones:
 
 ### Execution
 
-To execute this experiment, the OSCAR simulator must be installed. The instructions can be found [here](https://github.com/efallash/oscar/tree/humble_gazebo_classic).
+To execute this experiment, the OSCAR simulator must be installed. The instructions can be found [here](https://github.com/efallash/oscar/tree/humble_gazebo_classic), in its branch for ROS 2 Humble and Gazebo Classic, the most recent one.
 
 Once installed, to run the experiment, first the OSCAR simulator must be launched:
 

@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.abspath("../../oscar_perception"))
 sys.path.insert(0, os.path.abspath("../../sim_2d_emdb"))
 sys.path.insert(0, os.path.abspath("../../sim_2d_emdb/sim_2d_emdb"))
 sys.path.insert(0, os.path.abspath("../../tiago_emdb"))
+sys.path.insert(0, os.path.abspath("../../sim_1d_emdb"))
 sys.path.insert(0, os.path.abspath("../../bartender_experiment"))
 
 # -- Project information -----------------------------------------------------
@@ -55,6 +56,7 @@ autodoc_mock_imports = [
     "ros2_numpy",
     "cv_bridge",
     "cv2", 
+    "matplotlib",
     "cameratransform",
     "gazebo_msgs",
     "skimage",

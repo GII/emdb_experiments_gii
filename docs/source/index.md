@@ -13,13 +13,16 @@ In this [repository](https://github.com/pillar-robots/emdb_experiments_gii), you
 
 - [2D Manipulation Experiment](experiments/manipulation_2d.md): Experiment that demonstrates low-level actuation, and learning of deliberative models.
 - [Bartender Experiment](experiments/bartender_experiment.md): Experiment in which a simulated robot prepares and serves drinks to clients with different preferences, and returns the used glass. It is simulated with a discrete event simulator and uses a curriculum of three stages.
+
+- [Fruit Serve Experiment](experiments/fruit_serve_experiment.md): Experiment in which a simulated TIAGo robot takes a fruit from a shelf, weighs it on a scale and puts it in a delivery box. It is simulated with a discrete event simulator and has variants with a gradual reward and with LLM exploration.
+
+- [1D Simulator Experiment](experiments/sim_1d_experiment.md): Experiment in which an agent moves along a line to reach a target, with a single continuous action. It is simulated with the *sim_1d_emdb* package.
+
 <!-- - [PumpPanel Experiment](experiments/pump_panel_experiment.md): Experiment that demonstrates the use of the LLM exploration policy to solve a complex multi-step task. -->
 
 The *experiments* ROS package includes the YAML files that configure the experiments and the launch files to run them. The parameters of these files are described in the [configuration page](https://docs.pillar-robots.eu/projects/emdb_core/en/latest/core/configuration.html) of the core documentation.
 
-The repository also contains experiments that do not have a page yet: the fruit serve experiment and the 1D simulator experiment.
-
-In this repository are also included packages that allow the communication between the cognitive architecture and some of the simulators used in the experiments (OSCAR and the 2D simulator) and a real robot (TIAGo++). Their API documentation can be found in its respective section. The *sim_1d_emdb* package, which connects the architecture with the 1D simulator, does not have API documentation yet.
+In this repository are also included packages that allow the communication between the cognitive architecture and some of the simulators used in the experiments (OSCAR, the 2D simulator and the 1D simulator) and a real robot (TIAGo++). Their API documentation can be found in its respective section.
 
 ```{toctree}
 :hidden:
@@ -31,6 +34,8 @@ experiments/oscar_experiment.md
 experiments/fruit_shop_experiment.md
 experiments/manipulation_2d.md
 experiments/bartender_experiment.md
+experiments/fruit_serve_experiment.md
+experiments/sim_1d_experiment.md
 
 ```
 
@@ -43,5 +48,6 @@ api_documentation/oscar_emdb.rst
 api_documentation/sim_2d_emdb.rst
 api_documentation/tiago_emdb.rst
 api_documentation/bartender_experiment.rst
+api_documentation/sim_1d_emdb.rst
 
 ```
