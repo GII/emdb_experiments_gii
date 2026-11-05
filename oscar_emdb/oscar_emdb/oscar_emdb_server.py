@@ -325,7 +325,7 @@ class OscarMDB(Node):
         """
         if (
             not self.perception.obj_in_left_hand
-            and not self.perception.obj_in_left_hand
+            and not self.perception.obj_in_right_hand
         ):
             pick_point = self.perception.red_object
 
@@ -369,7 +369,7 @@ class OscarMDB(Node):
         """
         if (
             not self.perception.obj_in_left_hand
-            and not self.perception.obj_in_left_hand
+            and not self.perception.obj_in_right_hand
         ):
             pick_point = self.perception.red_object
 
