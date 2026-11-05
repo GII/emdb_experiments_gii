@@ -2,7 +2,7 @@
 (Work in progress)
 
 ```{warning}
-This experiment cannot be run in this version. Its configuration files use classes that are not available here (`PolicyParametrized`, `PolicyBlockingParametrized`, `CNodeParameter`, `PumpPanelPerception` and `PolicyLLMExplorationPump`). The page is kept for reference and is not included in the documentation index.
+This experiment is not available in this version. The page is kept for reference and is not included in the documentation index.
 ```
 
 This experiment demonstrates the usage of a LLM-based exploration strategy to achieve goals in an environment where it is not feasible to achieve goals by means of random exploration. It is developed in a discrete event simulator where the robot has to operate an industrial panel to start a pump system.
