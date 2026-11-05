@@ -1,11 +1,13 @@
+import os
 import os.path
 import yaml
 import yamlloader
 import numpy as np
 import rclpy
-from copy import deepcopy
 import matplotlib
-matplotlib.use("TkAgg")
+# As in scenarios_2D: it needs no display unless a backend is asked for with MPLBACKEND
+if not os.environ.get('MPLBACKEND'):
+    matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from rclpy.node import Node
@@ -21,7 +23,8 @@ from core.service_client import ServiceClient
 from core.blocking_wait_check import register_executor_thread
 
 from core_interfaces.srv import LoadConfig
-from core.utils import class_from_classname, actuation_msg_to_dict, resolve_seed
+from core.container import Container
+from core.utils import class_from_classname, resolve_seed
 
 
 class Slider1DScenario:
@@ -111,7 +114,6 @@ class Sim1DSlider(Node):
         self.sim_publishers  = {}
         self.perceptions     = {}
         self.base_messages   = {}
-        self.service_world_reset = False
 
         self.load_client = ServiceClient(LoadConfig, "commander/load_experiment")
 
@@ -132,21 +134,21 @@ class Sim1DSlider(Node):
         if self.visualize:
             self._update_visualization()
 
-    def denormalize_actuation(self, actuation, actuation_config):
+    def denormalize_actuation(self, action: Container, actuation_config):
         """Rescale policy [0, 1] outputs back to physical units."""
-        act = deepcopy(actuation)
-        for actuator in act:
-            for param in act[actuator][0]:
-                if actuation_config[actuator][param]["type"] == "float":
-                    bounds = actuation_config[actuator][param]["bounds"]
-                    value  = act[actuator][0][param]
-                    act[actuator][0][param] = bounds[0] + value * (bounds[1] - bounds[0])
-        return act
+        data = action.read()
+        for dim in action.feature_labels:
+            actuator, param = dim.split(":", 1)
+            if actuation_config[actuator][param]["type"] == "float":
+                bounds = actuation_config[actuator][param]["bounds"]
+                value  = data.sel(features=dim).values
+                data.loc[{"features": dim}] = bounds[0] + value * (bounds[1] - bounds[0])
+        return data
 
-    def execute_action(self, action: dict):
+    def execute_action(self, action: Container):
         """Denormalise and apply the action to the scenario."""
-        action = self.denormalize_actuation(action, self.actuation_config)
-        velocity = action["agent"][0]["velocity"]
+        data = self.denormalize_actuation(action, self.actuation_config)
+        velocity = float(data.sel(features="agent:velocity").values[-1])
         self.scenario.apply_action(velocity)
         if self.visualize:
             self._update_visualization()
@@ -230,17 +232,16 @@ class Sim1DSlider(Node):
 
     def new_command_callback(self, data):
         self.get_logger().debug(f"Command received... ITERATION: {data.iteration}")
-        if data.command == "reset_world":
-            if not self.service_world_reset:
-                self.reset_world()
-        elif data.command == "end":
+        # World resets arrive through the world reset service, not through this topic
+        if data.command == "end":
             self.get_logger().info("Ending simulator as requested by LTM...")
             rclpy.shutdown()
 
     def new_action_service_callback(self, request, response):
-        action = actuation_msg_to_dict(request.action)
+        action = Container.from_msg(request.action)
         self.get_logger().info("Executing action " + str(action))
         self.execute_action(action)
+        response.success = True
         return response
 
     def publish_perceptions(self):
@@ -319,7 +320,6 @@ class Sim1DSlider(Node):
                 0.01, self.publish_perceptions, callback_group=self.cbgroup_server
             )
         if service_world_reset:
-            self.service_world_reset = True
             classname_reset          = simulation["world_reset_msg"]
             self.message_world_reset = class_from_classname(classname_reset)
             self.create_service(

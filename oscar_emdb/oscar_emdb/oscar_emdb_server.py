@@ -234,9 +234,8 @@ class OscarMDB(Node):
         :type data: ROS msg defined in the config file. Typically cognitive_processes_interfaces.msg.ControlMsg
         """
         self.get_logger().debug(f"Command received... ITERATION: {data.iteration}")
-        if data.command == "reset_world":
-            await self.reset_world()
-        elif data.command == "end":
+        # World resets arrive through the world reset service, not through this topic
+        if data.command == "end":
             self.get_logger().info("Ending experiment as requested by LTM...")
             rclpy.shutdown()
 

@@ -65,7 +65,6 @@ class Sim2DSimple(Node):
         self.sim_publishers = {}
         self.perceptions = {}
         self.base_messages = {}
-        self.service_world_reset = False
 
         self.load_client=ServiceClient(LoadConfig, 'commander/load_experiment')
 
@@ -261,9 +260,8 @@ class Sim2DSimple(Node):
         :type data: ROS msg defined in setup_control_channel
         """
         self.get_logger().debug(f"Command received... ITERATION: {data.iteration}")
-        if data.command == "reset_world" and not self.service_world_reset:
-            self.reset_world()
-        elif data.command == "end":
+        # World resets arrive through the world reset service, not through this topic
+        if data.command == "end":
             self.get_logger().info("Ending simulator as requested by LTM...")
             rclpy.shutdown()
 
@@ -358,7 +356,6 @@ class Sim2DSimple(Node):
             self.get_logger().info("Creating perception publisher timer... ")
             self.perceptions_timer = self.create_timer(0.01, self.publish_perceptions, callback_group=self.cbgroup_server)
         if service_world_reset:
-            self.service_world_reset = True
             classname= simulation["world_reset_msg"]
             self.message_world_reset = class_from_classname(classname)
             self.create_service(self.message_world_reset, service_world_reset, self.world_reset_service_callback, callback_group=self.cbgroup_server)
