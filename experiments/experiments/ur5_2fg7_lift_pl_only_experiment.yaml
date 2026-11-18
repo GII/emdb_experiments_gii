@@ -1,0 +1,418 @@
+# UR5e + OnRobot 2FG7 in MuJoCo: grasp the ball and lift it 5 cm. The task is learned by a learned policy
+# (PolicyLearned, SAC) on its own, without a utility model. Simulator: ur5_mujoco (physics_simulators/ in
+# emdb_discrete_event_simulator_gii). Launch file: ur5_launch.py. See docs/source/experiments/ur5_2fg7_lift_experiment.md.
+#
+# Robot (UR5TwoFG7Scenario of ur5_mujoco): the 2FG7 with silicone fingertips and the fingers outwards, no grasp
+# macro, jerk-limited motions (URScript movel speed and acceleration) that blend into the next action.
+#   - arm:grip > 0.5 closes the gripper at the end of the motion, with the arm at rest (as in a pick); otherwise it
+#     opens. Nothing is automatic: the learner has to close, lift, and open again after a miss.
+#   - Goal (lifted_ball_drive): the ball held by both pads, with its bottom 5 cm above the table.
+#   - Perceptions: the ball relative to the pinch point, plus two readings that the real UR5e and 2FG7 provide: the
+#     height of the pinch point (arm kinematics) and the aperture of the gripper (gripper driver).
+#
+# Architecture: novelty exploration acts until the first success. Then model_creation_policy creates the P-node,
+# the C-node and the learned policy of the goal, but no utility model (spawn_utility_model: False). The policy:
+#   - learns from every transition of every process (td_learning: True; SAC learns off policy), one update per
+#     action (train_every_steps 50, gradient_steps 50), from its creation on;
+#   - acts once it has min_traces successes, whenever its C-node allows (scale_activation: False). Its actions are
+#     sampled, so it keeps exploring by itself;
+#   - saves its network to <run>/logs/<policy>/sac_model.zip (save_every).
+Experiment:
+    name: main_loop
+    class_name: cognitive_processes.main_loop.MainLoopLight
+    new_executor: True
+    threads: 4
+    parameters:
+        iterations: 3000
+        trials: 5
+        softmax_selection: False
+        softmax_temperature: 0.3
+        kill_on_finish: True
+Control:
+    id: ltm_simulator
+    control_topic: /main_loop/control
+    control_msg: cognitive_processes_interfaces.msg.ControlMsg
+    episodes_topic: /main_loop/episodes
+    episodes_msg: core_interfaces.msg.Container
+    executed_action_service: /mdb/ur5/executed_action
+    executed_action_msg: cognitive_node_interfaces.srv.Action
+    world_reset_service: /mdb/ur5/world_reset
+    world_reset_msg: cognitive_processes_interfaces.srv.WorldReset
+LTM:
+    Globals:
+        actuation_config:
+            arm: ["dist", "angle", "z", "grip"]
+
+    Files:
+        -
+            id: goodness
+            class: core.file.FileGoodness
+            file: goodness.txt
+        -
+            id: pnodes_content
+            class: core.file.FilePNodesContent
+            file: pnodes_content.txt
+            parameters:
+                save_interval: 0
+        -
+            id: trials
+            class: core.file.FileTrialsSuccess
+            file: trials.txt
+        -
+            id: dataset
+            class: core.file.FileEpisodesDataset
+            file: dataset.csv
+        -
+            id: world_model_success
+            class: core.file.FileWorldModelSuccess
+            file: world_model_success.txt
+        -
+            id: save_models
+            class: core.file.FileSaveModels
+            file: models_save
+            parameters:
+                save_interval: 0
+
+    Connectors:
+        -
+            data: Space
+            default_class: cognitive_nodes.space.ANNSpace
+        -
+            data: Perception
+            default_class: cognitive_nodes.perception.Perception
+        -
+            data: PNode
+            default_class: cognitive_nodes.pnode.PNode
+            parameters:
+                space_class: cognitive_nodes.space.ANNSpace
+                history_size: 500
+        -
+            data: CNode
+            default_class: cognitive_nodes.cnode.CNode
+        -
+            data: Goal
+            default_class: cognitive_nodes.goal.GoalMotiven
+            parameters:
+                space_class: cognitive_nodes.space.ANNSpace
+                history_size: 300
+                min_confidence: 0.94
+                ltm_id: ltm_0
+        -
+            data: WorldModel
+            default_class: cognitive_nodes.world_model.WorldModelLearned
+            parameters:
+                episodes_msg: core_interfaces.msg.Container
+                episodes_topic: /main_loop/episodes
+                prediction_srv_type: cognitive_node_interfaces.srv.Predict
+                main_size: 2000
+                train_sample: 200
+                train_split: 0.8
+                validation_split: 0.1
+                secondary_size: 50
+                retrain: True
+        -
+            # Only used with spawn_utility_model: True (model_creation_policy)
+            data: UtilityModel
+            default_class: cognitive_nodes.utility_model.QUtilityModel
+            parameters:
+                    max_iterations: 50
+                    candidate_actions: 100
+                    ltm_id: ltm_0
+                    candidate_generation: "latin"
+                    softmax_selection: True
+                    softmax_temperature: 0.01
+                    trace_length: 50          # states learned before each success (a success of the exploration takes ~55-115 actions)
+                    min_traces: 20
+                    max_traces: 200
+                    train_traces: 200         # every training uses all the stored successes (max_traces)
+                    batch_size: 256           # (default 32) with all the traces, the data is large and the main loop waits for each training
+                    train_every: 5
+                    replace_every: 5
+                    discount_factor: 0.9
+                    reward_factor: 10.0
+                    max_antitraces: 5
+                    evaluation_method: "exponential"
+                    epochs: 100
+                    learning_rate: 0.001
+                    output_activation: "linear"
+                    hidden_layers: [256, 128]
+        -
+            data: Policy
+            default_class: cognitive_nodes.policy.PolicyLearned
+            parameters:
+                obs_dim: auto       # from the perceptions: ball_x (1) + dist_gripper_ball (3) + gripper_ball_dz (1)
+                                    # + gripper_height (1) + gripper_width (1)
+                buffer_size: 200000       # a run has up to ~150000 actions: the first successes are never overwritten
+                train_every: 5            # no effect here (see train_every_steps and scale_activation)
+                train_every_steps: 50     # SAC trains every 50 new actions of any process...
+                gradient_steps: 50        # ...with 50 updates: one update per action
+                batch_size: 100
+                min_traces: 20
+                max_steps: 50
+                ltm_id: ltm_0
+                learning_rate: 0.001
+                train_chunk: 10     # gradient steps per chunk; the reaction can act between chunks
+                scale_activation: False   # never scaled: it acts whenever its C-node allows, as a utility model does
+                td_learning: True   # SAC learns from every transition with bootstrapping (see policy.py)
+                save_every: 10      # save the SAC model to <run>/logs/<policy>/sac_model.zip (+ .json) every 10
+                                    # trainings and at the end of the run (0 = never)
+    Nodes:
+        Perception:
+            -
+                name: ball_x
+                class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
+                parameters:
+                    default_msg: std_msgs.msg.Float32
+                    default_topic: /mdb/ur5/sensor/ball_x
+                    normalize_data:
+                        min_value: -0.8      # m
+                        max_value: 0.8
+            -
+                name: dist_gripper_ball
+                class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
+                parameters:
+                    default_msg: simulators_interfaces.msg.ObjectListMsg
+                    default_topic: /mdb/ur5/sensor/dist_gripper_ball
+                    normalize_data:
+                        distance_min: 0
+                        distance_max: 0.8    # m, planar pinch-ball distance (the workspace is 0.30-0.65 m from the base)
+                        angle_min: -180      # deg, bearing of the ball relative to the heading
+                        angle_max: 180
+            -
+                name: gripper_ball_dz
+                class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
+                parameters:
+                    default_msg: std_msgs.msg.Float32
+                    default_topic: /mdb/ur5/sensor/gripper_ball_dz
+                    normalize_data:
+                        min_value: -0.05     # m, pinch height minus ball centre height (grasp at about 0)
+                        max_value: 0.45
+            -
+                name: gripper_height
+                class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
+                parameters:
+                    default_msg: std_msgs.msg.Float32
+                    default_topic: /mdb/ur5/sensor/gripper_height
+                    normalize_data:
+                        min_value: 0.0       # m, pinch point above the table (from the arm's kinematics)
+                        max_value: 0.45
+            -
+                name: gripper_width
+                class_name: sim_2d_emdb.perception.Sim2DDistancesPerception
+                parameters:
+                    default_msg: std_msgs.msg.Float32
+                    default_topic: /mdb/ur5/sensor/gripper_width
+                    normalize_data:
+                        min_value: 0.035     # m, 2FG7 aperture with the fingers outwards (on the ball: ~0.05)
+                        max_value: 0.073
+
+        RobotPurpose:
+            -
+                name: lifted_ball_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 1.0
+                    drive_id: 'lifted_ball_drive'
+                    purpose_type: 'Mission'
+                    terminal: True
+            -
+                name: novelty_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 0.1
+                    drive_id: 'novelty_drive'
+                    purpose_type: 'Need'
+            -
+                name: effectance_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 0.25
+                    drive_id: 'effectance_drive'
+                    purpose_type: 'Need'
+            -
+                name: model_creation_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 1.0
+                    drive_id: 'model_creation_drive'
+                    purpose_type: 'Need'
+
+        Drive:
+            -
+                name: lifted_ball_drive
+                class_name: cognitive_nodes.drive.DriveExponential
+                parameters:
+                    input_topic: /mdb/ur5/sensor/ball_lifted
+                    input_msg: std_msgs.msg.Float32
+                    min_eval: 0.8
+                    neighbors: [{"name": "lifted_ball_need", "node_type": "RobotPurpose"}]
+            -
+                name: novelty_drive
+                class_name: cognitive_nodes.novelty.DriveNovelty
+                parameters:
+                    neighbors: [{"name": "novelty_need", "node_type": "RobotPurpose"}]
+            -
+                name: effectance_drive
+                class_name: cognitive_nodes.effectance.DriveEffectanceInternal
+                parameters:
+                    ltm_id: ltm_0
+                    min_confidence: 0.84
+                    limit_depth: False
+                    neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
+            -
+                name: model_creation_drive
+                class_name: cognitive_nodes.model_creation.ModelCreationDrive
+                parameters:
+                    neighbors: [{"name": "model_creation_need", "node_type": "RobotPurpose"}]
+                    LTM_id: ltm_0
+                    max_iterations: 20
+                    episodes_topic: /main_loop/episodes
+                    episodes_msg: core_interfaces.msg.Container
+                    model_creation_policy: model_creation_policy
+
+        Goal:
+            -
+                name: novelty_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "novelty_drive", "node_type": "Drive"}]
+            -
+                name: effectance_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "effectance_drive", "node_type": "Drive"}]
+            -
+                name: model_creation_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "model_creation_drive", "node_type": "Drive"}]
+        PNode:
+            -
+                name: novelty_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: effectance_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: model_creation_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+        CNode:
+            -
+                name: novelty_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "novelty_pnode", "node_type": "PNode"}]
+            -
+                name: model_creation_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "model_creation_goal", "node_type": "Goal"}, {"name": "model_creation_pnode", "node_type": "PNode"}]
+            -
+                name: effectance_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "effectance_pnode", "node_type": "PNode"}]
+
+        Policy:
+            -
+                name: model_creation_policy
+                class_name: cognitive_nodes.model_creation.ModelCreationPolicy
+                parameters:
+                    neighbors: [{"name": "model_creation_cnode", "node_type": "CNode"}]
+                    LTM_id: ltm_0
+                    max_iterations: 20
+                    episodes_topic: /main_loop/episodes
+                    episodes_msg: core_interfaces.msg.Container
+                    # Models created for each new goal: here only the learned policy, no utility model
+                    spawn_utility_model: False
+                    spawn_policy: True
+            -
+                name: effectance_policy
+                class_name: cognitive_nodes.effectance.PolicyEffectanceInternal
+                parameters:
+                    goal_class: cognitive_nodes.effectance.GoalActivatePNode
+                    neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
+                    confidence: 0.5
+                    threshold_delta: 0.5
+                    limit_depth: False
+                    ltm_id: ltm_0
+
+        UtilityModel:
+            -
+                name: novelty_exploration
+                class_name: cognitive_nodes.utility_model.NoveltyUtilityModel
+                new_executor: True
+                threads: 2
+                parameters:
+                    trace_length: 20
+                    max_iterations: 50
+                    candidate_actions: 100
+                    ltm_id: ltm_0
+                    neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
+                    softmax_selection: False
+                    softmax_temperature: 0.1
+
+SimulatedUR5:
+    Robot:
+        gripper: onrobot_2fg7    # the simulator also has none (magnet autograsp) and robotiq_2f85 (grasp macro)
+        hover_z: 0.16            # m, pinch point height of the start pose
+        grip_force: 20           # N (2FG7: 20-140)
+        grip_speed: 0.1          # m/s of aperture change (2FG7: 0.016-0.45)
+        lift_height: 0.05        # m, the goal: ball held with its bottom this high above the table
+        tool_speed: 0.25         # m/s (URScript movel default)
+        tool_accel: 1.2          # m/s^2 (URScript movel default)
+        blend_time: 0.15         # s before the end of a motion at which the next action is decided
+    Actuation:
+        arm:
+            dist:
+                type: float
+                bounds: [0, 0.25]        # m to advance along the heading
+            angle:
+                type: float
+                bounds: [-120, 120]      # deg, heading change (the gripper turns with it)
+            z:
+                type: float
+                bounds: [-0.15, 0.15]    # m, height change (the fingertips stay above the table)
+            grip:
+                type: float
+                bounds: [0, 1]           # > 0.5: close (at the end of the motion); <= 0.5: open
+    Perceptions:
+        -
+            name: ball_x
+            perception_topic: /mdb/ur5/sensor/ball_x
+            perception_msg: std_msgs.msg.Float32
+        -
+            name: dist_gripper_ball
+            perception_topic: /mdb/ur5/sensor/dist_gripper_ball
+            perception_msg: simulators_interfaces.msg.ObjectListMsg
+        -
+            name: gripper_ball_dz
+            perception_topic: /mdb/ur5/sensor/gripper_ball_dz
+            perception_msg: std_msgs.msg.Float32
+        -
+            name: gripper_height
+            perception_topic: /mdb/ur5/sensor/gripper_height
+            perception_msg: std_msgs.msg.Float32
+        -
+            name: gripper_width
+            perception_topic: /mdb/ur5/sensor/gripper_width
+            perception_msg: std_msgs.msg.Float32
+        -
+            name: ball_lifted
+            perception_topic: /mdb/ur5/sensor/ball_lifted
+            perception_msg: std_msgs.msg.Float32
+        # Not used by the architecture; handy to watch with ros2 topic echo
+        -
+            name: grip_force
+            perception_topic: /mdb/ur5/sensor/grip_force
+            perception_msg: std_msgs.msg.Float32
+        -
+            name: ball
+            perception_topic: /mdb/ur5/sensor/ball
+            perception_msg: simulators_interfaces.msg.Object2DListMsg

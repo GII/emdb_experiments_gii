@@ -7,6 +7,7 @@ In this repository, you can find experiments developed by the GII that use the e
 - **Bartender**: Experiment in which a simulated robot has to serve drinks to its clients.
 - **OSCAR**: Experiments using two robotic arms in Gazebo, one of them with the alignment of the robot purposes.
 - **2D and 1D simulators**: Experiments with low-level actions, which learn models or policies.
+- **UR5e grasp and lift**: A UR5e arm with an OnRobot 2FG7 gripper, simulated in MuJoCo, learns to grasp a ball and lift it with low-level actions (learned policy, no Utility Model).
 - **Pump panel**: Experiment with the LLM exploration policy, which is a work in progress.
 
 The *experiments* ROS package includes the YAML files that configure the experiments and the launch files to run them. For example:
