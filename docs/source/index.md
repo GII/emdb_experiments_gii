@@ -18,6 +18,8 @@ In this [repository](https://github.com/pillar-robots/emdb_experiments_gii), you
 
 - [1D Simulator Experiment](experiments/sim_1d_experiment.md): Experiment in which an agent moves along a line to reach a target, with a single continuous action. It is simulated with the *sim_1d_emdb* package.
 
+- [UR5e Grasp and Lift Experiment](experiments/ur5_2fg7_lift_experiment.md): Experiment in which a UR5e arm with an OnRobot 2FG7 gripper learns to grasp a ball and lift it, with low-level actions, using a learned policy (Soft Actor-Critic) without a Utility Model. It is simulated in MuJoCo with the *ur5_mujoco* package.
+
 <!-- - [PumpPanel Experiment](experiments/pump_panel_experiment.md): Experiment that demonstrates the use of the LLM exploration policy to solve a complex multi-step task. -->
 
 The *experiments* ROS package includes the YAML files that configure the experiments and the launch files to run them. The parameters of these files are described in the [configuration page](https://docs.pillar-robots.eu/projects/emdb_core/en/latest/core/configuration.html) of the core documentation.
@@ -36,6 +38,7 @@ experiments/manipulation_2d.md
 experiments/bartender_experiment.md
 experiments/fruit_serve_experiment.md
 experiments/sim_1d_experiment.md
+experiments/ur5_2fg7_lift_experiment.md
 
 ```
 
