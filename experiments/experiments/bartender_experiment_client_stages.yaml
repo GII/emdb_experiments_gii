@@ -294,7 +294,7 @@ LTM:
                 parameters:
                     ltm_id: ltm_0
                     depth_threshold: 3
-                    min_points: 15
+                    min_points: 8
                     neighbors: [{"name": "knowledge_reuse_need", "node_type": "RobotPurpose"}]
         Goal:
             -
