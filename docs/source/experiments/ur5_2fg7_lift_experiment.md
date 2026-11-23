@@ -1,6 +1,6 @@
 # UR5e Grasp and Lift Experiment
 
-In this experiment a UR5e arm with an OnRobot 2FG7 gripper has to grasp a ball and lift it 5 cm, with low-level actions and no grasp macro. It is simulated in MuJoCo by the `sim_ur5` executable of the *ur5_mujoco* package (in the `physics_simulators` folder of [emdb_discrete_event_simulator_gii](https://github.com/GII/emdb_discrete_event_simulator_gii)), which is the one started by the launch file. The experiment file included in the *experiments* package is *ur5_2fg7_lift_pl_only_experiment.yaml*: the task is learned by a learned policy (`PolicyLearned`, Soft Actor-Critic) on its own, without a Utility Model.
+In this experiment a UR5e arm with an OnRobot 2FG7 gripper has to grasp a ball and lift it 5 cm, with low-level actions and no grasp macro. It is simulated in MuJoCo: the `sim_ur5` executable of the *ur5_mujoco_emdb* package of this repository, started by the launch file, runs the UR5e simulation of the *ur5_mujoco* package (in the `physics_simulators` folder of [emdb_discrete_event_simulator_gii](https://github.com/GII/emdb_discrete_event_simulator_gii)). The experiment file included in the *experiments* package is *ur5_2fg7_lift_pl_only_experiment.yaml*: the task is learned by a learned policy (`PolicyLearned`, Soft Actor-Critic) on its own, without a Utility Model.
 
 ![Results of a run](images/ur5_2fg7_lift_run_summary.png)
 
@@ -85,7 +85,7 @@ The launch file starts the commander, the LTM and the simulator, and it has thes
 | `perception_rate`    | `20.0`                                  | Hz of the perception topics of the simulator.           |
 | `video_dir`, `video_every` | `""`, `1`                         | Record one trial in `video_every` to an mp4 in `video_dir` (empty: no video). |
 
-The script `scripts/run_ur5.sh` of *ur5_mujoco* runs the experiment in its own results folder (`<workspace>/results/<experiment>/seed<N>_<date-time>/`), and `scripts/plot_run.py` draws the figure above from that folder. The learned policy writes its logs to `logs/<policy>/` in the folder where the experiment runs, and saves its network there every 10 trainings and at the end of the run (`sac_model.zip`, with `sac_model.json`, which gives the order of the observation and action values). The saved network can be loaded with Stable-Baselines3:
+The script `scripts/run_ur5.sh` of *ur5_mujoco_emdb* runs the experiment in its own results folder (`<workspace>/results/<experiment>/seed<N>_<date-time>/`), and `scripts/plot_run.py` draws the figure above from that folder. The learned policy writes its logs to `logs/<policy>/` in the folder where the experiment runs, and saves its network there every 10 trainings and at the end of the run (`sac_model.zip`, with `sac_model.json`, which gives the order of the observation and action values). The saved network can be loaded with Stable-Baselines3:
 
 ```python
 from stable_baselines3 import SAC

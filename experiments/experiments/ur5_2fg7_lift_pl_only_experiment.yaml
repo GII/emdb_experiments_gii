@@ -1,6 +1,7 @@
 # UR5e + OnRobot 2FG7 in MuJoCo: grasp the ball and lift it 5 cm. The task is learned by a learned policy
 # (PolicyLearned, SAC) on its own, without a utility model. Simulator: ur5_mujoco (physics_simulators/ in
-# emdb_discrete_event_simulator_gii). Launch file: ur5_launch.py. See docs/source/experiments/ur5_2fg7_lift_experiment.md.
+# emdb_discrete_event_simulator_gii), run by the sim_ur5 node of ur5_mujoco_emdb. Launch file: ur5_launch.py.
+# See docs/source/experiments/ur5_2fg7_lift_experiment.md.
 #
 # Robot (UR5TwoFG7Scenario of ur5_mujoco): the 2FG7 with silicone fingertips and the fingers outwards, no grasp
 # macro, jerk-limited motions (URScript movel speed and acceleration) that blend into the next action.

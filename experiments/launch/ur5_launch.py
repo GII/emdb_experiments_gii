@@ -44,7 +44,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
     )
 
     simulator_node = Node(
-        package="ur5_mujoco",
+        package="ur5_mujoco_emdb",
         executable="sim_ur5",
         output="screen",
         arguments=["--ros-args", "--log-level", logger],
