@@ -3,19 +3,24 @@
 
 Usage:  progress.py [run folder]     (default: the newest run folder under the results folder,
         $EMDB_RESULTS or <workspace>/results; see compare_runs.find_results)
+
+The times of the iterations come from <run>/perf.txt, where the main loop writes the end of each iteration
+(run_ur5.sh sets EMDB_PERF_FILE to it), and the number of iterations of the run from its experiment file.
 """
 import csv
 import glob
 import os
-import re
 import statistics
 import sys
 import time
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import yaml
+
+HERE = os.path.dirname(os.path.realpath(__file__))
+sys.path.insert(0, HERE)
 from compare_runs import find_results  # noqa: E402
 
-ITER = re.compile(rb"\[(\d{10}\.\d+)\] \[main_loop\]: \*\*\* ITERATION: (\d+)/(\d+)")
+EXPERIMENTS = os.path.join(HERE, "..", "..", "experiments", "experiments")  # the yamls of the experiments package
 
 
 def newest_run():
@@ -23,17 +28,26 @@ def newest_run():
     return max(runs, key=os.path.getmtime) if runs else None
 
 
-def iteration_times(log_path, tail_bytes=2_000_000):
-    """(first, last) (time, iteration, total) of the main loop. Reads the start and the end of the log only."""
-    with open(log_path, "rb") as f:
-        head = f.read(tail_bytes)
-        f.seek(max(0, os.path.getsize(log_path) - tail_bytes))
-        tail = f.read()
-    first, last = ITER.search(head), list(ITER.finditer(tail))
-    if not first or not last:
-        return None, None
-    conv = lambda m: (float(m.group(1)), int(m.group(2)), int(m.group(3)))
-    return conv(first), conv(last[-1])
+def iteration_times(perf_path):
+    """(first, last) (time, iteration) of the main loop, from the lines "<iteration> <time>" of perf.txt."""
+    rows = []
+    if os.path.exists(perf_path):
+        with open(perf_path) as f:
+            for line in f:
+                c = line.split()
+                if len(c) == 2 and c[0].isdigit():
+                    rows.append((float(c[1]), int(c[0])))
+    return (rows[0], rows[-1]) if rows else (None, None)
+
+
+def planned_iterations(run):
+    """Iterations of the run, from its experiment file (the run folder is <results>/<experiment>/seed<N>_<date>)."""
+    experiment = os.path.basename(os.path.dirname(os.path.abspath(run)))
+    try:
+        with open(os.path.join(EXPERIMENTS, experiment + ".yaml")) as f:
+            return int(yaml.safe_load(f)["Experiment"]["parameters"]["iterations"])
+    except (OSError, KeyError, TypeError, ValueError, yaml.YAMLError):
+        return None
 
 
 def main():
@@ -41,12 +55,16 @@ def main():
     if not run:
         sys.exit("No run folder found")
     print(f"Run: {run}")
-    first, last = iteration_times(os.path.join(run, "launch.log"))
+    first, last = iteration_times(os.path.join(run, "perf.txt"))
     if last:
+        total = planned_iterations(run)
         elapsed = last[0] - first[0]
         pace = elapsed / max(1, last[1] - first[1])
-        print(f"Iteration {last[1]}/{last[2]}  elapsed {elapsed/3600:.1f} h  {pace:.1f} s/iteration  "
-              f"ETA {pace*(last[2]-last[1])/3600:.1f} h  (last log line {time.time()-last[0]:.0f} s ago)")
+        eta = f"ETA {pace*(total-last[1])/3600:.1f} h  " if total else ""
+        print(f"Iteration {last[1]}/{total or '?'}  elapsed {elapsed/3600:.1f} h  {pace:.1f} s/iteration  "
+              f"{eta}(last iteration ended {time.time()-last[0]:.0f} s ago)")
+    else:
+        print("No iteration times yet: perf.txt is missing or empty (run_ur5.sh sets EMDB_PERF_FILE)")
 
     rows = []
     path = os.path.join(run, "trials_0.txt")

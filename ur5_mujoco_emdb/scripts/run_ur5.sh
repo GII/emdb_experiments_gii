@@ -8,8 +8,8 @@
 #   run_ur5.sh ur5_2fg7_lift_pl_only_experiment.yaml 1 realtime:=true sim_speed:=1.0   # watch at real speed
 #
 # Seed: use 1, 2, 3... (0 means "a random seed from the clock"; the one used is printed in the log).
-# Output: <results>/<yaml name>/seed<N>_<date-time>/ (launch.log, trials_0.txt, goodness_0.txt, logs/policy_*/...,
-#         videos/). Ctrl+C stops the run.
+# Output: <results>/<yaml name>/seed<N>_<date-time>/ (launch.log, perf.txt, trials_0.txt, goodness_0.txt,
+#         logs/policy_*/..., videos/). Ctrl+C stops the run.
 # Env:    VISUALIZE (True), PERCEPTION_RATE (40 Hz), VIDEO_EVERY (off).
 #         EMDB_WS: the colcon workspace (default: the first folder above this script with install/setup.bash).
 #         EMDB_RESULTS: the results folder (default: <workspace>/results).
@@ -44,5 +44,7 @@ if [[ -n "${VIDEO_EVERY:-}" ]]; then
     # Offscreen rendering without a window; the viewer (VISUALIZE=True) uses its own GLFW context
     export MUJOCO_GL="${MUJOCO_GL:-egl}"
 fi
+# The main loop writes the end time of each iteration to perf.txt (read by progress.py and plot_run.py)
+export EMDB_PERF_FILE="$run_dir/perf.txt"
 ros2 launch experiments ur5_launch.py experiment_file:="$yaml" random_seed:="$seed" \
     visualize:="${VISUALIZE:-True}" perception_rate:="${PERCEPTION_RATE:-40.0}" "${video[@]}" "$@" 2>&1 | tee launch.log

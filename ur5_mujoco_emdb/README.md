@@ -61,7 +61,8 @@ scripts/run_ur5.sh ur5_2fg7_lift_pl_only_experiment.yaml 1 realtime:=true sim_sp
 ```
 
 Each run gets its own folder, `<workspace>/results/<yaml name>/seed<N>_<date-time>/` (`EMDB_RESULTS` changes the
-results folder), with `launch.log`, the e-MDB files (`trials_0.txt`, `goodness_0.txt`, ...), the logs of the
+results folder), with `launch.log`, `perf.txt` (the end time of each iteration, written by the main loop:
+`run_ur5.sh` sets `EMDB_PERF_FILE`), the e-MDB files (`trials_0.txt`, `goodness_0.txt`, ...), the logs of the
 learned policies (`logs/policy_*/`: `traces.csv`, `turns.csv`, `progress.csv`, and the saved model
 `sac_model.zip` with `sac_model.json`) and the videos (`videos/trial_XXXXX.mp4`). Use seeds 1, 2, 3...: seed 0
 means "random from the clock" (the seed used is printed in the log).

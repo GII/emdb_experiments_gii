@@ -8,14 +8,14 @@ Usage:
 Panels: (a) successful trials over the wall-clock time of the run, by who reached them (novelty exploration,
 utility model, learned policy); (b) success rate per block of trials; (c) actions in each trial; (d), (e) the SAC
 training of the learned policy (critic loss, entropy coefficient); (f) frames of a recorded successful trial.
-Reads trials_0.txt, goodness_0.txt, launch.log (times of the iterations), logs/policy_*/progress.csv and
-turns.csv, videos/. The figure goes to RUN_DIR/run_summary.png unless --out says otherwise.
+Reads trials_0.txt, goodness_0.txt, perf.txt (the end time of each iteration, written by the main loop: run_ur5.sh
+sets EMDB_PERF_FILE), logs/policy_*/progress.csv and turns.csv, videos/. The figure goes to RUN_DIR/run_summary.png
+unless --out says otherwise.
 """
 import argparse
 import csv
 import glob
 import os
-import re
 import statistics
 import subprocess
 import sys
@@ -37,15 +37,16 @@ FRAME_CROP = (420, 0, 720, 470)  # x, y, w, h of the 1280x720 video frames: arm,
 
 
 def iteration_times(path):
-    """Wall-clock time of the start of each iteration (the "*** ITERATION: n/N ***" lines of launch.log)."""
-    log = os.path.join(path, "launch.log")
-    if not os.path.exists(log):
-        return {}
-    out = subprocess.run(["grep", "-a", "-o", r"\[[0-9.]*\] \[main_loop\]: \*\*\* ITERATION: [0-9]*", log],
-                         capture_output=True, text=True).stdout
+    """Wall-clock time of the end of each iteration: the lines "<iteration> <time>" of perf.txt, which the main loop
+    writes (run_ur5.sh sets EMDB_PERF_FILE to it)."""
+    perf = os.path.join(path, "perf.txt")
     times = {}
-    for m in re.finditer(r"\[([0-9.]+)\] \[main_loop\]: \*\*\* ITERATION: ([0-9]+)", out):
-        times.setdefault(int(m.group(2)), float(m.group(1)))
+    if os.path.exists(perf):
+        with open(perf) as f:
+            for line in f:
+                c = line.split()
+                if len(c) == 2 and c[0].isdigit():
+                    times[int(c[0])] = float(c[1])
     return times
 
 
@@ -59,11 +60,11 @@ def read_csv(path):
 def load(path):
     run = load_run(path)
     times = iteration_times(path)
-    t0 = times.get(1)
-    # A trial ends with the iteration in its row: its end is the start of the next iteration (or that one's start)
+    t0 = times.get(1)  # the end of the first iteration
+    # A trial ends with the iteration in its row
     run["trial_rows"] = []
     for it, trial, actions, ok in run["trials"]:
-        t = times.get(it + 1, times.get(it))
+        t = times.get(it)
         run["trial_rows"].append({
             "iteration": it, "trial": trial, "actions": actions, "success": ok,
             "who": run["process"].get(it), "hours": (t - t0) / 3600.0 if t is not None and t0 else None,
@@ -81,7 +82,7 @@ def load(path):
         updates = None
         if first_training and len(run["progress"]) >= first_training:
             updates = float(run["progress"][first_training - 1]["train/n_updates"])
-        t = times.get(first_policy_it)
+        t = times.get(first_policy_it - 1)  # its first turn starts at the end of the iteration before
         run["policy_start"] = {
             "iteration": first_policy_it, "trial": row["trial"] if row else None, "updates": updates,
             "hours": (t - t0) / 3600.0 if t is not None and t0 else None,
