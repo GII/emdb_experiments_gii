@@ -33,18 +33,18 @@ LTM:
             id: pnodes_content
             class: core.file.FilePNodesContent
             file: pnodes_content.txt
+            parameters:
+                save_interval: 5000
         -
-            id: pnodes_content_last_iteration
-            class: core.file.FileLastIterationPNodesContent
-            file: pnodes_content_last_ite.txt
+            id: pnodes_confidence
+            class: core.file.FilePNodesConfidence
+            file: pnodes_confidence.txt
         -
             id: goals_content
             class: core.file.FileGoalsContent
             file: goals_content.txt
-        -
-            id: goals_content_last_iteration
-            class: core.file.FileLastIterationGoalsContent
-            file: goals_content_last_ite.txt
+            parameters:
+                save_interval: 5000
         -
             id: trials
             class: core.file.FileTrialsSuccess
@@ -57,6 +57,18 @@ LTM:
             id: neighbors_full
             class: core.file.FileNeighborsFull
             file: neighbors_full.txt
+        -
+            id: save_models
+            class: core.file.FileSaveModels
+            file: models_save
+            parameters:
+                save_interval: 0
+        -
+            id: dataset
+            class: core.file.FileEpisodesDataset
+            file: dataset.csv
+            parameters:
+                max_size: 10000
     Connectors:
         -
             data: Space
@@ -69,20 +81,32 @@ LTM:
             default_class: cognitive_nodes.pnode.PNode
             parameters:
                 space_class: cognitive_nodes.space.ANNSpace
-                history_size: 50
+                space_size: 50000
+                history_size: 100
                 space_parameters:
-                    size: 15000
+                    sampled_points: 64
+                    train_every: 8
+                    min_warmup_samples: 8
+                    min_samples_per_class: 2
         -
             data: CNode
             default_class: cognitive_nodes.cnode.CNode
+            parameters:
+                history_size: 40
+                track_competence: True
         -
             data: Goal
             default_class: cognitive_nodes.goal.GoalLearnedSpace
             parameters:
                 space_class: cognitive_nodes.space.ANNSpace
-                space_size: 15000
+                space_size: 50000
+                space_parameters:
+                    sampled_points: 64
+                    train_every: 8
+                    min_warmup_samples: 8
+                    min_samples_per_class: 2
                 history_size: 100  
-                min_confidence: 0.94  
+                min_confidence: 0.9
                 ltm_id: ltm_0
         -
             data: WorldModel
@@ -163,7 +187,7 @@ LTM:
                 name: external_effects_need
                 class_name: cognitive_nodes.robot_purpose.RobotPurpose
                 parameters:
-                    weight: 0.3
+                    weight: 0.0
                     drive_id: 'external_effects_drive'
                     purpose_type: 'Need'
             - 
@@ -173,6 +197,14 @@ LTM:
                     weight: 1.0
                     drive_id: 'prospection_drive'
                     purpose_type: 'Need'
+            # -
+            #     name: competence_need
+            #     class_name: cognitive_nodes.competence.Competence
+            #     parameters:
+            #         weight: 0.5
+            #         purpose_type: 'Need'
+            #         min_activation: 0.15
+            #         ltm_id: ltm_0
         Drive:
             -
                 name: object_in_box_drive
@@ -350,6 +382,9 @@ LTM:
                     drive_name: external_effects_drive
                     goal_class: cognitive_nodes.effectance.GoalRecreateEffect
                     space_class: cognitive_nodes.space.ANNSpace
+                    goal_params:
+                        history_size: 40
+                        min_confidence: 0.9
                     neighbors: [{"name": "external_effects_cnode", "node_type": "CNode"}]
                     ltm_id: ltm_0
             -

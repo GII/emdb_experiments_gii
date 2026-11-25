@@ -4,7 +4,7 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 10000
+        iterations: 20000
         trials: 20
         softmax_selection: True
         softmax_temperature: 0.3
@@ -46,6 +46,10 @@ LTM:
             class: core.file.FileTrialsSuccess
             file: trials.txt
         -
+            id: pnodes_confidence
+            class: core.file.FilePNodesConfidence
+            file: pnodes_confidence.txt
+        -
             id: neighbors
             class: core.file.FileNeighbors
             file: neighbors.txt
@@ -79,12 +83,17 @@ LTM:
             parameters:
                 space_class: cognitive_nodes.space.ANNSpace
                 space_size: 50000
-                history_size: 100
+                history_size: 50
+                space_parameters:
+                    sampled_points: 64
+                    train_every: 8
+                    min_warmup_samples: 8
+                    min_samples_per_class: 2
         -
             data: CNode
             default_class: cognitive_nodes.cnode.CNode
             parameters:
-                history_size: 40
+                history_size: 100
                 track_competence: True
         -
             data: Goal
@@ -92,8 +101,13 @@ LTM:
             parameters:
                 space_class: cognitive_nodes.space.ANNSpace
                 space_size: 50000
-                history_size: 100  
-                min_confidence: 0.84  
+                space_parameters:
+                    sampled_points: 64
+                    train_every: 8
+                    min_warmup_samples: 8
+                    min_samples_per_class: 2
+                history_size: 50
+                min_confidence: 0.9
                 ltm_id: ltm_0
         -
             data: WorldModel
@@ -203,7 +217,7 @@ LTM:
                 name: competence_need
                 class_name: cognitive_nodes.competence.Competence
                 parameters:
-                    weight: 0.5
+                    weight: 1.0
                     purpose_type: 'Need'
                     min_activation: 0.15
                     ltm_id: ltm_0
@@ -237,7 +251,7 @@ LTM:
                 parameters:
                     ltm_id: ltm_0
                     min_confidence: 0.84
-                    limit_depth: True
+                    limit_depth: False
                     neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
             -
                 name: external_effects_drive
@@ -254,6 +268,8 @@ LTM:
                     min_pnode_rate: 0.85
                     min_goal_rate: 0.95
                     neighbors: [{"name": "prospection_need", "node_type": "RobotPurpose"}]
+                    pnode_in_goal: True
+                    goal_in_pnode: True
         Goal:
             -
                 name: novelty_goal
@@ -386,7 +402,7 @@ LTM:
                     neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
                     confidence: 0.5
                     threshold_delta: 0.5
-                    limit_depth: True
+                    limit_depth: False
                     ltm_id: ltm_0
             -
                 name: external_effect_policy
@@ -441,5 +457,5 @@ DiscreteEventSimulator:
 
     Stages:
         stage0: 1000
-        stage1: 2000
-        stage2: 2500
+        stage1: 5000
+        stage2: 6000
