@@ -14,7 +14,7 @@ Control:
     control_topic: /main_loop/control
     control_msg: cognitive_processes_interfaces.msg.ControlMsg
     episodes_topic: /main_loop/episodes
-    episodes_msg: cognitive_node_interfaces.msg.Episode
+    episodes_msg: core_interfaces.msg.Container
     executed_action_service: /mdb/baxter/executed_action
     executed_action_msg: cognitive_node_interfaces.srv.Action
     world_reset_service: /mdb/baxter/world_reset
@@ -87,6 +87,7 @@ LTM:
             data: WorldModel
             default_class: cognitive_nodes.world_model.WorldModelLearned
             parameters:
+                episodes_msg: core_interfaces.msg.Container
                 episodes_topic: /main_loop/episodes
                 prediction_srv_type: cognitive_node_interfaces.srv.Predict
                 main_size: 2000
@@ -256,7 +257,7 @@ LTM:
                     LTM_id: ltm_0
                     max_iterations: 20
                     episodes_topic: /main_loop/episodes
-                    episodes_msg: cognitive_node_interfaces.msg.Episode
+                    episodes_msg: core_interfaces.msg.Container
                     model_creation_policy: model_creation_policy
 
         Goal:
@@ -338,7 +339,7 @@ LTM:
                     LTM_id: ltm_0
                     max_iterations: 20
                     episodes_topic: /main_loop/episodes
-                    episodes_msg: cognitive_node_interfaces.msg.Episode
+                    episodes_msg: core_interfaces.msg.Container
             -
                 name: effectance_policy
                 class_name: cognitive_nodes.effectance.PolicyEffectanceInternal
@@ -385,10 +386,6 @@ LTM:
             #         max_antitraces: 10
 
 
-
-        
-
-                        
 
 SimulatedBaxter:
     Actuation:

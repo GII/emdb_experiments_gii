@@ -14,6 +14,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name), glob('launch/*launch.[pxy][yma]*')),
         (os.path.join('share', package_name, 'experiments'), glob('experiments/*.[yma]*')),
+        (os.path.join('share', package_name, 'experiments/bartender_exp'), glob('experiments/bartender_exp/*.[yma]*')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

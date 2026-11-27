@@ -8,12 +8,20 @@ import numpy as np
 import rclpy
 from copy import deepcopy
 from rclpy.node import Node
+from rclpy.executors import SingleThreadedExecutor
+try:
+    # Event-driven executor implemented in C++ (ROS 2 Jazzy and later).
+    from rclpy.experimental import EventsExecutor
+except ImportError:
+    EventsExecutor = None
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rcl_interfaces.msg import ParameterDescriptor
 from core.service_client import ServiceClient
+from core.blocking_wait_check import register_executor_thread
 
 from core_interfaces.srv import LoadConfig
-from core.utils import class_from_classname, actuation_msg_to_dict
+from core.container import Container
+from core.utils import class_from_classname, resolve_seed
 
 from simulators.scenarios_2D import SimpleScenario, EntityType
 
@@ -57,7 +65,6 @@ class Sim2DSimple(Node):
         self.sim_publishers = {}
         self.perceptions = {}
         self.base_messages = {}
-        self.service_world_reset = False
 
         self.load_client=ServiceClient(LoadConfig, 'commander/load_experiment')
 
@@ -130,43 +137,46 @@ class Sim2DSimple(Node):
         self.gripper_l=False
         self.gripper_r=False
 
-    def denormalize_actuation(self, actuation, actuation_config):
+    def denormalize_actuation(self, action: Container, actuation_config):
         """
         Denormalizes the actuation values.
 
-        :param actuation: Actuation values to denormalize.
-        :type actuation: dict
+        :param action: Action values to denormalize.
+        :type action: core.container.Container
         :param actuation_config: Actuation configuration.
         :type actuation_config: dict
         :return: Denormalized actuation.
-        :rtype: dict
-        """        
-        act=deepcopy(actuation)
-        for actuator in act:
-            for param in act[actuator][0]:
-                if actuation_config[actuator][param]["type"]=="float":
-                    bounds=actuation_config[actuator][param]["bounds"]
-                    value=act[actuator][0][param]
-                    act[actuator][0][param]=bounds[0]+(value*(bounds[1]-bounds[0]))
-        return act
+        :rtype: xarray.DataArray
+        """
+        action_dims = action.feature_labels
+        data = action.read()
+
+        for dim in action_dims:
+            actuator, param = dim.split(":", 1)
+            if actuation_config[actuator][param]["type"]=="float":
+                bounds=actuation_config[actuator][param]["bounds"]
+                value=data.sel(features=dim).values
+                data.loc[{"features": dim}]=bounds[0]+(value*(bounds[1]-bounds[0]))
+        return data
 
     def execute_action(self, action):
         """
-        Execute an action in the simulation.
+        Execute an action in the simulation. The action is denormalized with the actuation
+        configuration, applied to both arms, and then the grippers are updated: they grasp a ball
+        that is within grasp range, release it over the box, and exchange the ball when they are
+        close to each other.
 
-        :param action: The action to be executed.
-        :type action: dict
+        :param action: The action to be executed (normalized values of ``left_arm:dist``, ``left_arm:angle``, ``right_arm:dist`` and ``right_arm:angle``).
+        :type action: core.container.Container
         """
 
-        action = self.denormalize_actuation(action, self.actuation_config)
+        action_vector = self.denormalize_actuation(action, self.actuation_config)
 
-        vel_l=action["left_arm"][0]["dist"]
-        angle_l=action["left_arm"][0]["angle"]
-        #gripper_l=action["left_arm"][0]["gripper"]
+        vel_l=float(action_vector.sel(features="left_arm:dist").values)
+        angle_l=float(action_vector.sel(features="left_arm:angle").values)
 
-        vel_r=action["right_arm"][0]["dist"]
-        angle_r=action["right_arm"][0]["angle"]
-        #gripper_r=action["right_arm"][0]["gripper"]
+        vel_r=float(action_vector.sel(features="right_arm:dist").values)
+        angle_r=float(action_vector.sel(features="right_arm:angle").values)
 
         self.sim.apply_action(angle_l, angle_r, vel_l, vel_r, self.gripper_l, self.gripper_r)
 
@@ -247,32 +257,34 @@ class Sim2DSimple(Node):
 
     def new_command_callback(self, data):
         """
-        Process a command received.
+        Process a command received through the control topic. Only the ``end`` command is handled
+        (it shuts the simulator down). World resets are not requested through this topic but through the
+        world reset service (see :meth:`world_reset_service_callback`).
 
-        :param data: The message that contais the command received.
+        :param data: The message that contains the command received.
         :type data: ROS msg defined in setup_control_channel
         """
         self.get_logger().debug(f"Command received... ITERATION: {data.iteration}")
-        if data.command == "reset_world":
-            if not self.service_world_reset:
-                self.reset_world()
-        elif data.command == "end":
+        # World resets arrive through the world reset service, not through this topic
+        if data.command == "end":
             self.get_logger().info("Ending simulator as requested by LTM...")
             rclpy.shutdown()
 
 
     def new_action_service_callback(self, request, response):
         """
-        Execute a policy and publish new perceptions.
+        Execute a low-level action in the simulation. This is the callback of the executed action service
+        (``executed_action_service``). The perceptions are not published here: they are published periodically
+        by a timer.
 
-        :param request: The message that contains the policy to execute.
-        :type request: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Policy.Request
-        :param response: Response of the success of the execution of the action.
-        :type response: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Policy.Response
-        :return: Response indicating the success of the action execution.
-        :rtype: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Policy.Response
+        :param request: The message that contains the action to execute, as a Container message.
+        :type request: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Action.Request
+        :param response: Response of the execution of the action.
+        :type response: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Action.Response
+        :return: The response, once the action has been executed.
+        :rtype: ROS srv defined in the config file. Typically cognitive_node_interfaces.srv.Action.Response
         """
-        action=actuation_msg_to_dict(request.action)
+        action=Container.from_msg(request.action)
         self.get_logger().info("Executing action " + str(action))
         self.execute_action(action)
         return response
@@ -318,11 +330,9 @@ class Sim2DSimple(Node):
                 self.actuation_config = config["SimulatedBaxter"]["Actuation"]
                 # Be ware, we can not subscribe to control channel before creating all sensor publishers.
                 self.setup_control_channel(config["Control"])
-        if self.random_seed:
-            self.rng = np.random.default_rng(self.random_seed)
-            self.get_logger().info(f"Setting random number generator with seed {self.random_seed}")
-        else:
-            self.rng = np.random.default_rng()
+        self.random_seed = resolve_seed(self.random_seed)
+        self.rng = np.random.default_rng(self.random_seed)
+        self.get_logger().info(f"Setting random number generator with seed {self.random_seed}")
 
         self.load_experiment_file_in_commander()
 
@@ -353,7 +363,6 @@ class Sim2DSimple(Node):
             self.get_logger().info("Creating perception publisher timer... ")
             self.perceptions_timer = self.create_timer(0.01, self.publish_perceptions, callback_group=self.cbgroup_server)
         if service_world_reset:
-            self.service_world_reset = True
             classname= simulation["world_reset_msg"]
             self.message_world_reset = class_from_classname(classname)
             self.create_service(self.message_world_reset, service_world_reset, self.world_reset_service_callback, callback_group=self.cbgroup_server)
@@ -387,9 +396,14 @@ def main(args=None):
     rclpy.init(args=args)
     sim = Sim2DSimple()
     sim.load_configuration()
+    # Much cheaper than the Python executors. The simulator runs in a single thread either way, and
+    # none of its callbacks waits for anything, so callback groups are not needed.
+    executor = EventsExecutor() if EventsExecutor is not None else SingleThreadedExecutor()
+    executor.add_node(sim)
+    register_executor_thread() # The callbacks of the EventsExecutor are not visible in the Python stack
 
     try:
-        rclpy.spin(sim)
+        executor.spin()
     except KeyboardInterrupt:
         print('Keyboard Interrupt Detected: Shutting down simulator...')
     finally:

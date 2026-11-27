@@ -4,15 +4,17 @@ Experiment:
     new_executor: True
     threads: 2
     parameters: 
-        iterations: 6000
+        iterations: 10000
         trials: 50
-        subgoals: False
+        softmax_selection: False
+        kill_on_finish: True
+
 Control:
     id: ltm_simulator
     control_topic: /main_loop/control
     control_msg: cognitive_processes_interfaces.msg.ControlMsg
     episodes_topic: /main_loop/episodes
-    episodes_msg: cognitive_processes_interfaces.msg.Episode
+    episodes_msg: core_interfaces.msg.Container
     executed_policy_service: /mdb/baxter/executed_policy
     executed_policy_msg: cognitive_node_interfaces.srv.Policy
     world_reset_service: /mdb/baxter/world_reset
@@ -31,10 +33,42 @@ LTM:
             id: pnodes_content
             class: core.file.FilePNodesContent
             file: pnodes_content.txt
+            parameters:
+                save_interval: 5000
+        -
+            id: pnodes_confidence
+            class: core.file.FilePNodesConfidence
+            file: pnodes_confidence.txt
+        -
+            id: goals_content
+            class: core.file.FileGoalsContent
+            file: goals_content.txt
+            parameters:
+                save_interval: 5000
         -
             id: trials
             class: core.file.FileTrialsSuccess
             file: trials.txt
+        -
+            id: neighbors
+            class: core.file.FileNeighbors
+            file: neighbors.txt
+        -
+            id: neighbors_full
+            class: core.file.FileNeighborsFull
+            file: neighbors_full.txt
+        -
+            id: save_models
+            class: core.file.FileSaveModels
+            file: models_save
+            parameters:
+                save_interval: 0
+        -
+            id: dataset
+            class: core.file.FileEpisodesDataset
+            file: dataset.csv
+            parameters:
+                max_size: 10000
     Connectors:
         -
             data: Space
@@ -45,18 +79,42 @@ LTM:
         -
             data: PNode
             default_class: cognitive_nodes.pnode.PNode
+            parameters:
+                space_class: cognitive_nodes.space.ANNSpace
+                space_size: 50000
+                history_size: 100
+                space_parameters:
+                    sampled_points: 64
+                    train_every: 8
+                    min_warmup_samples: 8
+                    min_samples_per_class: 2
         -
             data: CNode
             default_class: cognitive_nodes.cnode.CNode
+            parameters:
+                history_size: 40
+                track_competence: True
         -
             data: Goal
             default_class: cognitive_nodes.goal.GoalLearnedSpace
+            parameters:
+                space_class: cognitive_nodes.space.ANNSpace
+                space_size: 50000
+                space_parameters:
+                    sampled_points: 64
+                    train_every: 8
+                    min_warmup_samples: 8
+                    min_samples_per_class: 2
+                history_size: 100  
+                min_confidence: 0.9
+                ltm_id: ltm_0
         -
             data: WorldModel
             default_class: cognitive_nodes.world_model.WorldModel
         -
             data: Policy
             default_class: cognitive_nodes.policy.PolicyBlocking
+
 
     Nodes:
         Perception:
@@ -118,6 +176,35 @@ LTM:
                     weight: 0.2
                     drive_id: 'novelty_drive'
                     purpose_type: 'Need'
+            - 
+                name: effectance_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 0.25
+                    drive_id: 'effectance_drive'
+                    purpose_type: 'Need'
+            - 
+                name: external_effects_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 0.0
+                    drive_id: 'external_effects_drive'
+                    purpose_type: 'Need'
+            - 
+                name: prospection_need
+                class_name: cognitive_nodes.robot_purpose.RobotPurpose
+                parameters:
+                    weight: 1.0
+                    drive_id: 'prospection_drive'
+                    purpose_type: 'Need'
+            # -
+            #     name: competence_need
+            #     class_name: cognitive_nodes.competence.Competence
+            #     parameters:
+            #         weight: 0.5
+            #         purpose_type: 'Need'
+            #         min_activation: 0.15
+            #         ltm_id: ltm_0
         Drive:
             -
                 name: object_in_box_drive
@@ -133,15 +220,69 @@ LTM:
                 class_name: cognitive_nodes.novelty.DriveNovelty
                 parameters:
                     neighbors: [{"name": "novelty_need", "node_type": "RobotPurpose"}]
+            -
+                name: effectance_drive
+                class_name: cognitive_nodes.effectance.DriveEffectanceInternal
+                parameters:
+                    ltm_id: ltm_0
+                    min_confidence: 0.84
+                    limit_depth: False
+                    neighbors: [{"name": "effectance_need", "node_type": "RobotPurpose"}]
+            -
+                name: external_effects_drive
+                class_name: cognitive_nodes.effectance.DriveEffectanceExternal
+                parameters:
+                    episodes_topic: /main_loop/episodes
+                    episodes_msg: core_interfaces.msg.Container
+                    neighbors: [{"name": "external_effects_need", "node_type": "RobotPurpose"}]
+            -
+                name: prospection_drive
+                class_name: cognitive_nodes.prospection.ProspectionDrive
+                parameters:
+                    ltm_id: ltm_0
+                    min_pnode_rate: 0.85
+                    min_goal_rate: 0.95
+                    neighbors: [{"name": "prospection_need", "node_type": "RobotPurpose"}]
+
         Goal:
             -
                 name: novelty_goal
                 class_name: cognitive_nodes.goal.GoalMotiven
                 parameters:
                     neighbors: [{"name": "novelty_drive", "node_type": "Drive"}]
+            -
+                name: effectance_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "effectance_drive", "node_type": "Drive"}]
+            -
+                name: external_effects_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "external_effects_drive", "node_type": "Drive"}]
+            -
+                name: prospection_goal
+                class_name: dummy_nodes.dummy_goal.GoalDummy
+                parameters:
+                    neighbors: [{"name": "prospection_drive", "node_type": "Drive"}]
         PNode:
             -
                 name: novelty_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: effectance_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: external_effects_pnode
+                class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
+                parameters:
+                    space_class: cognitive_nodes.space.ActivatedDummySpace
+            -
+                name: prospection_pnode
                 class_name: dummy_nodes.dummy_pnodes.ActivatedDummyPNode
                 parameters:
                     space_class: cognitive_nodes.space.ActivatedDummySpace
@@ -152,13 +293,29 @@ LTM:
                 parameters:
                     neighbors: [{"name": "novelty_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "novelty_pnode", "node_type": "PNode"}]
 
+            -
+                name: effectance_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "effectance_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "effectance_pnode", "node_type": "PNode"}]
+            -
+                name: external_effects_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "external_effects_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "external_effects_pnode", "node_type": "PNode"}]
+            -
+                name: prospection_cnode
+                class_name: cognitive_nodes.cnode.CNode
+                parameters:
+                    neighbors: [{"name": "prospection_goal", "node_type": "Goal"}, {"name": "GRIPPER_AND_LOW_FRICTION", "node_type": "WorldModel"}, {"name": "prospection_pnode", "node_type": "PNode"}]
+
         Policy:
             -
                 name: grasp_object
                 class_name: cognitive_nodes.policy.PolicyBlocking
                 parameters:
                     service_msg: cognitive_node_interfaces.srv.Policy
-                    service_name: /mdb/baxter/executed_policy 
+                    service_name: /mdb/baxter/executed_policy
             -
                 name: grasp_with_two_hands
                 class_name: cognitive_nodes.policy.PolicyBlocking
@@ -205,13 +362,38 @@ LTM:
                 name: novelty_policy
                 class_name: cognitive_nodes.novelty.PolicyNovelty
                 parameters:
-                    exclude_list: ["effectance_policy"]
+                    exclude_list: ["effectance_policy", "external_effect_policy", "prospection_policy"]
                     neighbors: [{"name": "novelty_cnode", "node_type": "CNode"}]
                     ltm_id: ltm_0
-
-        
-
-                        
+            -
+                name: effectance_policy
+                class_name: cognitive_nodes.effectance.PolicyEffectanceInternal
+                parameters:
+                    goal_class: cognitive_nodes.effectance.GoalActivatePNode
+                    neighbors: [{"name": "effectance_cnode", "node_type": "CNode"}]
+                    confidence: 0.5
+                    threshold_delta: 0.5
+                    limit_depth: False
+                    ltm_id: ltm_0
+            -
+                name: external_effect_policy
+                class_name: cognitive_nodes.effectance.PolicyEffectanceExternal
+                parameters:
+                    drive_name: external_effects_drive
+                    goal_class: cognitive_nodes.effectance.GoalRecreateEffect
+                    space_class: cognitive_nodes.space.ANNSpace
+                    goal_params:
+                        history_size: 40
+                        min_confidence: 0.9
+                    neighbors: [{"name": "external_effects_cnode", "node_type": "CNode"}]
+                    ltm_id: ltm_0
+            -
+                name: prospection_policy
+                class_name: cognitive_nodes.prospection.PolicyProspection
+                parameters:
+                    drive_name: prospection_drive
+                    neighbors: [{"name": "prospection_cnode", "node_type": "CNode"}]
+                    ltm_id: ltm_0
 
 SimulatedBaxter:
     Perceptions:
@@ -232,6 +414,6 @@ SimulatedBaxter:
             perception_topic: /mdb/baxter/sensor/ball_in_right_hand
             perception_msg: std_msgs.msg.Bool
         -
-            name: progress_ball_in_box
+            name: ball_in_box_goal
             perception_topic: /mdb/baxter/sensor/progress
             perception_msg: std_msgs.msg.Float32

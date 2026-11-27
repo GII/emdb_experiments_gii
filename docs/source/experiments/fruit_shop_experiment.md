@@ -50,16 +50,18 @@ The robot receives a 10-dimensional perceptual state (all normalized in the rang
 
 **Available policies**
 
-The robot has access to 8 predefined policies:
+The robot has access to 8 predefined policies, executed by the simulator:
 
 - **Pick fruit:** Grasp the closest fruit on the table.
 - **Test fruit:** Place grasped fruit on the scale for weight evaluation.
-- **Place fruit:** Leave fruit in table center for pickup with other arm (large fruits, dim_max >= 0.085m).
-- **Change hands:** Move fruit from one gripper to another (for small fruits, dim_max < 0.085m).
+- **Place fruit:** Leave the grasped fruit on the table, on the side opposite to the arm that holds it, so that it can be picked up with the other arm (this is the way to move large fruits from one side to the other).
+- **Change hands:** Move fruit from one gripper to another (only possible for small fruits, dim_max <= 0.085m).
 - **Accept fruit:** Place fruit in the acceptance basket (right side).
 - **Discard fruit:** Place fruit in the rejection basket (left side).
 - **Ask nicely**: Request experimenter to provide more fruits when collection area is empty.
 - **Press button**: Toggle the button light on/off.
+
+Besides these, the experiment includes the four policies of the motivational system (*novelty_policy*, *effectance_policy*, *external_effect_policy* and *prospection_policy*), so the Long-Term Memory has 12 policies in total. The motivational system has 7 purposes: the Missions *classify_fruit_mission* and *place_fruit_mission*, and the Needs *novelty*, *effectance*, *external effects*, *prospection* and *competence*.
 
 ## Sub-Goal Generation Approaches
 
@@ -76,23 +78,23 @@ This approach uses the latent knowledge accumulated in the perceptual classes of
 
 ## Learning Curriculum
 
-To simulate lifelong learning with knowledge reuse, the experiment follows a structured curriculum:
+To simulate lifelong learning with knowledge reuse, the experiment follows a structured curriculum. It has four stages, delimited by three iteration thresholds (`stage0`, `stage1` and `stage2`) that are set in the `Stages` section of the experiment file:
 
-### Stage 1: First exploration
+### Stage 1: First exploration (until `stage0`)
 The purpose is exploring the environment and discovering basic interactions, such as picking fruits, or change it from one hand
 to another.
 
 The scale is not active at this stage.
 
-### Stage 2: Placement Learning
+### Stage 2: Placement Learning (from `stage0` to `stage1`)
 The purpose is placing fruits in the center of the table, reusing the skills learned in the previous stage.
 
 This knowledge will be reused in the next stages. The scale is still inactive.
 
-### Stage 3: Second exploration
+### Stage 3: Second exploration (from `stage1` to `stage2`)
 The purpose is exploring again, but the scale is now active, allowing the robot to learn how to use it.
 
-### Stage 4: Classification Task
+### Stage 4: Classification Task (after `stage2`)
 The purpose is the final classification task, where the robot must classify fruits based on their weight, using the skills learned in the previous stages.
 
 
@@ -100,7 +102,7 @@ The purpose is the final classification task, where the robot must classify frui
 
 The experiment can be executed using the launch file contained in the experiments package:
 ```bash
-ros2 launch emdb_experiments fruit_shop_launch.py experiment_file:=fruit_shop_experiment.yaml
+ros2 launch experiments fruit_shop_launch.py experiment_file:=fruit_shop_experiment.yaml
 ```
 
 The experiment file can be selected from the ones available in the experiments package of this repository:
@@ -110,7 +112,11 @@ The experiment file can be selected from the ones available in the experiments p
 - fruit_shop_progress_experiment.yaml: Provides intermediate rewards to the architecture. Used as benchmark.
 - fruit_shop_top_down_experiment.yaml: Uses only the Top-Down subgoal generation approach.
 
-Configuration parameters can be adjusted through the corresponding YAML configuration file to modify learning parameters, curriculum timing, and neural network architectures.
+Configuration parameters can be adjusted through the corresponding YAML configuration file to modify learning parameters, curriculum timing, and neural network architectures. The parameters are described in the [configuration page](https://docs.pillar-robots.eu/projects/emdb_core/en/latest/core/configuration.html) of the core documentation.
+
+### Real robot
+
+The *tiago_emdb* package contains a bridge between the architecture and a real TIAGo++ robot (see its API documentation). It is a work in progress: there is no launch file for it, and in the current code the loading of the experiment file in the commander is disabled, so it has to be enabled in the code before running it.
 
 ## Results
 

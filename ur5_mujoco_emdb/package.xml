@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ur5_mujoco_emdb</name>
+  <version>0.1.0</version>
+  <description>e-MDB node of the MuJoCo UR5e simulator (ur5_mujoco, in the physics_simulators folder of emdb_discrete_event_simulator_gii), with its launch file and the scripts to run the experiments</description>
+  <maintainer email="alu0101278919@ull.edu.es">jpperezm</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>core</depend>
+  <depend>core_interfaces</depend>
+  <depend>cognitive_node_interfaces</depend>
+  <depend>cognitive_processes_interfaces</depend>
+  <depend>simulators_interfaces</depend>
+  <exec_depend>ur5_mujoco</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

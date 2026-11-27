@@ -14,7 +14,7 @@ Control:
     control_topic: /main_loop/control
     control_msg: cognitive_processes_interfaces.msg.ControlMsg
     episodes_topic: /main_loop/episodes
-    episodes_msg: cognitive_node_interfaces.msg.Episode
+    episodes_msg: core_interfaces.msg.Container
     executed_action_service: /mdb/baxter/executed_action
     executed_action_msg: cognitive_node_interfaces.srv.Action
     world_reset_service: /mdb/baxter/world_reset
@@ -30,14 +30,6 @@ LTM:
             id: goodness
             class: core.file.FileGoodness
             file: goodness.txt
-        # -
-        #     id: pnodes_success
-        #     class: core.file.FilePNodesSuccess
-        #     file: pnodes_success.txt
-        # -
-        #     id: pnodes_content
-        #     class: core.file.FilePNodesContent
-        #     file: pnodes_content.txt
         -
             id: trials
             class: core.file.FileTrialsSuccess
@@ -103,8 +95,7 @@ LTM:
                     episodes_topic: /main_loop/episodes
                     prediction_srv_type: cognitive_node_interfaces.srv.Predict
                     retrain: False
-                    learner_params:
-                        model_file: /home/efallash/ros2_ws/src/MDB/tfm_scripts/results/world_model_online_torch.pth
+
 
 
         Perception:
@@ -223,7 +214,7 @@ LTM:
                     LTM_id: ltm_0
                     max_iterations: 20
                     episodes_topic: /main_loop/episodes
-                    episodes_msg: cognitive_node_interfaces.msg.Episode
+                    episodes_msg: core_interfaces.msg.Container
                     model_creation_policy: model_creation_policy
 
         Goal:
@@ -299,7 +290,7 @@ LTM:
                     LTM_id: ltm_0
                     max_iterations: 20
                     episodes_topic: /main_loop/episodes
-                    episodes_msg: cognitive_node_interfaces.msg.Episode
+                    episodes_msg: core_interfaces.msg.Container
 
         UtilityModel:
             -
@@ -322,7 +313,6 @@ LTM:
                     min_traces: .inf
                     max_traces: 50
                     max_antitraces: 10
-                    model_file: /home/efallash/ros2_ws/src/MDB/tfm_scripts/results/utility_model_exponential_online_grasped_ball_goal.pth
 
 
 

@@ -26,7 +26,7 @@ from std_msgs.msg import Float32
 
 # Utils
 from core.service_client import ServiceClient, ServiceClientAsync
-from core.utils import class_from_classname
+from core.utils import class_from_classname, resolve_seed
 
 
 class OscarMDB(Node):
@@ -136,13 +136,11 @@ class OscarMDB(Node):
                 self.setup_perceptions(config["OSCAR"]["Perceptions"])
                 # Be ware, we can not subscribe to control channel before creating all sensor publishers.
                 self.setup_control_channel(config["Control"])
-        if self.random_seed:
-            self.rng = np.random.default_rng(self.random_seed)
-            self.get_logger().info(
-                f"Setting random number generator with seed {self.random_seed}"
-            )
-        else:
-            self.rng = np.random.default_rng()
+        self.random_seed = resolve_seed(self.random_seed)
+        self.rng = np.random.default_rng(self.random_seed)
+        self.get_logger().info(
+            f"Setting random number generator with seed {self.random_seed}"
+        )
 
         self.load_experiment_file_in_commander()
 
@@ -230,15 +228,16 @@ class OscarMDB(Node):
 
     async def new_command_callback(self, data):
         """
-        Process a command received
+        Process a command received through the control topic. Only the ``end`` command is handled
+        (it shuts the node down). World resets are not requested through this topic but through the
+        world reset service (see :meth:`world_reset_service_callback`).
 
-        :param data: The message that contais the command received.
+        :param data: The message that contains the command received.
         :type data: ROS msg defined in the config file. Typically cognitive_processes_interfaces.msg.ControlMsg
         """
         self.get_logger().debug(f"Command received... ITERATION: {data.iteration}")
-        if data.command == "reset_world":
-            await self.reset_world()
-        elif data.command == "end":
+        # World resets arrive through the world reset service, not through this topic
+        if data.command == "end":
             self.get_logger().info("Ending experiment as requested by LTM...")
             rclpy.shutdown()
 
@@ -327,7 +326,7 @@ class OscarMDB(Node):
         """
         if (
             not self.perception.obj_in_left_hand
-            and not self.perception.obj_in_left_hand
+            and not self.perception.obj_in_right_hand
         ):
             pick_point = self.perception.red_object
 
@@ -371,7 +370,7 @@ class OscarMDB(Node):
         """
         if (
             not self.perception.obj_in_left_hand
-            and not self.perception.obj_in_left_hand
+            and not self.perception.obj_in_right_hand
         ):
             pick_point = self.perception.red_object
 
@@ -732,10 +731,13 @@ class OscarMDB(Node):
 
     def publish_perceptions_callback(self, msg: PerceptionMultiObj):
         """
-        Method that publishes the current perceptions and the reward value in the appropriate topics.
+        Callback of the ``/oscar/redescribed_sensors`` topic. Publishes the perceptions of the experiment
+        (cylinders, boxes, object in each hand) in their topics. The values are taken from the latest
+        perception stored in ``self.perception`` (the object and basket positions are converted to distance
+        and angle); the content of ``msg`` is not read. Rewards are not published here.
 
-        :param msg: Perception message with the latest perceptions.
-        :type msg: cognitive_processes_interfaces.msg.Perception
+        :param msg: Message with the latest redescribed perceptions.
+        :type msg: oscar_emdb_interfaces.msg.PerceptionMultiObj
         """
         self.get_logger().debug("DEBUG - Publishing perceptions")
         # Convert perceptions to distance, angle
@@ -786,15 +788,15 @@ class OscarMDB(Node):
         basket_x = self.perception.basket.x
         basket_y = self.perception.basket.y
 
-        object_x = np.random.uniform(low=self.x_object_close_limits[0], high=self.x_object_close_limits[1])
-        object_y = np.random.uniform(low=self.y_object_close_limits[0], high=self.y_object_close_limits[1])
+        object_x = self.rng.uniform(low=self.x_object_close_limits[0], high=self.x_object_close_limits[1])
+        object_y = self.rng.uniform(low=self.y_object_close_limits[0], high=self.y_object_close_limits[1])
 
         delta_x = basket_x - object_x
         delta_y = basket_y - object_y
         distance = np.sqrt(delta_x * delta_x + delta_y * delta_y)
         while distance < 0.15:
-            object_x = np.random.uniform(low=self.x_object_close_limits[0], high=self.x_object_close_limits[1])
-            object_y = np.random.uniform(low=self.y_object_close_limits[0], high=self.y_object_close_limits[1])
+            object_x = self.rng.uniform(low=self.x_object_close_limits[0], high=self.x_object_close_limits[1])
+            object_y = self.rng.uniform(low=self.y_object_close_limits[0], high=self.y_object_close_limits[1])
 
             delta_x = basket_x - object_x
             delta_y = basket_y - object_y
@@ -819,18 +821,18 @@ class OscarMDB(Node):
         This method randomly places the basket and the object so that
         they are not coliding.
         """
-        basket_x = np.random.uniform(low=self.x_basket_limits[0], high=self.x_basket_limits[1])
-        basket_y = np.random.uniform(low=self.y_basket_limits[0], high=self.y_basket_limits[1])
+        basket_x = self.rng.uniform(low=self.x_basket_limits[0], high=self.x_basket_limits[1])
+        basket_y = self.rng.uniform(low=self.y_basket_limits[0], high=self.y_basket_limits[1])
 
-        object_x = np.random.uniform(low=self.x_object_limits[0], high=self.x_object_limits[1])
-        object_y = np.random.uniform(low=self.y_object_limits[0], high=self.y_object_limits[1])
+        object_x = self.rng.uniform(low=self.x_object_limits[0], high=self.x_object_limits[1])
+        object_y = self.rng.uniform(low=self.y_object_limits[0], high=self.y_object_limits[1])
 
         delta_x = basket_x - object_x
         delta_y = basket_y - object_y
         distance = np.sqrt(delta_x * delta_x + delta_y * delta_y)
         while distance < 0.15:
-            object_x = np.random.uniform(low=self.x_object_limits[0], high=self.x_object_limits[1])
-            object_y = np.random.uniform(low=self.y_object_limits[0], high=self.y_object_limits[1])
+            object_x = self.rng.uniform(low=self.x_object_limits[0], high=self.x_object_limits[1])
+            object_y = self.rng.uniform(low=self.y_object_limits[0], high=self.y_object_limits[1])
 
             delta_x = basket_x - object_x
             delta_y = basket_y - object_y
@@ -892,10 +894,13 @@ class OscarMDB_LLM(OscarMDB):
 
     def publish_perceptions_callback(self, msg: PerceptionMultiObj):
         """
-        Method that publishes the current perceptions and the reward value in the appropriate topics.
+        Callback of the ``/oscar/redescribed_sensors`` topic for the alignment experiment. Publishes
+        ``object1``, ``object2`` and ``robot_hand`` (position, color, diameter and state) in their topics.
+        The values are taken from the latest perception stored in ``self.perception``; the content of ``msg``
+        is not read.
 
-        :param msg: Perception message with the latest perceptions.
-        :type msg: cognitive_processes_interfaces.msg.Perception
+        :param msg: Message with the latest redescribed perceptions.
+        :type msg: oscar_emdb_interfaces.msg.PerceptionMultiObj
         """
         self.get_logger().debug("DEBUG - Publishing perceptions")
         # Assign perceptions to MDB messages
