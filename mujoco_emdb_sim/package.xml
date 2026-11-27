@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>mujoco_emdb_sim</name>
+  <version>0.0.0</version>
+  <description>Bridge + perception adapters connecting emdb_simulator
+    (RoboCasa/robosuite MuJoCo scenes) to the e-MDB architecture.</description>
+  <maintainer email="jpmoro0307@gmail.com">jummo</maintainer>
+  <license>Apache-2.0</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>core</exec_depend>
+  <exec_depend>core_interfaces</exec_depend>
+  <exec_depend>cognitive_nodes</exec_depend>
+  <exec_depend>cognitive_node_interfaces</exec_depend>
+  <exec_depend>cognitive_processes_interfaces</exec_depend>
+  <!-- emdb_interfaces (StepAction/ResetEpisode) comes from the TFM workspace
+       and is sourced as an overlay at runtime, so it is NOT declared here. -->
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
